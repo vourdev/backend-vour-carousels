@@ -11,11 +11,19 @@ class CaptureQueue {
   }
 
   async getBrowser(): Promise<Browser> {
+    if (this.browser && !this.browser.isConnected()) {
+      // Crashed or was killed since the last capture — drop the stale handle
+      // so we relaunch instead of failing every request until a restart.
+      this.browser = null;
+    }
     if (!this.browser) {
       const { chromium } = await import("playwright");
       this.browser = await chromium.launch({
         headless: true,
         args: ["--disable-dev-shm-usage", "--no-sandbox"],
+      });
+      this.browser.on("disconnected", () => {
+        this.browser = null;
       });
     }
     return this.browser;
