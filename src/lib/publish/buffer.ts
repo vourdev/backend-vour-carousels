@@ -1,3 +1,5 @@
+import { toTikTokSafeUrl } from "./cloudinary";
+
 /**
  * Schedules a post to Buffer via the GraphQL API.
  * Returns the post ID on success.
@@ -39,7 +41,7 @@ export async function scheduleBufferPost(params: {
     dueAt: params.dueAt,
     saveToDraft: false,
     assets: params.assets.map((url) => ({
-      image: { url },
+      image: { url: params.isTikTok ? toTikTokSafeUrl(url) : url },
     })),
   };
 
