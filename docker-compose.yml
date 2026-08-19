@@ -1,0 +1,34 @@
+services:
+  backend:
+    build: .
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - AUTOMATION_PORT=3001
+      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_AUTH_TOKEN=${DATABASE_AUTH_TOKEN}
+      - OMNIROUTE_API_KEY=${OMNIROUTE_API_KEY}
+      - OMNIROUTE_BASE_URL=${OMNIROUTE_BASE_URL}
+      - GOOGLE_GENERATIVE_AI_API_KEY=${GOOGLE_GENERATIVE_AI_API_KEY}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - CLOUDINARY_URL=${CLOUDINARY_URL}
+      - BUFFER_TOKEN=${BUFFER_TOKEN}
+      - JWT_SECRET=${JWT_SECRET}
+      - AUTOMATION_SECRET=${AUTOMATION_SECRET}
+      - ALLOWED_ORIGIN=${ALLOWED_ORIGIN}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "healthcheck.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 6G
+        reservations:
+          memory: 2G
