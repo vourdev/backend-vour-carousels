@@ -17,8 +17,35 @@ const TONES = `"peach" (neutral) | "stone" (loser/warning) | "mint" (success) | 
 
 const HASHTAG_RULE = `Hashtags: EXACTLY 5 — TikTok accepts at most 5 hashtags, never more, never fewer. This is a HARD schema constraint (an array of any other length is REJECTED, not truncated).
 Fixed shape: "fyp" first, 3 topic-specific tags in the middle, "vourdev" last.
-Each tag ≤ 30 characters, no spaces, no "#" inside array values.
+Each tag: ≤ 30 characters, lowercase, no spaces, no punctuation, no "#" inside array values.
+The 3 middle tags MUST be drawn from the deck's actual subject matter (the tech, the
+problem, the domain) — never generic filler like "tips", "coding", "programming", "developer".
 Example: fyp, backend, nodejs, database, vourdev.`;
+
+/**
+ * Title and caption are the two fields that leave the app entirely — they are posted
+ * verbatim to Instagram and TikTok via Buffer. Both are schema-enforced (non-empty,
+ * length-capped), and both used to arrive empty often enough to ship blank posts, so
+ * the shape is specified here rather than left to "be informative". Single-sourced
+ * across the brief, plan, and scoped-revision prompts.
+ */
+const TITLE_CAPTION_RULE = `TITLE (schema-enforced: non-empty, ≤ 90 characters)
+- Bahasa Indonesia, descriptive, states the deck's actual value proposition.
+- This is the deck's LIBRARY name, not the cover headline. Do NOT copy the cover
+  headline verbatim — the cover teases, the title describes.
+- Plain text only: no emoji, no hashtags, no surrounding quotes, no trailing period.
+- Front-load the subject: "N+1 Query di Prisma" beats "Cara Mengatasi Masalah Yang..."
+
+CAPTION (schema-enforced: non-empty, ≤ 2200 characters)
+Always the SAME four-part shape, in this order — never omit a part, never reorder:
+  1. HOOK — one line, the problem or misconception. May open with ONE emoji.
+  2. (blank line)
+  3. TAKEAWAYS — 3-5 bullets, each starting "• ", one slide insight each, ≤ 100 chars per bullet.
+  4. (blank line)
+  5. CTA — one line asking for a save/share/comment, phrased as a concrete ask.
+- Muhammad's voice throughout (see VOICE rules): "lo"/"kamu", casual, opinionated.
+- NEVER put hashtags in the caption. Hashtags are a separate field and get appended
+  by the publisher — writing them here duplicates them in the live post.`;
 
 const MOCKUP_BUDGETS = `- Terminal: filename + 4-6 code lines max (≤ 45 chars per line).
 - Comparison: loser label/line vs winner label/line (≤ 50 chars each).
@@ -636,7 +663,9 @@ Kesimpulan
 ---
 
 # Caption
-<Informative & comprehensive caption in Bahasa Indonesia: starts with an engaging hook line with emoji, provides a clear overview of the topic, lists key slide takeaways as bullet points, and ends with a clear Call To Action (Save, Share & Comment).>
+<Bahasa Indonesia, EXACTLY four parts in this order — hook line (may open with ONE emoji),
+blank line, 3-5 "• " takeaway bullets, blank line, CTA line (save/share/comment).
+No hashtags anywhere in the caption.>
 
 # Hashtag
 #fyp #<topic1> #<topic2> #<topic3> #vourdev
@@ -646,14 +675,16 @@ Every icon MUST be one of: ${ICON_ALLOWLIST}. Never invent an icon name; if unsu
 
 STRICT DESIGN & COPY BUDGET RULES
 1. Always write concise, punchy, highly informative Bahasa Indonesia.
-2. Title MUST be informative, descriptive, and clearly convey the main value proposition. HARD CAP: ≤ 90 characters (schema-enforced, non-empty required).
+2. Title and caption follow this exact spec — no deviation:
+${TITLE_CAPTION_RULE}
 3. Copy caps:
 ${COPY_CAPS}
 4. EVERY middle slide MUST specify a Mockup Type AND detailed Mockup Details. NEVER leave a slide without a mockup specification.
 5. VARY mockup types across slides — pick by content fit; NEVER the same type on consecutive slides; ≥ 3 distinct types per deck; Terminal at most ONCE and only for real code/CLI/config.
 6. Mockup content budgets:
 ${MOCKUP_BUDGETS}
-7. Caption MUST be detailed and informative: strong hook, key takeaway bullets, and a Call-To-Action (Save & Share). HARD CAP: ≤ 2200 characters (schema-enforced, non-empty required).
+7. Caption follows the four-part shape specified in rule 2 above — hook, blank line,
+   3-5 "• " bullets, blank line, CTA. Same shape every deck.
 8. ${HASHTAG_RULE}
 9. Include Visual Direction (icon slug + tone) per slide, using the real tone palette: ${TONES}.
 10. FINAL PASS (mandatory): re-read every headline, description, highlight, and the caption
@@ -836,8 +867,12 @@ ${MOCKUP_BUDGETS}
    (terminal + commandpalette) MAX 1 per 5 slides combined, browser MAX 1 per deck.
    Every deck MUST use ≥ 5 distinct mockup types and must NEVER repeat a type on
    consecutive slides (nor the same category-visual twice running).
-5. Title MUST be highly informative, descriptive, and engaging. HARD CAP: ≤ 90 characters, non-empty (schema REJECTS empty/oversized — a validation failure burns a retry attempt).
-6. Caption MUST be comprehensive and detailed (hook, key takeaway bullets, and a CTA to save/share). HARD CAP: ≤ 2200 characters, non-empty (schema REJECTS empty/oversized — a validation failure burns a retry attempt).
+5. Title and caption follow this exact spec — the schema REJECTS empty or oversized
+   values, and a rejection burns a retry attempt, so get them right the first time:
+${TITLE_CAPTION_RULE}
+6. The brief you were given already contains a "# Caption" section. Carry its substance
+   over into the caption field, reshaped to the four-part structure above — do not
+   invent an unrelated caption, and do not paste the brief's Markdown headings.
 7. ${HASHTAG_RULE}
 8. Rotate tone colors across slides: ${TONES}.
 9. FINAL PASS (mandatory): re-read every eyebrow, headline, lede, body, mockup string, the
@@ -1084,9 +1119,12 @@ WHAT YOU RETURN
   for — if a field is a target, give it a new value.
 
 FIELD RULES
-- title: the deck's own title. Informative and specific, not a slogan. HARD CAP: ≤ 90 characters, non-empty.
-- caption: the Instagram/TikTok caption. Muhammad's voice, ends with a save/share nudge. HARD CAP: ≤ 2200 characters, non-empty.
+${TITLE_CAPTION_RULE}
+
 - hashtags: ${HASHTAG_RULE}
+
+A revision changes what the user asked to change. It does NOT change the shape: a revised
+caption still comes back as hook / blank / 3-5 "• " bullets / blank / CTA.
 
 ${SCOPED_REVISION_RULES}`;
 
