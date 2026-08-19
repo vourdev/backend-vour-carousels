@@ -83,11 +83,53 @@ function repairMockup(m: any): any | undefined {
   return res.success ? res.data : undefined;
 }
 
+/** Fixed shape from the prompt: "fyp" first, "vourdev" last, five in total. */
+const HASHTAG_FLOOR = ["fyp", "backend", "coding", "developer", "vourdev"];
+
+/**
+ * Bring title/caption/hashtags up to something the schema will accept.
+ *
+ * These three leave the app verbatim — they are the Instagram and TikTok post
+ * itself — so the schema requires them non-empty and requires exactly five tags.
+ * Defaulting a missing one to "" or [] (which this used to do) now fails that
+ * check, which would turn the salvage path into a second way to lose the deck.
+ * Derive from the slides instead: a title taken from the cover is a worse title
+ * than the model should have written, but it is a real one, and the deck ships.
+ */
+function repairPostFields(raw: any): void {
+  const slides: any[] = Array.isArray(raw.slides) ? raw.slides : [];
+  const cover = slides.find((s) => s?.role === "cover") ?? slides[0];
+
+  if (typeof raw.title !== "string" || !raw.title.trim()) {
+    raw.title = clampStr(cover?.headline || cover?.eyebrow || "Carousel @vourdev", 90);
+  }
+
+  if (typeof raw.caption !== "string" || !raw.caption.trim()) {
+    const hook = cover?.lede || cover?.headline || raw.title;
+    raw.caption = `${hook}\n\nSimpan biar nggak keulang di project kamu.`;
+  }
+
+  const tags: string[] = Array.isArray(raw.hashtags)
+    ? raw.hashtags.filter((h: unknown): h is string => typeof h === "string" && h.trim() !== "")
+    : [];
+  // Keep what the model gave (deduped, "#"-stripped), then pad and trim to five.
+  const seen = new Set<string>();
+  const cleaned = tags
+    .map((h) => h.trim().replace(/^#+/, "").toLowerCase())
+    .filter((h) => h && !seen.has(h) && seen.add(h));
+  for (const filler of HASHTAG_FLOOR) {
+    if (cleaned.length >= 5) break;
+    if (!seen.has(filler)) {
+      cleaned.push(filler);
+      seen.add(filler);
+    }
+  }
+  raw.hashtags = cleaned.slice(0, 5);
+}
+
 export function repairSlidePlan(raw: any): SlidePlan {
   if (raw && typeof raw === "object") {
-    if (typeof raw.title !== "string") raw.title = "";
-    if (typeof raw.caption !== "string") raw.caption = "";
-    if (!Array.isArray(raw.hashtags)) raw.hashtags = [];
+    repairPostFields(raw);
 
     if (Array.isArray(raw.slides)) {
       for (const s of raw.slides) {

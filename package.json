@@ -6,7 +6,8 @@
     "dev": "tsx watch src/server.ts",
     "build": "esbuild src/server.ts --bundle --platform=node --target=node20 --outfile=dist/server.js --format=esm --external:playwright --external:@libsql/client --external:better-auth --banner:js='import { createRequire } from \"module\"; const require = createRequire(import.meta.url);' && mkdir -p dist/lib/ds/assets && cp -R src/lib/ds/assets/ dist/lib/ds/assets/",
     "start": "node dist/server.js",
-    "test:regression": "tsx scripts/verify-regression.ts"
+    "test:regression": "tsx scripts/verify-regression.ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@ai-sdk/deepseek": "^3.0.11",
@@ -31,6 +32,7 @@
     "@types/react": "^19.2.18",
     "esbuild": "^0.28.2",
     "tsx": "^4.23.12",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.7"
   }
 }

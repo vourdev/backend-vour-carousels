@@ -72585,11 +72585,34 @@ function repairMockup(m) {
   const res = mockupSchema.safeParse(m);
   return res.success ? res.data : void 0;
 }
+var HASHTAG_FLOOR = ["fyp", "backend", "coding", "developer", "vourdev"];
+function repairPostFields(raw2) {
+  const slides = Array.isArray(raw2.slides) ? raw2.slides : [];
+  const cover = slides.find((s) => s?.role === "cover") ?? slides[0];
+  if (typeof raw2.title !== "string" || !raw2.title.trim()) {
+    raw2.title = clampStr(cover?.headline || cover?.eyebrow || "Carousel @vourdev", 90);
+  }
+  if (typeof raw2.caption !== "string" || !raw2.caption.trim()) {
+    const hook = cover?.lede || cover?.headline || raw2.title;
+    raw2.caption = `${hook}
+
+Simpan biar nggak keulang di project kamu.`;
+  }
+  const tags = Array.isArray(raw2.hashtags) ? raw2.hashtags.filter((h) => typeof h === "string" && h.trim() !== "") : [];
+  const seen = /* @__PURE__ */ new Set();
+  const cleaned = tags.map((h) => h.trim().replace(/^#+/, "").toLowerCase()).filter((h) => h && !seen.has(h) && seen.add(h));
+  for (const filler of HASHTAG_FLOOR) {
+    if (cleaned.length >= 5) break;
+    if (!seen.has(filler)) {
+      cleaned.push(filler);
+      seen.add(filler);
+    }
+  }
+  raw2.hashtags = cleaned.slice(0, 5);
+}
 function repairSlidePlan(raw2) {
   if (raw2 && typeof raw2 === "object") {
-    if (typeof raw2.title !== "string") raw2.title = "";
-    if (typeof raw2.caption !== "string") raw2.caption = "";
-    if (!Array.isArray(raw2.hashtags)) raw2.hashtags = [];
+    repairPostFields(raw2);
     if (Array.isArray(raw2.slides)) {
       for (const s of raw2.slides) {
         if (!s || typeof s !== "object") continue;

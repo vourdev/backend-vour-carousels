@@ -3,7 +3,7 @@ import type { SlidePlan } from "../ds/schema";
 export const samplePlan: SlidePlan = {
   title: "Idempotency di API: Retry yang Aman",
   caption: "Kenapa retry aman kalau API-mu idempotent.\n\nSimpan biar nggak lupa!",
-  hashtags: ["backend", "api", "idempotency", "vourdev"],
+  hashtags: ["fyp", "backend", "api", "idempotency", "vourdev"],
   slides: [
     {
       role: "cover",
