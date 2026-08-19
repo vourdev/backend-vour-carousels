@@ -77617,6 +77617,15 @@ app7.post("/:id/brief", async (c) => {
 });
 var topics_default = app7;
 
+// src/lib/publish/schedule.ts
+var WIB_OFFSET_MS = 7 * 60 * 60 * 1e3;
+var POST_HOUR_WIB = 12;
+function nextWibSlot(now2, hour = POST_HOUR_WIB, minute = 0) {
+  const wibNow = new Date(now2.getTime() + WIB_OFFSET_MS);
+  const slotMs = Date.UTC(wibNow.getUTCFullYear(), wibNow.getUTCMonth(), wibNow.getUTCDate(), hour, minute, 0, 0) - WIB_OFFSET_MS;
+  return new Date(slotMs <= now2.getTime() ? slotMs + 24 * 60 * 60 * 1e3 : slotMs);
+}
+
 // src/routes/automation/generate.ts
 init_db();
 init_esm();
@@ -77764,11 +77773,7 @@ app8.post("/generate", async (c) => {
     return c.json({ error: "No active Buffer channels configured in .env" }, 500);
   }
   const channels = { igChannelId, ttChannelId };
-  const now2 = /* @__PURE__ */ new Date();
-  let due1 = new Date(now2.getFullYear(), now2.getMonth(), now2.getDate(), 12, 0, 0, 0);
-  if (due1.getTime() <= now2.getTime()) {
-    due1.setDate(due1.getDate() + 1);
-  }
+  const due1 = nextWibSlot(/* @__PURE__ */ new Date(), POST_HOUR_WIB);
   const due2 = new Date(due1.getTime() + 30 * 60 * 1e3);
   const dueAt1 = due1.toISOString();
   const dueAt2 = due2.toISOString();
@@ -77793,6 +77798,14 @@ app8.post("/generate", async (c) => {
         channels
       })
     ]);
+    if (body.topicId) {
+      await updateTopic(body.topicId, userId2, {
+        status: "published",
+        carouselId: carousel1.id
+      }).catch((err) => {
+        console.error(`Failed to mark topic ${body.topicId} published:`, err);
+      });
+    }
     return c.json({
       success: true,
       message: "Successfully generated and scheduled 2 carousels to Buffer",

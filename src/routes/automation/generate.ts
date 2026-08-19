@@ -7,6 +7,7 @@ import { captureQueue } from "../../services/capture-queue";
 import { uploadImage } from "../../lib/publish/cloudinary";
 import { scheduleBufferPost } from "../../lib/publish/buffer";
 import { buildPostText } from "../../lib/publish/caption";
+import { nextWibSlot, POST_HOUR_WIB } from "../../lib/publish/schedule";
 import { createCarousel, updateCarousel } from "../../lib/history/repo";
 import { getTopics, updateTopic } from "../../lib/topics/bank";
 import { generateAndSaveTopics, type GenerateTopicsInput } from "../../lib/topics/service";
@@ -21,12 +22,19 @@ const db = new Kysely<any>({ dialect });
 interface GenerateRequest {
   topic?: string;
   title?: string;
+  /**
+   * The bank row this run came from, so it can be closed out on success.
+   * Optional: /generate is also callable with a bare topic string that has no
+   * bank entry behind it, and that must keep working.
+   */
+  topicId?: string;
 }
 
 async function resolveUserId(): Promise<string | null> {
   const user = await db.selectFrom("user").select("id").limit(1).executeTakeFirst();
   return (user?.id as string | undefined) ?? null;
 }
+
 
 async function createAndPublishCarousel({
   topic,
@@ -211,11 +219,7 @@ app.post("/generate", async (c) => {
   const channels = { igChannelId, ttChannelId };
 
   // 6. Calculate schedule times
-  const now = new Date();
-  let due1 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0, 0);
-  if (due1.getTime() <= now.getTime()) {
-    due1.setDate(due1.getDate() + 1);
-  }
+  const due1 = nextWibSlot(new Date(), POST_HOUR_WIB);
   const due2 = new Date(due1.getTime() + 30 * 60 * 1000); // +30 minutes stagger
 
   const dueAt1 = due1.toISOString();
@@ -243,6 +247,21 @@ app.post("/generate", async (c) => {
         channels,
       }),
     ]);
+
+    // Close the loop on the bank row. /topic/next moves a topic to "queued" so
+    // a retrigger cannot hand out the same one twice, but nothing moved it on
+    // from there — every topic the cron consumed stayed queued forever, and the
+    // bank filled up with rows that were in fact already posted.
+    if (body.topicId) {
+      await updateTopic(body.topicId, userId, {
+        status: "published",
+        carouselId: carousel1.id,
+      }).catch((err) => {
+        // The posts are already scheduled; failing the request here would tell
+        // the caller the run failed and invite a duplicate retry.
+        console.error(`Failed to mark topic ${body.topicId} published:`, err);
+      });
+    }
 
     return c.json({
       success: true,
