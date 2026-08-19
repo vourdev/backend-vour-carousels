@@ -289,6 +289,67 @@ const mockupCustom = z.object({
   html: z.string().max(8000),
 });
 
+const mockupApiRequest = z.object({
+  type: z.literal("apirequest"),
+  method: z.enum(["GET", "POST", "PUT", "DELETE", "PATCH"]).default("GET"),
+  url: z.string().max(60),
+  status: z.string().max(20).default("200 OK"),
+  headers: z.array(z.object({ key: z.string().max(24), value: z.string().max(36) })).max(3).optional(),
+  responseBody: z.string().max(300),
+});
+
+const mockupEventQueue = z.object({
+  type: z.literal("eventqueue"),
+  producer: z.string().max(24),
+  topicName: z.string().max(24),
+  events: z.array(z.string().max(32)).min(2).max(4),
+  consumer: z.string().max(24),
+});
+
+const mockupLatencyComp = z.object({
+  type: z.literal("latencycomp"),
+  items: z.array(
+    z.object({
+      label: z.string().max(24),
+      value: z.string().max(16),
+      percentage: z.number().min(5).max(100),
+      highlight: z.boolean().optional(),
+    })
+  ).min(2).max(3),
+  note: z.string().max(90).optional(),
+});
+
+const mockupConfig = z.object({
+  type: z.literal("config"),
+  filename: z.string().max(40),
+  lines: z.array(
+    z.object({
+      key: z.string().max(24),
+      val: z.string().max(48),
+      comment: z.string().max(48).optional(),
+    })
+  ).min(2).max(6),
+});
+
+const mockupStateMachine = z.object({
+  type: z.literal("statemachine"),
+  states: z.array(
+    z.object({
+      name: z.string().max(16),
+      status: z.enum(["active", "passed", "pending"]).default("pending"),
+    })
+  ).min(2).max(4),
+  transitions: z.array(z.string().max(20)).max(3),
+});
+
+const mockupArchitecture = z.object({
+  type: z.literal("architecture"),
+  title: z.string().max(30).optional(),
+  client: z.string().max(20).default("Client"),
+  router: z.string().max(20).default("Load Balancer"),
+  nodes: z.array(z.string().max(20)).min(2).max(3),
+});
+
 const mockupUnion = z.discriminatedUnion("type", [
   mockupCard,
   mockupTerminal,
@@ -313,6 +374,12 @@ const mockupUnion = z.discriminatedUnion("type", [
   mockupIllustration,
   mockupScreenshot,
   mockupCustom,
+  mockupApiRequest,
+  mockupEventQueue,
+  mockupLatencyComp,
+  mockupConfig,
+  mockupStateMachine,
+  mockupArchitecture,
 ]);
 
 export const mockupSchema = z.preprocess(migrateLegacyIllustration, mockupUnion);
@@ -410,6 +477,7 @@ const pointSlide = z.object({
   body: z.string().max(160),
   /** Slide surface: "ink" (full dark) for deck rhythm; absent/"paper" = default cream */
   surface: z.enum(["paper", "ink"]).optional(),
+  layout: z.enum(["standard", "mockup-forward", "split-content", "note-emphasis"]).default("standard"),
   /** New: rich mockup component (preferred) */
   mockup: mockupSchema.optional(),
   /** Legacy: simple info card (backward compat — used when mockup is absent) */

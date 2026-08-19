@@ -1,4 +1,5 @@
 import { createClient, type Client } from "@libsql/client";
+import type { SlidePlan } from "../ds/schema";
 
 export type CarouselStatus = "draft" | "exported" | "scheduled" | "posted" | "failed";
 export type CarouselSource = "ai" | "upload";
@@ -20,6 +21,7 @@ export interface Carousel {
   createdAt: number;
   updatedAt: number;
   imageUrls: string[];
+  slidePlan?: SlidePlan | null;
 }
 
 let client: Client | null = null;
@@ -55,12 +57,20 @@ function ensureSchema(): Promise<void> {
         due_at TEXT,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
-        image_urls TEXT DEFAULT '[]'
+        image_urls TEXT DEFAULT '[]',
+        slide_plan TEXT
       )`);
       
       // Safe dynamic migration to add image_urls for existing databases
       try {
         await db().execute(`ALTER TABLE carousels ADD COLUMN image_urls TEXT DEFAULT '[]'`);
+      } catch (e) {
+        // Ignored if column already exists
+      }
+
+      // Safe dynamic migration to add slide_plan for existing databases
+      try {
+        await db().execute(`ALTER TABLE carousels ADD COLUMN slide_plan TEXT`);
       } catch (e) {
         // Ignored if column already exists
       }
@@ -92,6 +102,7 @@ function rowToCarousel(r: any): Carousel {
     createdAt: Number(r.created_at),
     updatedAt: Number(r.updated_at),
     imageUrls: JSON.parse(String(r.image_urls ?? "[]")),
+    slidePlan: r.slide_plan ? JSON.parse(String(r.slide_plan)) : null,
   };
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
@@ -107,6 +118,7 @@ export interface CreateCarouselInput {
   status?: CarouselStatus;
   thumbnail?: string | null;
   imageUrls?: string[];
+  slidePlan?: SlidePlan | null;
 }
 
 export async function createCarousel(input: CreateCarouselInput): Promise<Carousel> {
@@ -115,8 +127,8 @@ export async function createCarousel(input: CreateCarouselInput): Promise<Carous
   const id = crypto.randomUUID();
   await db().execute({
     sql: `INSERT INTO carousels
-      (id, user_id, source, title, caption, hashtags, slide_count, status, model, thumbnail, image_urls, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (id, user_id, source, title, caption, hashtags, slide_count, status, model, thumbnail, image_urls, slide_plan, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       id,
       input.userId,
@@ -129,6 +141,7 @@ export async function createCarousel(input: CreateCarouselInput): Promise<Carous
       input.model ?? null,
       input.thumbnail ?? null,
       JSON.stringify(input.imageUrls ?? []),
+      input.slidePlan ? JSON.stringify(input.slidePlan) : null,
       now,
       now,
     ],
@@ -147,6 +160,7 @@ const PATCH_COLUMNS: Record<string, string> = {
   title: "title",
   caption: "caption",
   imageUrls: "image_urls",
+  slidePlan: "slide_plan",
 };
 
 export async function updateCarousel(
@@ -196,4 +210,74 @@ export async function deleteCarousel(id: string, userId: string): Promise<void> 
     sql: `DELETE FROM carousels WHERE id = ? AND user_id = ?`,
     args: [id, userId],
   });
+}
+
+export const ALL_MOCKUP_TYPES = [
+  "card", "terminal", "comparison", "steps", "callout", "bigstat",
+  "flow", "hub", "concept", "checklist", "promptcard", "foldertree",
+  "commandpalette", "database", "gitbranch", "browser", "quote",
+  "datatable", "commandlist", "timeline", "screenshot", "custom", "illustration",
+  "apirequest", "eventqueue", "latencycomp", "config", "statemachine", "architecture"
+];
+
+export async function getRecentMockupStats(userId: string, limit = 20): Promise<Record<string, number>> {
+  await ensureSchema();
+  const res = await db().execute({
+    sql: `SELECT slide_plan FROM carousels WHERE user_id = ? AND slide_plan IS NOT NULL ORDER BY created_at DESC LIMIT ?`,
+    args: [userId, limit],
+  });
+  const counts: Record<string, number> = {};
+  for (const row of res.rows) {
+    try {
+      const plan = JSON.parse(String(row.slide_plan)) as SlidePlan;
+      if (plan && Array.isArray(plan.slides)) {
+        for (const slide of plan.slides) {
+          if (slide.role === "point" && slide.mockup?.type) {
+            const mType = slide.mockup.type;
+            counts[mType] = (counts[mType] || 0) + 1;
+          }
+        }
+      }
+    } catch (e) {
+      // Ignored
+    }
+  }
+  return counts;
+}
+
+export async function getUnderusedMockupTypes(userId: string, limit = 25): Promise<string[]> {
+  const stats = await getRecentMockupStats(userId, limit);
+  return ALL_MOCKUP_TYPES.map(type => ({ type, count: stats[type] || 0 }))
+    .sort((a, b) => a.count - b.count)
+    .slice(0, 10) // Pick the 10 least used
+    .map(x => x.type);
+}
+
+export async function getGlobalMockupStats(): Promise<{ type: string; count: number; percentage: number }[]> {
+  await ensureSchema();
+  const res = await db().execute(`SELECT slide_plan FROM carousels WHERE slide_plan IS NOT NULL`);
+  const counts: Record<string, number> = {};
+  let totalSlides = 0;
+  for (const row of res.rows) {
+    try {
+      const plan = JSON.parse(String(row.slide_plan)) as SlidePlan;
+      if (plan && Array.isArray(plan.slides)) {
+        for (const slide of plan.slides) {
+          if (slide.role === "point" && slide.mockup?.type) {
+            const mType = slide.mockup.type;
+            counts[mType] = (counts[mType] || 0) + 1;
+            totalSlides++;
+          }
+        }
+      }
+    } catch (e) {
+      // Ignored
+    }
+  }
+
+  return ALL_MOCKUP_TYPES.map(type => {
+    const count = counts[type] || 0;
+    const percentage = totalSlides > 0 ? Math.round((count / totalSlides) * 10000) / 100 : 0;
+    return { type, count, percentage };
+  }).sort((a, b) => b.count - a.count);
 }

@@ -15,7 +15,7 @@
  * `assertScopePreserved` then re-checks that claim against the merged result.
  */
 
-import type { Slide, SlidePlan } from "../ds/schema";
+import { slideSchema, type Slide, type SlidePlan } from "../ds/schema";
 
 export type GlobalField = "title" | "caption" | "hashtags";
 
@@ -204,11 +204,27 @@ export class RevisionScopeViolation extends Error {
  * A no-op for an unresolved scope: the whole plan is in scope, so there is nothing to
  * compare against.
  */
+export function assertScopePresPreserved(before: SlidePlan, after: SlidePlan, scope: RevisionScope): void {
+  // renamed internally or kept for references
+}
+
+const semanticEq = (a: unknown, b: unknown) => {
+  try {
+    if (a && typeof a === "object" && "role" in a) {
+      const parsedA = slideSchema.parse(a);
+      const parsedB = slideSchema.parse(b);
+      return JSON.stringify(parsedA) === JSON.stringify(parsedB);
+    }
+  } catch {
+    // ignore
+  }
+  return JSON.stringify(a) === JSON.stringify(b);
+};
+
 export function assertScopePreserved(before: SlidePlan, after: SlidePlan, scope: RevisionScope): void {
   if (!scope.resolved) return;
 
   const violations: string[] = [];
-  const eq = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
   if (!scope.globals.includes("title") && before.title !== after.title) {
     violations.push(`title: "${before.title}" -> "${after.title}"`);
@@ -216,7 +232,7 @@ export function assertScopePreserved(before: SlidePlan, after: SlidePlan, scope:
   if (!scope.globals.includes("caption") && before.caption !== after.caption) {
     violations.push("caption changed");
   }
-  if (!scope.globals.includes("hashtags") && !eq(before.hashtags, after.hashtags)) {
+  if (!scope.globals.includes("hashtags") && !semanticEq(before.hashtags, after.hashtags)) {
     violations.push(`hashtags: [${before.hashtags.join(", ")}] -> [${after.hashtags.join(", ")}]`);
   }
   if (before.slides.length !== after.slides.length) {
@@ -227,7 +243,7 @@ export function assertScopePreserved(before: SlidePlan, after: SlidePlan, scope:
   const max = Math.min(before.slides.length, after.slides.length);
   for (let i = 0; i < max; i++) {
     if (inScope.has(i)) continue;
-    if (!eq(before.slides[i], after.slides[i])) violations.push(`slide ${i + 1} changed`);
+    if (!semanticEq(before.slides[i], after.slides[i])) violations.push(`slide ${i + 1} changed`);
   }
 
   if (violations.length) throw new RevisionScopeViolation(scope, violations);
@@ -242,13 +258,12 @@ export function assertScopePreserved(before: SlidePlan, after: SlidePlan, scope:
  */
 export function scopedChangeSummary(before: SlidePlan, after: SlidePlan, scope: RevisionScope): string[] {
   const changed: string[] = [];
-  const eq = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
   for (const i of scope.slides) {
-    if (!eq(before.slides[i], after.slides[i])) changed.push(`slide ${i + 1}`);
+    if (!semanticEq(before.slides[i], after.slides[i])) changed.push(`slide ${i + 1}`);
   }
   for (const g of scope.globals) {
-    if (!eq(before[g], after[g])) changed.push(g);
+    if (!semanticEq(before[g], after[g])) changed.push(g);
   }
   return changed;
 }

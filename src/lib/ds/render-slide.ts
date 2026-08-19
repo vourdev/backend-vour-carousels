@@ -30,6 +30,12 @@ import { folderTreeTemplate } from "../ds/templates/foldertree";
 import { commandPaletteTemplate } from "../ds/templates/commandpalette";
 import { databaseTemplate } from "../ds/templates/database";
 import { gitBranchTemplate } from "../ds/templates/gitbranch";
+import { apiRequestTemplate } from "../ds/templates/apirequest";
+import { eventQueueTemplate } from "../ds/templates/eventqueue";
+import { latencyCompTemplate } from "../ds/templates/latencycomp";
+import { configTemplate } from "../ds/templates/config";
+import { stateMachineTemplate } from "../ds/templates/statemachine";
+import { architectureTemplate } from "../ds/templates/architecture";
 import { diagLines } from "../ds/hub-lines";
 import { deviceTemplate } from "../ds/templates/device";
 import { VOUR_MIST_MUTED, VOUR_POSITIVE_ON_DARK } from "../ds/tokens";
@@ -350,6 +356,126 @@ function renderGitBranchMockup(m: Extract<Mockup, { type: "gitbranch" }>): strin
   });
 }
 
+function renderApiRequestMockup(m: Extract<Mockup, { type: "apirequest" }>): string {
+  const headers = m.headers ?? [];
+  const headersHtml = headers.map(h => 
+    `<div class="api-header-row"><span class="h-key">${escapeHtml(h.key)}:</span> <span class="h-val">${escapeHtml(h.value)}</span></div>`
+  ).join("\n");
+  
+  const base = fillTemplate(apiRequestTemplate, {
+    method: m.method,
+    url: m.url,
+    status: m.status,
+    hasHeaders: headers.length > 0 ? "1" : "",
+  });
+
+  return base
+    .replace("HEADERS_INJECT", () => headersHtml)
+    .replace("RESPONSE_BODY_INJECT", () => escapeHtml(m.responseBody));
+}
+
+function renderEventQueueMockup(m: Extract<Mockup, { type: "eventqueue" }>): string {
+  const eventsHtml = m.events.map((e, idx) => 
+    `<div class="eq-msg-pill active-${idx === 0}"><span class="eq-msg-ico">${renderIcon("zap", { size: 16, color: "currentColor" })}</span>${escapeHtml(e)}</div>`
+  ).join("\n");
+
+  return fillTemplate(eventQueueTemplate, {
+    producer: m.producer,
+    topicName: m.topicName,
+    consumer: m.consumer,
+  }).replace("EVENTS_INJECT", () => eventsHtml);
+}
+
+function renderLatencyCompMockup(m: Extract<Mockup, { type: "latencycomp" }>): string {
+  const barsHtml = m.items.map(item => {
+    const rawClass = item.highlight ? "lc-bar-wrap highlight" : "lc-bar-wrap";
+    const bgPercent = Math.min(100, Math.max(5, item.percentage));
+    return `<div class="${rawClass}">
+      <div class="lc-label-row">
+        <span class="lc-label">${escapeHtml(item.label)}</span>
+        <span class="lc-value">${escapeHtml(item.value)}</span>
+      </div>
+      <div class="lc-bar-container">
+        <div class="lc-bar" style="width: ${bgPercent}%;"></div>
+      </div>
+    </div>`;
+  }).join("\n");
+
+  return fillTemplate(latencyCompTemplate, {
+    note: m.note ?? "",
+  })
+    .replace("BARS_INJECT", () => barsHtml)
+    .replace("NOTE_INJECT", () => renderNote(m.note));
+}
+
+function renderConfigMockup(m: Extract<Mockup, { type: "config" }>): string {
+  const configLines = m.lines
+    .map((l) => {
+      const keySpan = `<span class="c-key">${escapeHtml(l.key)}</span>`;
+      const valSpan = `<span class="c-val">${escapeHtml(l.val)}</span>`;
+      const commentSpan = l.comment ? `<span class="c-cmt"># ${escapeHtml(l.comment)}</span>` : "";
+      return `<div class="config-line">${keySpan}: ${valSpan} ${commentSpan}</div>`;
+    })
+    .join("\n");
+  
+  return fillTemplate(configTemplate, {
+    filename: m.filename,
+  }).replace("CONFIG_LINES_INJECT", () => configLines);
+}
+
+function renderStateMachineMockup(m: Extract<Mockup, { type: "statemachine" }>): string {
+  const statesHtml = m.states.map((s, idx) => {
+    const isLast = idx === m.states.length - 1;
+    const arrowHtml = !isLast ? `<span class="sm-arrow">── ${escapeHtml(m.transitions[idx] || "next")} ──&gt;</span>` : "";
+    const activeClass = `sm-state active-${s.status}`;
+    const circleIcon = renderIcon("circle", { size: 16, color: "currentColor" });
+    return `<div class="sm-state-wrapper">
+      <div class="${activeClass}">${circleIcon}${escapeHtml(s.name)}</div>
+      ${arrowHtml}
+    </div>`;
+  }).join("\n");
+
+  return fillTemplate(stateMachineTemplate, {})
+    .replace("STATES_INJECT", () => statesHtml);
+}
+
+function renderArchitectureMockup(m: Extract<Mockup, { type: "architecture" }>): string {
+  const clientIcon = renderIcon("box", { size: 24, color: "currentColor" });
+  const routerIcon = renderIcon("network", { size: 24, color: "currentColor" });
+  const arrowDownIcon = renderIcon("arrow-right", { size: 24, color: "currentColor" });
+
+  const nodesHtml = m.nodes.map((n, idx) => {
+    const cls = idx === 0 ? "arch-node vm-node mint" : "arch-node vm-node stone";
+    const serverIcon = renderIcon("server", { size: 24, color: "currentColor" });
+    const statusLabel = idx === 0 
+      ? `<span class="arch-status active">ACTIVE</span>` 
+      : `<span class="arch-status standby">STANDBY</span>`;
+    return `<div class="${cls}">
+      <div class="arch-node-content">
+        ${serverIcon}
+        <span class="node-text">${escapeHtml(n)}</span>
+        ${statusLabel}
+      </div>
+    </div>`;
+  }).join("\n");
+
+  const clientContent = `<div class="arch-node client-node"><div class="arch-node-content horizontal">${clientIcon}<span>${escapeHtml(m.client || "Client")}</span></div></div>`;
+  const routerContent = `<div class="arch-node router-node"><div class="arch-node-content horizontal">${routerIcon}<span>${escapeHtml(m.router || "Load Balancer")}</span></div></div>`;
+
+  let base = fillTemplate(architectureTemplate, {
+    title: m.title ?? "",
+  });
+  
+  const arrowSvg = `<svg class="arch-split-arrows" viewBox="0 0 100 40" preserveAspectRatio="none"><path d="M 50 0 L 50 15 L 15 15 L 15 40 M 50 15 L 85 15 L 85 40" stroke="currentColor" stroke-width="2" fill="none"/></svg>`;
+  
+  return base
+    .replace("CLIENT_NODE_INJECT", () => clientContent)
+    .replace("ARROW_DOWN_INJECT", () => arrowDownIcon)
+    .replace("ROUTER_NODE_INJECT", () => routerContent)
+    .replace("ARROW_SPLIT_INJECT", () => arrowSvg)
+    .replace("NODES_INJECT", () => nodesHtml);
+}
+
 export function renderDeviceHook(h: Extract<CoverHook, { kind: "device" }>): string {
   const bodyLines = h.lines
     .map((l) => {
@@ -505,6 +631,18 @@ function renderMockup(m: Mockup, scopeId: string, variant: IllustrationVariant):
       return renderDatabaseMockup(m);
     case "gitbranch":
       return renderGitBranchMockup(m);
+    case "apirequest":
+      return renderApiRequestMockup(m);
+    case "eventqueue":
+      return renderEventQueueMockup(m);
+    case "latencycomp":
+      return renderLatencyCompMockup(m);
+    case "config":
+      return renderConfigMockup(m);
+    case "statemachine":
+      return renderStateMachineMockup(m);
+    case "architecture":
+      return renderArchitectureMockup(m);
     case "illustration":
       return renderIllustrationMockup(m, variant);
     case "screenshot":
@@ -618,6 +756,7 @@ export function renderSlide(slide: Slide, slideIndex = 0): string {
           cardBody: "",
           cardTone: "peach",
           mockupHtml: "",
+          layout: slide.layout || "standard",
         });
       }
 
@@ -638,6 +777,7 @@ export function renderSlide(slide: Slide, slideIndex = 0): string {
           cardBody: mockup.body,
           cardTone: mockup.tone || "peach",
           mockupHtml: "",
+          layout: slide.layout || "standard",
         });
         // Function replacer keeps raw SVG safe from $-sequence interpretation.
         return filled.replace("ICON_INJECT", () =>
@@ -660,6 +800,7 @@ export function renderSlide(slide: Slide, slideIndex = 0): string {
         cardBody: "",
         cardTone: "peach",
         mockupHtml: "1",  // truthy to activate the block
+        layout: slide.layout || "standard",
       });
       // Replace the sentinel with raw (unescaped) mockup HTML
       // Function replacer: a bare string lets $-sequences in mockup content

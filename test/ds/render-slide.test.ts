@@ -537,4 +537,112 @@ describe("custom mockup and cover css", () => {
     expect(html).toContain('class="anchor-wrap"');
     expect(html).toContain("https://example.com/a.png");
   });
+
+  it("renders new mockup types properly", () => {
+    const apiHtml = renderSlide({
+      role: "point", counter: "1/1", eyebrow: "API", headline: "Request", body: "body",
+      mockup: {
+        type: "apirequest",
+        method: "PATCH",
+        url: "/api/update",
+        status: "200 Success",
+        headers: [{ key: "X-Key", value: "val" }],
+        responseBody: "hello",
+      },
+    });
+    expect(apiHtml).toContain("api-method-PATCH");
+    expect(apiHtml).toContain("/api/update");
+    expect(apiHtml).toContain("hello");
+
+    const eqHtml = renderSlide({
+      role: "point", counter: "1/1", eyebrow: "EQ", headline: "Queue", body: "body",
+      mockup: {
+        type: "eventqueue",
+        producer: "P1",
+        topicName: "T1",
+        events: ["E1", "E2"],
+        consumer: "C1",
+      },
+    });
+    expect(eqHtml).toContain("P1");
+    expect(eqHtml).toContain("T1");
+    expect(eqHtml).toContain("E1");
+    expect(eqHtml).toContain("C1");
+
+    const lcHtml = renderSlide({
+      role: "point", counter: "1/1", eyebrow: "LC", headline: "Latency", body: "body",
+      mockup: {
+        type: "latencycomp",
+        items: [{ label: "item1", value: "val1", percentage: 50, highlight: true }],
+      },
+    });
+    expect(lcHtml).toContain("item1");
+    expect(lcHtml).toContain("val1");
+    expect(lcHtml).toContain("width: 50%;");
+
+    const confHtml = renderSlide({
+      role: "point", counter: "1/1", eyebrow: "CONF", headline: "Config", body: "body",
+      mockup: {
+        type: "config",
+        filename: "web.env",
+        lines: [{ key: "A", val: "B", comment: "C" }],
+      },
+    });
+    expect(confHtml).toContain("web.env");
+    expect(confHtml).toContain("A");
+    expect(confHtml).toContain("B");
+    expect(confHtml).toContain("C");
+
+    const smHtml = renderSlide({
+      role: "point", counter: "1/1", eyebrow: "SM", headline: "State", body: "body",
+      mockup: {
+        type: "statemachine",
+        states: [{ name: "S1", status: "active" }],
+        transitions: ["T1"],
+      },
+    });
+    expect(smHtml).toContain("S1");
+    expect(smHtml).toContain("active-active");
+
+    const archHtml = renderSlide({
+      role: "point", counter: "1/1", eyebrow: "ARCH", headline: "Architecture", body: "body",
+      mockup: {
+        type: "architecture",
+        title: "Topology",
+        client: "Cli",
+        router: "Rot",
+        nodes: ["N1"],
+      },
+    });
+    expect(archHtml).toContain("Topology");
+    expect(archHtml).toContain("Cli");
+    expect(archHtml).toContain("Rot");
+    expect(archHtml).toContain("N1");
+  });
+
+  it("applies point layouts correctly", () => {
+    const std = renderSlide({
+      role: "point", counter: "1/1", eyebrow: "E", headline: "H", body: "B",
+      layout: "standard",
+    });
+    expect(std).toContain("layout-standard");
+
+    const forward = renderSlide({
+      role: "point", counter: "1/1", eyebrow: "E", headline: "H", body: "B",
+      layout: "mockup-forward",
+    });
+    expect(forward).toContain("layout-mockup-forward");
+
+    const split = renderSlide({
+      role: "point", counter: "1/1", eyebrow: "E", headline: "H", body: "B",
+      layout: "split-content",
+    });
+    expect(split).toContain("layout-split-content");
+
+    const noteEmp = renderSlide({
+      role: "point", counter: "1/1", eyebrow: "E", headline: "H", body: "B",
+      layout: "note-emphasis",
+    });
+    expect(noteEmp).toContain("layout-note-emphasis");
+  });
 });

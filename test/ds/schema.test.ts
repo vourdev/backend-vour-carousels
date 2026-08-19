@@ -249,3 +249,113 @@ describe("concept mockup child cap", () => {
     expect(() => mockupSchema.parse({ type: "concept", parent: "P", children: ["A"] })).toThrow();
   });
 });
+
+describe("new mockup schemas", () => {
+  it("validates apirequest mockup", () => {
+    const raw = {
+      type: "apirequest",
+      method: "POST",
+      url: "/users",
+      status: "201 Created",
+      headers: [{ key: "Content-Type", value: "application/json" }],
+      responseBody: '{"id":1}',
+    };
+    const parsed = mockupSchema.parse(raw);
+    expect(parsed).toMatchObject(raw);
+  });
+
+  it("validates eventqueue mockup", () => {
+    const raw = {
+      type: "eventqueue",
+      producer: "Auth",
+      topicName: "user-created",
+      events: ["send-welcome", "create-profile"],
+      consumer: "Notify",
+    };
+    const parsed = mockupSchema.parse(raw);
+    expect(parsed).toMatchObject(raw);
+  });
+
+  it("validates latencycomp mockup", () => {
+    const raw = {
+      type: "latencycomp",
+      items: [
+        { label: "Redis", value: "0.2ms", percentage: 10, highlight: true },
+        { label: "Postgres", value: "15ms", percentage: 80 },
+      ],
+      note: "Bar chart comparison",
+    };
+    const parsed = mockupSchema.parse(raw);
+    expect(parsed).toMatchObject(raw);
+  });
+
+  it("validates config mockup", () => {
+    const raw = {
+      type: "config",
+      filename: ".env",
+      lines: [
+        { key: "PORT", val: "3000", comment: "port" },
+        { key: "DB", val: "postgres" }
+      ],
+    };
+    const parsed = mockupSchema.parse(raw);
+    expect(parsed).toMatchObject(raw);
+  });
+
+  it("validates statemachine mockup", () => {
+    const raw = {
+      type: "statemachine",
+      states: [
+        { name: "INIT", status: "passed" },
+        { name: "SHIPPED", status: "active" }
+      ],
+      transitions: ["ship"],
+    };
+    const parsed = mockupSchema.parse(raw);
+    expect(parsed).toMatchObject(raw);
+  });
+
+  it("validates architecture mockup", () => {
+    const raw = {
+      type: "architecture",
+      title: "Load Balancing",
+      client: "User Browser",
+      router: "Nginx",
+      nodes: ["App Server 1", "App Server 2"],
+    };
+    const parsed = mockupSchema.parse(raw);
+    expect(parsed).toMatchObject(raw);
+  });
+});
+
+describe("slide layout schema", () => {
+  it("populates layout as standard by default", () => {
+    const raw = {
+      role: "point",
+      counter: "02 / 05",
+      eyebrow: "EYE",
+      headline: "HEAD",
+      body: "BODY",
+    };
+    const parsed = slideSchema.parse(raw);
+    expect(parsed).toMatchObject({
+      role: "point",
+      layout: "standard",
+    });
+  });
+
+  it("accepts layout variations", () => {
+    for (const layout of ["standard", "mockup-forward", "split-content", "note-emphasis"]) {
+      const raw = {
+        role: "point",
+        counter: "02 / 05",
+        eyebrow: "EYE",
+        headline: "HEAD",
+        body: "BODY",
+        layout,
+      };
+      const parsed = slideSchema.parse(raw);
+      expect(parsed).toMatchObject({ layout });
+    }
+  });
+});

@@ -3,7 +3,7 @@
 // [bracket] placeholders rewritten as {{slot}} markers matching Slide["point"] fields.
 // The info card is always present in the source markup; it is wrapped in
 // {{#card}}…{{/card}} here so slides without a `card` field omit it entirely.
-export const pointTemplate = String.raw`<section class="{{surfaceClass}}" data-screen-label="03 · Point">
+export const pointTemplate = String.raw`<section class="{{surfaceClass}} layout-{{layout}}" data-screen-label="03 · Point">
   <div class="counter">{{counter}}</div>
 
   <div class="eyebrow {{eyebrowClass}} mt-64">{{eyebrow}}</div>

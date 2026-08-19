@@ -46,6 +46,12 @@ const MOCKUP_ARRAY_MAX: Record<string, { key: string; max: number }> = {
   commandpalette: { key: "rows", max: 5 },
   database: { key: "tables", max: 2 },
   gitbranch: { key: "main", max: 6 },
+  apirequest: { key: "headers", max: 3 },
+  eventqueue: { key: "events", max: 4 },
+  latencycomp: { key: "items", max: 3 },
+  config: { key: "lines", max: 6 },
+  statemachine: { key: "states", max: 4 },
+  architecture: { key: "nodes", max: 3 },
 };
 
 /** Recursively strip banned dashes from every string leaf (v1.0 voice rule). */
@@ -142,6 +148,11 @@ export function repairSlidePlan(raw: any): SlidePlan {
           const fixed = repairMockup(s.mockup);
           if (fixed) s.mockup = fixed;
           else delete s.mockup; // fall back to auto-card in resolveMockup
+        }
+        if (s.role === "point") {
+          if (!s.layout || !["standard", "mockup-forward", "split-content", "note-emphasis"].includes(s.layout)) {
+            s.layout = "standard";
+          }
         }
         // Surface/mockup collision. The prompt asks the model to keep a dark
         // device off a dark slide, but asking is not enforcing: a terminal on an

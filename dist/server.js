@@ -72414,6 +72414,61 @@ var mockupCustom = external_exports.object({
   type: external_exports.literal("custom"),
   html: external_exports.string().max(8e3)
 });
+var mockupApiRequest = external_exports.object({
+  type: external_exports.literal("apirequest"),
+  method: external_exports.enum(["GET", "POST", "PUT", "DELETE", "PATCH"]).default("GET"),
+  url: external_exports.string().max(60),
+  status: external_exports.string().max(20).default("200 OK"),
+  headers: external_exports.array(external_exports.object({ key: external_exports.string().max(24), value: external_exports.string().max(36) })).max(3).optional(),
+  responseBody: external_exports.string().max(300)
+});
+var mockupEventQueue = external_exports.object({
+  type: external_exports.literal("eventqueue"),
+  producer: external_exports.string().max(24),
+  topicName: external_exports.string().max(24),
+  events: external_exports.array(external_exports.string().max(32)).min(2).max(4),
+  consumer: external_exports.string().max(24)
+});
+var mockupLatencyComp = external_exports.object({
+  type: external_exports.literal("latencycomp"),
+  items: external_exports.array(
+    external_exports.object({
+      label: external_exports.string().max(24),
+      value: external_exports.string().max(16),
+      percentage: external_exports.number().min(5).max(100),
+      highlight: external_exports.boolean().optional()
+    })
+  ).min(2).max(3),
+  note: external_exports.string().max(90).optional()
+});
+var mockupConfig = external_exports.object({
+  type: external_exports.literal("config"),
+  filename: external_exports.string().max(40),
+  lines: external_exports.array(
+    external_exports.object({
+      key: external_exports.string().max(24),
+      val: external_exports.string().max(48),
+      comment: external_exports.string().max(48).optional()
+    })
+  ).min(2).max(6)
+});
+var mockupStateMachine = external_exports.object({
+  type: external_exports.literal("statemachine"),
+  states: external_exports.array(
+    external_exports.object({
+      name: external_exports.string().max(16),
+      status: external_exports.enum(["active", "passed", "pending"]).default("pending")
+    })
+  ).min(2).max(4),
+  transitions: external_exports.array(external_exports.string().max(20)).max(3)
+});
+var mockupArchitecture = external_exports.object({
+  type: external_exports.literal("architecture"),
+  title: external_exports.string().max(30).optional(),
+  client: external_exports.string().max(20).default("Client"),
+  router: external_exports.string().max(20).default("Load Balancer"),
+  nodes: external_exports.array(external_exports.string().max(20)).min(2).max(3)
+});
 var mockupUnion = external_exports.discriminatedUnion("type", [
   mockupCard,
   mockupTerminal,
@@ -72437,7 +72492,13 @@ var mockupUnion = external_exports.discriminatedUnion("type", [
   mockupGitBranch,
   mockupIllustration,
   mockupScreenshot,
-  mockupCustom
+  mockupCustom,
+  mockupApiRequest,
+  mockupEventQueue,
+  mockupLatencyComp,
+  mockupConfig,
+  mockupStateMachine,
+  mockupArchitecture
 ]);
 var mockupSchema = external_exports.preprocess(migrateLegacyIllustration, mockupUnion);
 var coverHookDevice = external_exports.object({
@@ -72509,6 +72570,7 @@ var pointSlide = external_exports.object({
   body: external_exports.string().max(160),
   /** Slide surface: "ink" (full dark) for deck rhythm; absent/"paper" = default cream */
   surface: external_exports.enum(["paper", "ink"]).optional(),
+  layout: external_exports.enum(["standard", "mockup-forward", "split-content", "note-emphasis"]).default("standard"),
   /** New: rich mockup component (preferred) */
   mockup: mockupSchema.optional(),
   /** Legacy: simple info card (backward compat — used when mockup is absent) */
@@ -72559,7 +72621,13 @@ var MOCKUP_ARRAY_MAX = {
   foldertree: { key: "lines", max: 8 },
   commandpalette: { key: "rows", max: 5 },
   database: { key: "tables", max: 2 },
-  gitbranch: { key: "main", max: 6 }
+  gitbranch: { key: "main", max: 6 },
+  apirequest: { key: "headers", max: 3 },
+  eventqueue: { key: "events", max: 4 },
+  latencycomp: { key: "items", max: 3 },
+  config: { key: "lines", max: 6 },
+  statemachine: { key: "states", max: 4 },
+  architecture: { key: "nodes", max: 3 }
 };
 function stripDashesDeep(v) {
   if (Array.isArray(v)) {
@@ -72624,6 +72692,11 @@ function repairSlidePlan(raw2) {
           const fixed = repairMockup(s.mockup);
           if (fixed) s.mockup = fixed;
           else delete s.mockup;
+        }
+        if (s.role === "point") {
+          if (!s.layout || !["standard", "mockup-forward", "split-content", "note-emphasis"].includes(s.layout)) {
+            s.layout = "standard";
+          }
         }
         if (s.role === "point" && s.surface === "ink" && s.mockup && ALWAYS_DARK_MOCKUPS.has(s.mockup.type)) {
           s.surface = "paper";
@@ -72735,17 +72808,27 @@ var RevisionScopeViolation = class extends Error {
     this.violations = violations;
   }
 };
+var semanticEq = (a, b) => {
+  try {
+    if (a && typeof a === "object" && "role" in a) {
+      const parsedA = slideSchema.parse(a);
+      const parsedB = slideSchema.parse(b);
+      return JSON.stringify(parsedA) === JSON.stringify(parsedB);
+    }
+  } catch {
+  }
+  return JSON.stringify(a) === JSON.stringify(b);
+};
 function assertScopePreserved(before, after, scope) {
   if (!scope.resolved) return;
   const violations = [];
-  const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   if (!scope.globals.includes("title") && before.title !== after.title) {
     violations.push(`title: "${before.title}" -> "${after.title}"`);
   }
   if (!scope.globals.includes("caption") && before.caption !== after.caption) {
     violations.push("caption changed");
   }
-  if (!scope.globals.includes("hashtags") && !eq(before.hashtags, after.hashtags)) {
+  if (!scope.globals.includes("hashtags") && !semanticEq(before.hashtags, after.hashtags)) {
     violations.push(`hashtags: [${before.hashtags.join(", ")}] -> [${after.hashtags.join(", ")}]`);
   }
   if (before.slides.length !== after.slides.length) {
@@ -72755,18 +72838,17 @@ function assertScopePreserved(before, after, scope) {
   const max = Math.min(before.slides.length, after.slides.length);
   for (let i = 0; i < max; i++) {
     if (inScope.has(i)) continue;
-    if (!eq(before.slides[i], after.slides[i])) violations.push(`slide ${i + 1} changed`);
+    if (!semanticEq(before.slides[i], after.slides[i])) violations.push(`slide ${i + 1} changed`);
   }
   if (violations.length) throw new RevisionScopeViolation(scope, violations);
 }
 function scopedChangeSummary(before, after, scope) {
   const changed = [];
-  const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   for (const i of scope.slides) {
-    if (!eq(before.slides[i], after.slides[i])) changed.push(`slide ${i + 1}`);
+    if (!semanticEq(before.slides[i], after.slides[i])) changed.push(`slide ${i + 1}`);
   }
   for (const g of scope.globals) {
-    if (!eq(before[g], after[g])) changed.push(g);
+    if (!semanticEq(before[g], after[g])) changed.push(g);
   }
   return changed;
 }
@@ -73362,6 +73444,7 @@ Grouped by VISUAL DIRECTOR category (pick by the slide's content):
 - Comparison \u2014 two-panel loser vs winner
 - DataTable \u2014 \u2717/\u2713 two-column table (jangan/lakukan, myth/reality)
 - Timeline \u2014 two dated cards (dulu/sekarang, then/now)
+- LatencyComp \u2014 horizontal bar comparison chart of response times/latencies (e.g., Redis vs Postgres vs Dynamo)
 
 **PROCESS** (flow / step-by-step / structure):
 - Flow \u2014 pipelines, sequences (request \u2192 handler \u2192 db)
@@ -73370,6 +73453,9 @@ Grouped by VISUAL DIRECTOR category (pick by the slide's content):
 - Hub \u2014 center concept wiring to 3-4 related items
 - FolderTree \u2014 project/file structure (mono directory listing)
 - GitBranch \u2014 branch/merge feature-branch workflow
+- EventQueue \u2014 Event-driven pub-sub diagram: Producer -> Topic Queue with message pills -> Consumer
+- StateMachine \u2014 State transition sequence: Passed states -> Active state -> Pending states
+- Architecture \u2014 Network topology nodes diagram: Clients -> Router/Load Balancer -> backend servers
 
 **CODE_DEMO** (real code / command / schema):
 - Terminal \u2014 code snippets, CLI, config (dark; use sparingly)
@@ -73377,6 +73463,8 @@ Grouped by VISUAL DIRECTOR category (pick by the slide's content):
 - CommandPalette \u2014 Cmd+K action menu (dark)
 - PromptCard \u2014 copy-paste AI prompt / snippet
 - Database \u2014 2 related tables + relation glyph (ERD)
+- ApiRequest \u2014 API call visualiser: method (GET/POST/etc.), path/URL, response headers, and response text/JSON payload
+- Config \u2014 configuration details parser (database configs, YAML, server .env setups)
 
 **EVIDENCE** (real product/UI, incident logs, case study proof):
 - Screenshot \u2014 real user-uploaded evidence screenshot (screenshotBrief: source, mustShow, mustHide, cropRatio: "4:5"). MANDATORY for real case studies, incident reports, or real-world proof.
@@ -73412,6 +73500,12 @@ Grouped by VISUAL DIRECTOR category (pick by the slide's content):
 - CommandPalette: query (\u226430) + 2-5 rows (icon + label \u226440)
 - Database: 2 tables (name \u226420, 2-4 rows of col \u226416 + type \u22648) + relation
 - PromptCard: label (\u226420) + body (\u2264180)
+- ApiRequest: method (GET/POST/PUT/DELETE/PATCH), url (\u226460), status (\u226420), headers: array of {key, value} max 3, responseBody (\u2264300)
+- EventQueue: producer (\u226424), topicName (\u226424), events: array of string max 4, consumer (\u226424)
+- LatencyComp: items: array of {label \u226424, value \u226416, percentage 5-100, highlight: boolean} min 2 max 3, note? (\u226490)
+- Config: filename (\u226440), lines: array of {key \u226424, val \u226448, comment? \u226448} min 2 max 6
+- StateMachine: states: array of {name \u226416, status "active"|"passed"|"pending"} min 2 max 4, transitions: array of string max 3
+- Architecture: title? (\u226430), client (\u226420), router (\u226420), nodes: array of string min 2 max 3
 - Card: icon slug, title (\u226440), body (\u2264100), tone
 - Callout: icon slug + takeaway (\u226490)
 - Checklist: 3-6 items (\u226448 each)
@@ -73517,7 +73611,11 @@ SLIDE ROLES
                  Same contract as the custom mockup: STRUCTURE ONLY. No css field, no
                  style attributes, no <style>; classes filtered to the whitelist. Plain
                  semantic HTML, styled automatically to the surface.)
-- "point": { counter (e.g. "02 / 05"), eyebrow, headline, accentWord?, body, surface?: "paper"|"ink", mockup: <one of the types below> }
+- "point": { counter (e.g. "02 / 05"), eyebrow, headline, accentWord?, body, surface?: "paper"|"ink", layout?: "standard"|"mockup-forward"|"split-content"|"note-emphasis", mockup: <one of the types below> }
+    layout \u2014 positioning & structure layout flow. Defaults to "standard" (standard sequence: eyebrow \u2192 headline \u2192 body \u2192 mockup at bottom).
+      - Use "mockup-forward" when the mockup itself is the hero element (terminal command, Git diagram, ERD tables) and body copy is just a caption.
+      - Use "split-content" (columns layout: text left, mockup right) for slides with short descriptions to add visual composition variety.
+      - Use "note-emphasis" when the mockup has an important notes box ("note") containing a critical conclusion or key warning that should stand out.
 - "outro": { eyebrow?, headline, accentWord?, body?, cta } \u2014 cta is REQUIRED:
     cta: { strong: "<the action, e.g. Simpan & bagikan>", sub?: "<why/how, 1 short line>" }
     \u2192 strong MUST be a concrete call-to-action (save / share / follow / try). Never omit the cta.
@@ -73579,34 +73677,34 @@ MOCKUP TYPES \u2014 every "point" slide MUST include a "mockup" object with one 
    \u2192 3-6 ticked recap items. Use for "what you learned" / summary slides.
 
 11. { type: "promptcard", label?: "COPY THIS", body: "<the prompt text, newlines allowed>" }
-   \u2192 Bordered mono block with a corner label. Use for a copy-paste AI prompt / snippet the reader can steal.
+   \u2192 Bordered mono block with a corner label. Use when sharing a specific ChatGPT/Claude prompt for refactoring, SQL generation, testing, or dev setup the reader can copy-paste.
 
 12. { type: "foldertree", lines: [{ text: "app/", active?: true }] }
-   \u2192 Mono directory listing (3-8 lines, one optional "active" row in accent). Use for project structure / file-layout.
+   \u2192 Mono directory listing (3-8 lines, one optional "active" row in accent). Use to explain project structure, folder layouts (like Next.js app router structure, MVC structures, models/controllers), monorepo structures, or files to edit/configure.
 
 13. { type: "commandpalette", query: "deploy pro", rows: [{ icon: "<allowlisted-slug>", label: "Deploy to production", active?: true }] }
-   \u2192 Dark Cmd+K menu (2-5 rows, one optional "active"). Use for command menus / action lists / keyboard-driven UX.
+   \u2192 Dark Cmd+K menu (2-5 rows, one optional "active"). Use to simulate IDE menus, run options, database client configurations, or other keyboard-driven tool selections.
 
 14. { type: "database", tables: [{ name: "users", rows: [{ col: "id", type: "uuid" }] }, { name: "posts", rows: [{ col: "user_id", type: "fk" }] }], relation?: "1 \u2500< \u221E" }
-   \u2192 EXACTLY 2 related tables + a relation glyph. Use for schema / ERD / foreign-key relations.
+   \u2192 EXACTLY 2 related tables + a relation glyph. Use for schema/ERD explanations, detailing foreign-keys, showing primary-foreign key pairings, joins, or table mapping.
 
 15. { type: "gitbranch", main: ["init", "feat"], branch: { name: "feat/auth", at: 1 }, mergeLabel?: "merge" }
-   \u2192 Fixed branch/merge SVG. Use for git workflow / feature-branch stories.
+   \u2192 Fixed branch/merge SVG. Use for git branching workflows, branch merging stories, monorepo code reviews, pull requests, or trunk-based model comparisons.
 
 16. { type: "browser", url: "app.vour.dev/dashboard", cards: [{ label: "deploys", value: "1,284" }], note?: "..." }
-   \u2192 Browser chrome + 2-4 stat cards. Use for "here's what I built" / product/dashboard evidence. Max 1 per deck.
+   \u2192 Browser chrome + 2-4 stat cards. Use for showing dashboard evidence, API response metrics, live output displays, or "here is what I built" SaaS demo lookups. Max 1 per deck.
 
 17. { type: "quote", quote: "...", author?: "..." }
-   \u2192 Editorial pull-quote (serif). Use for a principle / expert claim / testimonial.
+   \u2192 Editorial pull-quote (serif). Use for expert recommendations, industry claims, quotes, key rules of thumb, or engineering philosophies.
 
 18. { type: "datatable", noLabel?: "Jangan", okLabel?: "Lakukan", rows: [{ no: "...", ok: "..." }] }
-   \u2192 \u2717/\u2713 two-column table (2-4 rows). Use for don't/do, myth/reality, wrong/right.
+   \u2192 \u2717/\u2713 two-column table (2-4 rows). Use for comparing bad practices vs good practices (Jangan vs Lakukan), myth vs reality, or wrong vs right.
 
 19. { type: "commandlist", rows: [{ cmd: "git switch -c", desc: "..." }], note?: "..." }
-   \u2192 Mono cmd \u2192 desc rows (2-6). Use for CLI menus, shortcut lists, command catalogs.
+   \u2192 Mono cmd \u2192 desc rows (2-6). Use for list of CLI commands, shortcuts, or terminal task catalogs (like docker-compose build vs up, npm run dev vs start).
 
 20. { type: "timeline", oldLabel: "2015", oldTitle: "...", oldBody: "...", newLabel: "Sekarang", newTitle: "...", newBody: "..." }
-   \u2192 Two dated cards (dulu/sekarang, then/now). Use for evolution over time.
+   \u2192 Two dated cards (dulu/sekarang, then/now). Use for evolution over time, historical architecture comparison, or legacy systems vs modern stacks.
 
 21. { type: "screenshot", screenshotBrief: { source: "AWS CloudWatch Metrics graph", mustShow: "504 Gateway Timeout spike at 14:02", mustHide: "Account ID and Secret Key", cropRatio: "4:5" }, evidenceStatus: "pending" }
    \u2192 Real user upload evidence screenshot. MANDATORY for real case studies, incident reports, or real-world proof. Must specify source (as specific as possible), mustShow, mustHide, cropRatio ("4:5"), and set evidenceStatus: "pending".
@@ -73618,6 +73716,24 @@ MOCKUP TYPES \u2014 every "point" slide MUST include a "mockup" object with one 
    \u2192 unDraw editorial SVG \u2014 the MANDATORY choice for analogy/metaphor slides and abstract concepts with no natural technical visual. Pick a slug from ILLUSTRATION_CATEGORIES.
    RENDERER SIZES THESE AUTOMATICALLY \u2014 do NOT specify width/height/gap. A single slug fills the free space up to 500px tall; two slugs render side by side, up to 420px each. Both shrink on their own when the headline is long.
    WAJIB untuk: slide dengan kata "kayak/ibarat/mirip/bayangkan", topik psikologis (burnout, mindset), atau konsep abstrak yang lebih baik sebagai gambar editorial daripada diagram teknis.
+
+24. { type: "apirequest", method: "GET"|"POST"|"PUT"|"DELETE"|"PATCH", url: "/api/v1/users", status: "200 OK", headers?: [{ key: "Content-Type", value: "application/json" }], responseBody: '{"id": 1, "name": "Alice"}' }
+   \u2192 API Request/Response mockup. Use to display HTTP/REST API endpoints, status codes, request/response headers, and response payloads.
+
+25. { type: "eventqueue", producer: "Auth Service", topicName: "user-created", events: ["send-welcome-email", "create-profile"], consumer: "Notify Service" }
+   \u2192 Event Queue / Pub-Sub mockup. Use for event-driven message architectures (Kafka, RabbitMQ, queues, pub-sub). Displays Producer, Topic name, Message pills, and Consumer.
+
+26. { type: "latencycomp", items: [{ label: "Redis Cache", value: "0.2ms", percentage: 10, highlight: true }, { label: "PostgreSQL", value: "15ms", percentage: 70 }, { label: "External API", value: "120ms", percentage: 100 }], note?: "Makin pendek bar, makin cepat/baik." }
+   \u2192 Latency / Performance Comparison. Use to compare performance metrics, response times, or benchmark speeds. Renders 2-3 horizontal stacked bars where lower/higher percentage indicates visual bar width. Highlight the winning/critical item.
+
+27. { type: "config", filename: "application.yaml", lines: [{ key: "server.port", val: "8080" }, { key: "spring.datasource.url", val: "jdbc:postgresql://..." }] }
+   \u2192 Config file mockup. Use for environment variables, config files (.env, yaml, properties, config maps) and simple key-value settings lists.
+
+28. { type: "statemachine", states: [{ name: "PENDING", status: "passed" }, { name: "PROCESSING", status: "active" }, { name: "COMPLETED", status: "pending" }], transitions: ["pay", "done"] }
+   \u2192 State Machine mockup. Use to explain entity status lifecycles, states and logical transitions (e.g. Order payment lifecycles, checkout steps, state loops). Passed states go "passed", current state goes "active", future states go "pending".
+
+29. { type: "architecture", title?: "Network Topology", client: "User Browser", router: "Load Balancer", nodes: ["App Instance 1", "App Instance 2"] }
+   \u2192 Architecture/Topology mockup. Use to display simple node deployment architectures, proxy routes, or load balancers distributing requests to multiple backend server instances.
 
 ${MOCKUP_VARIETY_RULE}
 
@@ -73669,7 +73785,8 @@ ${TITLE_CAPTION_RULE}
    invent an unrelated caption, and do not paste the brief's Markdown headings.
 7. ${HASHTAG_RULE}
 8. Rotate tone colors across slides: ${TONES}.
-9. FINAL PASS (mandatory): re-read every eyebrow, headline, lede, body, mockup string, the
+9. VARY LAYOUT TEMPLATES: never reuse the exact same layout template on consecutive point slides (e.g. "standard" -> "standard" -> "standard" is strictly banned). You must use at least 2-3 different layout options per deck (mixing "standard", "mockup-forward", and "split-content", or "note-emphasis" when notes highlight key takeaways).
+10. FINAL PASS (mandatory): re-read every eyebrow, headline, lede, body, mockup string, the
    outro cta, and the caption against the HUMAN VOICE EDITOR rules above. Rewrite anything
    that trips a banned pattern BEFORE returning the plan. Also run the ritme check: no 3+
    consecutive slides with identical sentence structure, and no repeated headline opener
@@ -74055,13 +74172,23 @@ function enforceMockupForPointSlides(plan) {
 function enforcePlanInvariants(plan) {
   return enforceMockupForPointSlides(enforceIllustrationForAnalogySlides(plan));
 }
-async function generateSlidePlan(brief, model) {
+async function generateSlidePlan(brief, model, underusedMockups) {
+  const underusedInstruction = underusedMockups && underusedMockups.length > 0 ? `
+
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+HISTORICAL MOCKUP DIVERSITY CONTEXT (Underused Mockups)
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+The following mockup types have been UNDERUSED in recent carousels.
+Prioritize using them in this deck IF they fit the content semantically (do not force them if irrelevant):
+${underusedMockups.map((m) => `- ${m}`).join("\n")}
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550` : "";
+  const systemPrompt = planSystem + underusedInstruction;
   return withRetry(async () => {
     try {
       const { object: object3 } = await generateObject({
         model,
         schema: slidePlanSchema,
-        system: planSystem,
+        system: systemPrompt,
         prompt: planUserPrompt(brief)
       });
       return enforcePlanInvariants(object3);
@@ -74069,7 +74196,7 @@ async function generateSlidePlan(brief, model) {
       console.warn("generateObject failed, trying generateText + JSON parse fallback:", err?.message || err);
       const { text: text2 } = await generateText({
         model,
-        system: planSystem + "\nIMPORTANT: Return ONLY valid JSON matching the schema. No markdown codeblocks or extra text.",
+        system: systemPrompt + "\nIMPORTANT: Return ONLY valid JSON matching the schema. No markdown codeblocks or extra text.",
         prompt: planUserPrompt(brief)
       });
       const parsed = extractAndParseJson(text2);
@@ -74517,15 +74644,242 @@ function summarizePlanDiff(before, after) {
   return notes.join("; ");
 }
 
+// src/lib/history/repo.ts
+import { createClient as createClient3 } from "@libsql/client";
+var client2 = null;
+var schemaReady2 = null;
+function db2() {
+  if (!client2) {
+    client2 = createClient3({
+      url: process.env.DATABASE_URL ?? "file:local-auth.db",
+      authToken: process.env.DATABASE_AUTH_TOKEN
+    });
+  }
+  return client2;
+}
+function ensureSchema2() {
+  if (!schemaReady2) {
+    schemaReady2 = (async () => {
+      await db2().execute(`CREATE TABLE IF NOT EXISTS carousels (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        source TEXT NOT NULL,
+        title TEXT NOT NULL,
+        caption TEXT NOT NULL DEFAULT '',
+        hashtags TEXT NOT NULL DEFAULT '[]',
+        slide_count INTEGER NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'draft',
+        model TEXT,
+        thumbnail TEXT,
+        buffer_ig_id TEXT,
+        buffer_tt_id TEXT,
+        due_at TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        image_urls TEXT DEFAULT '[]',
+        slide_plan TEXT
+      )`);
+      try {
+        await db2().execute(`ALTER TABLE carousels ADD COLUMN image_urls TEXT DEFAULT '[]'`);
+      } catch (e) {
+      }
+      try {
+        await db2().execute(`ALTER TABLE carousels ADD COLUMN slide_plan TEXT`);
+      } catch (e) {
+      }
+      await db2().execute(
+        `CREATE INDEX IF NOT EXISTS idx_carousels_user ON carousels(user_id, created_at DESC)`
+      );
+    })();
+  }
+  return schemaReady2;
+}
+function rowToCarousel(r) {
+  return {
+    id: String(r.id),
+    userId: String(r.user_id),
+    source: r.source,
+    title: String(r.title),
+    caption: String(r.caption ?? ""),
+    hashtags: JSON.parse(String(r.hashtags ?? "[]")),
+    slideCount: Number(r.slide_count ?? 0),
+    status: r.status,
+    model: r.model ?? null,
+    thumbnail: r.thumbnail ?? null,
+    bufferIgId: r.buffer_ig_id ?? null,
+    bufferTtId: r.buffer_tt_id ?? null,
+    dueAt: r.due_at ?? null,
+    createdAt: Number(r.created_at),
+    updatedAt: Number(r.updated_at),
+    imageUrls: JSON.parse(String(r.image_urls ?? "[]")),
+    slidePlan: r.slide_plan ? JSON.parse(String(r.slide_plan)) : null
+  };
+}
+async function createCarousel(input) {
+  await ensureSchema2();
+  const now2 = Date.now();
+  const id = crypto.randomUUID();
+  await db2().execute({
+    sql: `INSERT INTO carousels
+      (id, user_id, source, title, caption, hashtags, slide_count, status, model, thumbnail, image_urls, slide_plan, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [
+      id,
+      input.userId,
+      input.source,
+      input.title,
+      input.caption ?? "",
+      JSON.stringify(input.hashtags ?? []),
+      input.slideCount ?? 0,
+      input.status ?? "draft",
+      input.model ?? null,
+      input.thumbnail ?? null,
+      JSON.stringify(input.imageUrls ?? []),
+      input.slidePlan ? JSON.stringify(input.slidePlan) : null,
+      now2,
+      now2
+    ]
+  });
+  const created = await getCarousel(id, input.userId);
+  if (!created) throw new Error("failed to create carousel");
+  return created;
+}
+var PATCH_COLUMNS = {
+  status: "status",
+  thumbnail: "thumbnail",
+  bufferIgId: "buffer_ig_id",
+  bufferTtId: "buffer_tt_id",
+  dueAt: "due_at",
+  title: "title",
+  caption: "caption",
+  imageUrls: "image_urls",
+  slidePlan: "slide_plan"
+};
+async function updateCarousel(id, patch) {
+  await ensureSchema2();
+  const sets = [];
+  const args = [];
+  for (const [key, col] of Object.entries(PATCH_COLUMNS)) {
+    if (key in patch) {
+      sets.push(`${col} = ?`);
+      const val = patch[key];
+      args.push(Array.isArray(val) ? JSON.stringify(val) : val);
+    }
+  }
+  if (sets.length === 0) return;
+  sets.push("updated_at = ?");
+  args.push(Date.now());
+  args.push(id);
+  await db2().execute({ sql: `UPDATE carousels SET ${sets.join(", ")} WHERE id = ?`, args });
+}
+async function getCarousel(id, userId2) {
+  await ensureSchema2();
+  const res = await db2().execute({
+    sql: `SELECT * FROM carousels WHERE id = ? AND user_id = ?`,
+    args: [id, userId2]
+  });
+  return res.rows[0] ? rowToCarousel(res.rows[0]) : null;
+}
+var ALL_MOCKUP_TYPES = [
+  "card",
+  "terminal",
+  "comparison",
+  "steps",
+  "callout",
+  "bigstat",
+  "flow",
+  "hub",
+  "concept",
+  "checklist",
+  "promptcard",
+  "foldertree",
+  "commandpalette",
+  "database",
+  "gitbranch",
+  "browser",
+  "quote",
+  "datatable",
+  "commandlist",
+  "timeline",
+  "screenshot",
+  "custom",
+  "illustration",
+  "apirequest",
+  "eventqueue",
+  "latencycomp",
+  "config",
+  "statemachine",
+  "architecture"
+];
+async function getRecentMockupStats(userId2, limit = 20) {
+  await ensureSchema2();
+  const res = await db2().execute({
+    sql: `SELECT slide_plan FROM carousels WHERE user_id = ? AND slide_plan IS NOT NULL ORDER BY created_at DESC LIMIT ?`,
+    args: [userId2, limit]
+  });
+  const counts = {};
+  for (const row of res.rows) {
+    try {
+      const plan = JSON.parse(String(row.slide_plan));
+      if (plan && Array.isArray(plan.slides)) {
+        for (const slide of plan.slides) {
+          if (slide.role === "point" && slide.mockup?.type) {
+            const mType = slide.mockup.type;
+            counts[mType] = (counts[mType] || 0) + 1;
+          }
+        }
+      }
+    } catch (e) {
+    }
+  }
+  return counts;
+}
+async function getUnderusedMockupTypes(userId2, limit = 25) {
+  const stats = await getRecentMockupStats(userId2, limit);
+  return ALL_MOCKUP_TYPES.map((type) => ({ type, count: stats[type] || 0 })).sort((a, b) => a.count - b.count).slice(0, 10).map((x) => x.type);
+}
+async function getGlobalMockupStats() {
+  await ensureSchema2();
+  const res = await db2().execute(`SELECT slide_plan FROM carousels WHERE slide_plan IS NOT NULL`);
+  const counts = {};
+  let totalSlides = 0;
+  for (const row of res.rows) {
+    try {
+      const plan = JSON.parse(String(row.slide_plan));
+      if (plan && Array.isArray(plan.slides)) {
+        for (const slide of plan.slides) {
+          if (slide.role === "point" && slide.mockup?.type) {
+            const mType = slide.mockup.type;
+            counts[mType] = (counts[mType] || 0) + 1;
+            totalSlides++;
+          }
+        }
+      }
+    } catch (e) {
+    }
+  }
+  return ALL_MOCKUP_TYPES.map((type) => {
+    const count = counts[type] || 0;
+    const percentage = totalSlides > 0 ? Math.round(count / totalSlides * 1e4) / 100 : 0;
+    return { type, count, percentage };
+  }).sort((a, b) => b.count - a.count);
+}
+
 // src/routes/user/plan.ts
 var app3 = new Hono2();
+app3.get("/mockup-stats", async (c) => {
+  const stats = await getGlobalMockupStats();
+  return c.json({ stats });
+});
 app3.post("/", async (c) => {
+  const session = c.get("session");
   const { brief, modelId } = await c.req.json();
   if (!brief?.trim()) {
     return c.json({ error: "Missing brief" }, 400);
   }
   const model = resolveModel(modelId);
-  const plan = await generateSlidePlan(brief, model);
+  const underused = session?.user?.id ? await getUnderusedMockupTypes(session.user.id).catch(() => []) : [];
+  const plan = await generateSlidePlan(brief, model, underused);
   return c.json({ plan });
 });
 app3.post("/revise", async (c) => {
@@ -74690,18 +75044,18 @@ var coverDoorTemplate = String.raw`<div class="anchor-wrap">
 // src/lib/ds/illustrations.server.ts
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { createClient as createClient3 } from "@libsql/client";
+import { createClient as createClient4 } from "@libsql/client";
 var ASSETS_DIR = existsSync(join(process.cwd(), "src", "lib", "ds", "assets", "illustrations")) ? join(process.cwd(), "src", "lib", "ds", "assets", "illustrations") : join(process.cwd(), "dist", "lib", "ds", "assets", "illustrations");
 var cache = /* @__PURE__ */ new Map();
-var client2 = null;
+var client3 = null;
 function getDbClient() {
-  if (!client2) {
-    client2 = createClient3({
+  if (!client3) {
+    client3 = createClient4({
       url: process.env.DATABASE_URL ?? "file:local-auth.db",
       authToken: process.env.DATABASE_AUTH_TOKEN
     });
   }
-  return client2;
+  return client3;
 }
 var warmUpPromise = null;
 async function warmUpIllustrations() {
@@ -74742,7 +75096,7 @@ function renderIllustration(raw2, variant) {
 }
 
 // src/lib/ds/templates/point.ts
-var pointTemplate = String.raw`<section class="{{surfaceClass}}" data-screen-label="03 · Point">
+var pointTemplate = String.raw`<section class="{{surfaceClass}} layout-{{layout}}" data-screen-label="03 · Point">
   <div class="counter">{{counter}}</div>
 
   <div class="eyebrow {{eyebrowClass}} mt-64">{{eyebrow}}</div>
@@ -74988,6 +75342,94 @@ var gitBranchTemplate = String.raw`<div class="diag-wrap mt-40">
     </div>
   </div>`;
 
+// src/lib/ds/templates/apirequest.ts
+var apiRequestTemplate = String.raw`<div class="diag-wrap mt-40">
+  <div class="diag-api-request">
+    <div class="api-header">
+      <span class="api-method api-method-{{method}}">{{method}}</span>
+      <span class="api-url">{{url}}</span>
+      <span class="api-status">{{status}}</span>
+    </div>
+    {{#hasHeaders}}
+    <div class="api-headers">
+      HEADERS_INJECT
+    </div>
+    {{/hasHeaders}}
+    <div class="api-body">
+      <pre><code>RESPONSE_BODY_INJECT</code></pre>
+    </div>
+  </div>
+</div>`;
+
+// src/lib/ds/templates/eventqueue.ts
+var eventQueueTemplate = String.raw`<div class="diag-wrap mt-40">
+  <div class="diag-event-queue">
+    <div class="eq-node producer">
+      <div class="eq-node-title">{{producer}}</div>
+      <div class="eq-node-role">PRODUCER</div>
+    </div>
+    
+    <div class="eq-broker">
+      <div class="eq-broker-title">{{topicName}}</div>
+      <div class="eq-messages">
+        EVENTS_INJECT
+      </div>
+      <div class="eq-broker-role">TOPIC / QUEUE</div>
+    </div>
+    
+    <div class="eq-node consumer">
+      <div class="eq-node-title">{{consumer}}</div>
+      <div class="eq-node-role">CONSUMER</div>
+    </div>
+  </div>
+</div>`;
+
+// src/lib/ds/templates/latencycomp.ts
+var latencyCompTemplate = String.raw`<div class="diag-wrap mt-40">
+  <div class="diag-latency-comp">
+    BARS_INJECT
+  </div>
+</div>
+NOTE_INJECT`;
+
+// src/lib/ds/templates/config.ts
+var configTemplate = String.raw`<div class="diag-wrap mt-40">
+  <div class="diag-config">
+    <div class="terminal-bar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="title">{{filename}}</span>
+    </div>
+    <div class="config-body">
+      CONFIG_LINES_INJECT
+    </div>
+  </div>
+</div>`;
+
+// src/lib/ds/templates/statemachine.ts
+var stateMachineTemplate = String.raw`<div class="diag-wrap mt-40">
+  <div class="diag-state-machine">
+    STATES_INJECT
+  </div>
+</div>`;
+
+// src/lib/ds/templates/architecture.ts
+var architectureTemplate = String.raw`<div class="diag-wrap mt-40">
+  <div class="diag-architecture">
+    {{#title}}<div class="arch-title">{{title}}</div>{{/title}}
+    <div class="arch-row client-row">
+      CLIENT_NODE_INJECT
+    </div>
+    <div class="arch-arrow-down">ARROW_DOWN_INJECT</div>
+    <div class="arch-row router-row">
+      ROUTER_NODE_INJECT
+    </div>
+    <div class="arch-arrows-split">ARROW_SPLIT_INJECT</div>
+    <div class="arch-row nodes-row">
+      NODES_INJECT
+    </div>
+  </div>
+</div>`;
+
 // src/lib/ds/hub-lines.ts
 function diagLines(count, o) {
   const n = count <= 2 ? 2 : count === 3 ? 3 : 4;
@@ -75231,6 +75673,95 @@ function renderGitBranchMockup(m) {
     GIT_MERGE_INJECT: escapeHtml(m.mergeLabel)
   });
 }
+function renderApiRequestMockup(m) {
+  const headers = m.headers ?? [];
+  const headersHtml = headers.map(
+    (h) => `<div class="api-header-row"><span class="h-key">${escapeHtml(h.key)}:</span> <span class="h-val">${escapeHtml(h.value)}</span></div>`
+  ).join("\n");
+  const base = fillTemplate(apiRequestTemplate, {
+    method: m.method,
+    url: m.url,
+    status: m.status,
+    hasHeaders: headers.length > 0 ? "1" : ""
+  });
+  return base.replace("HEADERS_INJECT", () => headersHtml).replace("RESPONSE_BODY_INJECT", () => escapeHtml(m.responseBody));
+}
+function renderEventQueueMockup(m) {
+  const eventsHtml = m.events.map(
+    (e, idx) => `<div class="eq-msg-pill active-${idx === 0}"><span class="eq-msg-ico">${renderIcon("zap", { size: 16, color: "currentColor" })}</span>${escapeHtml(e)}</div>`
+  ).join("\n");
+  return fillTemplate(eventQueueTemplate, {
+    producer: m.producer,
+    topicName: m.topicName,
+    consumer: m.consumer
+  }).replace("EVENTS_INJECT", () => eventsHtml);
+}
+function renderLatencyCompMockup(m) {
+  const barsHtml = m.items.map((item) => {
+    const rawClass = item.highlight ? "lc-bar-wrap highlight" : "lc-bar-wrap";
+    const bgPercent = Math.min(100, Math.max(5, item.percentage));
+    return `<div class="${rawClass}">
+      <div class="lc-label-row">
+        <span class="lc-label">${escapeHtml(item.label)}</span>
+        <span class="lc-value">${escapeHtml(item.value)}</span>
+      </div>
+      <div class="lc-bar-container">
+        <div class="lc-bar" style="width: ${bgPercent}%;"></div>
+      </div>
+    </div>`;
+  }).join("\n");
+  return fillTemplate(latencyCompTemplate, {
+    note: m.note ?? ""
+  }).replace("BARS_INJECT", () => barsHtml).replace("NOTE_INJECT", () => renderNote(m.note));
+}
+function renderConfigMockup(m) {
+  const configLines = m.lines.map((l) => {
+    const keySpan = `<span class="c-key">${escapeHtml(l.key)}</span>`;
+    const valSpan = `<span class="c-val">${escapeHtml(l.val)}</span>`;
+    const commentSpan = l.comment ? `<span class="c-cmt"># ${escapeHtml(l.comment)}</span>` : "";
+    return `<div class="config-line">${keySpan}: ${valSpan} ${commentSpan}</div>`;
+  }).join("\n");
+  return fillTemplate(configTemplate, {
+    filename: m.filename
+  }).replace("CONFIG_LINES_INJECT", () => configLines);
+}
+function renderStateMachineMockup(m) {
+  const statesHtml = m.states.map((s, idx) => {
+    const isLast = idx === m.states.length - 1;
+    const arrowHtml = !isLast ? `<span class="sm-arrow">\u2500\u2500 ${escapeHtml(m.transitions[idx] || "next")} \u2500\u2500&gt;</span>` : "";
+    const activeClass = `sm-state active-${s.status}`;
+    const circleIcon = renderIcon("circle", { size: 16, color: "currentColor" });
+    return `<div class="sm-state-wrapper">
+      <div class="${activeClass}">${circleIcon}${escapeHtml(s.name)}</div>
+      ${arrowHtml}
+    </div>`;
+  }).join("\n");
+  return fillTemplate(stateMachineTemplate, {}).replace("STATES_INJECT", () => statesHtml);
+}
+function renderArchitectureMockup(m) {
+  const clientIcon = renderIcon("box", { size: 24, color: "currentColor" });
+  const routerIcon = renderIcon("network", { size: 24, color: "currentColor" });
+  const arrowDownIcon = renderIcon("arrow-right", { size: 24, color: "currentColor" });
+  const nodesHtml = m.nodes.map((n, idx) => {
+    const cls = idx === 0 ? "arch-node vm-node mint" : "arch-node vm-node stone";
+    const serverIcon = renderIcon("server", { size: 24, color: "currentColor" });
+    const statusLabel = idx === 0 ? `<span class="arch-status active">ACTIVE</span>` : `<span class="arch-status standby">STANDBY</span>`;
+    return `<div class="${cls}">
+      <div class="arch-node-content">
+        ${serverIcon}
+        <span class="node-text">${escapeHtml(n)}</span>
+        ${statusLabel}
+      </div>
+    </div>`;
+  }).join("\n");
+  const clientContent = `<div class="arch-node client-node"><div class="arch-node-content horizontal">${clientIcon}<span>${escapeHtml(m.client || "Client")}</span></div></div>`;
+  const routerContent = `<div class="arch-node router-node"><div class="arch-node-content horizontal">${routerIcon}<span>${escapeHtml(m.router || "Load Balancer")}</span></div></div>`;
+  let base = fillTemplate(architectureTemplate, {
+    title: m.title ?? ""
+  });
+  const arrowSvg = `<svg class="arch-split-arrows" viewBox="0 0 100 40" preserveAspectRatio="none"><path d="M 50 0 L 50 15 L 15 15 L 15 40 M 50 15 L 85 15 L 85 40" stroke="currentColor" stroke-width="2" fill="none"/></svg>`;
+  return base.replace("CLIENT_NODE_INJECT", () => clientContent).replace("ARROW_DOWN_INJECT", () => arrowDownIcon).replace("ROUTER_NODE_INJECT", () => routerContent).replace("ARROW_SPLIT_INJECT", () => arrowSvg).replace("NODES_INJECT", () => nodesHtml);
+}
 function renderDeviceHook(h) {
   const bodyLines = h.lines.map((l) => {
     const escaped = escapeHtml(l.text);
@@ -75327,6 +75858,18 @@ function renderMockup(m, scopeId, variant) {
       return renderDatabaseMockup(m);
     case "gitbranch":
       return renderGitBranchMockup(m);
+    case "apirequest":
+      return renderApiRequestMockup(m);
+    case "eventqueue":
+      return renderEventQueueMockup(m);
+    case "latencycomp":
+      return renderLatencyCompMockup(m);
+    case "config":
+      return renderConfigMockup(m);
+    case "statemachine":
+      return renderStateMachineMockup(m);
+    case "architecture":
+      return renderArchitectureMockup(m);
     case "illustration":
       return renderIllustrationMockup(m, variant);
     case "screenshot":
@@ -75400,7 +75943,8 @@ function renderSlide(slide, slideIndex = 0) {
           cardTitle: "",
           cardBody: "",
           cardTone: "peach",
-          mockupHtml: ""
+          mockupHtml: "",
+          layout: slide.layout || "standard"
         });
       }
       if (mockup.type === "card") {
@@ -75416,7 +75960,8 @@ function renderSlide(slide, slideIndex = 0) {
           cardTitle: mockup.title,
           cardBody: mockup.body,
           cardTone: mockup.tone || "peach",
-          mockupHtml: ""
+          mockupHtml: "",
+          layout: slide.layout || "standard"
         });
         return filled.replace(
           "ICON_INJECT",
@@ -75437,8 +75982,9 @@ function renderSlide(slide, slideIndex = 0) {
         cardTitle: "",
         cardBody: "",
         cardTone: "peach",
-        mockupHtml: "1"
+        mockupHtml: "1",
         // truthy to activate the block
+        layout: slide.layout || "standard"
       });
       return base.replace("MOCKUP_INJECT", () => mockupHtml);
     }
@@ -76217,6 +76763,14 @@ var carouselExtraCss = String.raw`
     border-color: rgba(247,241,232, 0.16);
     color: #FFFFFF;
   }
+  body section:not(.paper) .node.mint {
+    border-color: #86C97F;
+    color: #86C97F;
+  }
+  body section:not(.paper) .node.stone {
+    border-color: #B0A49A;
+    color: #B0A49A;
+  }
   /* .node.filled on Ink is set in the accent-chrome block above — the dark value with
      black glyphs. Do not re-declare it here; a second rule of equal specificity later in
      the sheet is what would silently win. */
@@ -76367,8 +76921,17 @@ var carouselExtraCss = String.raw`
     box-shadow: 0 16px 40px rgba(28,10,5, 0.10); }
   /* justify-content:center on .cm would push a short fragment's children apart once
      .cm-base makes it a real box; keep the content stacked from the top. */
-  .diag-wrap > .cm.cm-base,
+   .diag-wrap > .cm.cm-base,
   .anchor-wrap > .cm.cm-base { justify-content: flex-start; align-items: stretch; }
+
+  /* Allow custom mockups to opt-out of the outer card container styling */
+  .diag-wrap:has(.no-card) .cm.cm-base,
+  .anchor-wrap:has(.no-card) .cm.cm-base {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
   .cm-base p, .cm-base li, .cm-base td, .cm-base th, .cm-base div, .cm-base span {
     color: var(--ms-fg); font-size: inherit; line-height: inherit; }
   .cm-base h1, .cm-base h2, .cm-base h3, .cm-base h4, .cm-base h5, .cm-base h6 {
@@ -76625,6 +77188,242 @@ var carouselExtraCss = String.raw`
   .diag-screenshot-source span { color: #B8380E; }
   .diag-screenshot-brief-item { font-size: 22px; line-height: 1.4; color: #7E6153; }
   .diag-screenshot-brief-item strong { color: #1C0A05; }
+
+  /* API Request mockup */
+  .diag-api-request { width: 100%; background: #FFFFFF; border: 1.5px solid rgba(28,10,5,0.14); border-radius: 20px; overflow: hidden; box-shadow: 0 16px 40px rgba(28,10,5,0.06); }
+  .api-header { padding: 20px 24px; background: #FBF6EF; border-bottom: 1.5px solid rgba(28,10,5,0.10); display: flex; align-items: center; gap: 16px; font-family: 'JetBrains Mono'; font-size: 26px; }
+  .api-method { padding: 4px 12px; border-radius: 8px; font-weight: 700; color: #FFFFFF; font-size: 22px; }
+  .api-method-GET { background: #356B34; }
+  .api-method-POST { background: #EE4B1A; }
+  .api-method-PUT { background: #245F8F; }
+  .api-method-DELETE { background: #B8380E; }
+  .api-method-PATCH { background: #5C5CA8; }
+  .api-url { color: #1C0A05; font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .api-status { color: #7E6153; font-weight: 500; font-size: 24px; }
+  .api-headers { padding: 16px 24px; background: #FFFFFF; font-family: 'JetBrains Mono'; font-size: 22px; border-bottom: 1px dashed rgba(28,10,5,0.10); line-height: 1.5; color: #7E6153; }
+  .api-header-row { display: flex; gap: 8px; }
+  .h-key { color: #7E6153; font-weight: 600; }
+  .h-val { color: #1C0A05; }
+  .api-body { padding: 24px; background: #FFFFFF; font-family: 'JetBrains Mono'; font-size: 24px; line-height: 1.5; color: #1C0A05; overflow-x: auto; text-align: left; }
+  .api-body pre { margin: 0; white-space: pre-wrap; word-break: break-all; }
+
+  section:not(.paper) .diag-api-request { background: #2B241D; border-color: #382E25; }
+  section:not(.paper) .api-header { background: #382E25; border-bottom-color: rgba(247,241,232,0.15); }
+  section:not(.paper) .api-url { color: #FFFFFF; }
+  section:not(.paper) .api-status { color: rgba(247,241,232,0.70); }
+  section:not(.paper) .api-headers { background: #2B241D; border-bottom-color: rgba(247,241,232,0.10); }
+  section:not(.paper) .h-key { color: rgba(247,241,232,0.50); }
+  section:not(.paper) .h-val { color: #FFFFFF; }
+  section:not(.paper) .api-body { background: #2B241D; color: #FFFFFF; }
+
+  /* Event Queue mockup */
+  .diag-event-queue { width: 100%; display: flex; align-items: stretch; justify-content: space-between; gap: 20px; padding: 10px 0; }
+  .eq-node { width: 180px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; border: 1.5px solid #1C0A05; border-radius: 16px; background: #FFFFFF; text-align: center; }
+  .eq-node-title { font-family: 'Sora'; font-weight: 700; font-size: 26px; color: #1C0A05; line-height: 1.25; }
+  .eq-node-role { font-family: 'JetBrains Mono'; font-size: 16px; color: var(--ms-accent); font-weight: 700; margin-top: 8px; letter-spacing: 0.05em; }
+  .eq-broker { flex: 1; border: 1.5px dashed #1C0A05; border-radius: 16px; padding: 16px; background: #FBF6EF; display: flex; flex-direction: column; align-items: center; min-height: 180px; justify-content: space-between; position: relative; }
+  .eq-broker-title { font-family: 'JetBrains Mono'; font-weight: 700; font-size: 24px; color: #1C0A05; }
+  .eq-messages { width: 100%; display: flex; flex-direction: column; gap: 10px; margin: 12px 0; }
+  .eq-msg-pill { padding: 10px 14px; border: 1.5px solid rgba(28,10,5,0.14); border-radius: 10px; background: #FFFFFF; font-family: 'JetBrains Mono'; font-size: 20px; color: #3D2419; display: flex; align-items: center; gap: 8px; justify-content: center; }
+  .eq-msg-pill.active-true { border-color: #EE4B1A; background: #FBE9D9; color: #B8380E; font-weight: 600; }
+  .eq-msg-ico { display: flex; align-items: center; flex: none; }
+  .eq-broker-role { font-family: 'JetBrains Mono'; font-size: 16px; color: #7E6153; letter-spacing: 0.04em; }
+
+  section:not(.paper) .eq-node { background: #2B241D; border-color: #382E25; }
+  section:not(.paper) .eq-node-title { color: #FFFFFF; }
+  section:not(.paper) .eq-broker { border-color: #382E25; background: #382E25; }
+  section:not(.paper) .eq-broker-title { color: #FFFFFF; }
+  section:not(.paper) .eq-msg-pill { background: #2B241D; border-color: rgba(247,241,232,0.15); color: rgba(247,241,232,0.85); }
+  section:not(.paper) .eq-msg-pill.active-true { border-color: #EE4B1A; background: #FBE9D9; color: #B8380E; }
+  section:not(.paper) .eq-broker-role { color: rgba(247,241,232,0.60); }
+
+  /* Latency Comparison mockup */
+  .diag-latency-comp { width: 100%; display: flex; flex-direction: column; gap: 20px; }
+  .lc-bar-wrap { width: 100%; border: 1.5px solid rgba(28,10,5,0.14); border-radius: 16px; padding: 20px 24px; background: #FFFFFF; box-shadow: 0 8px 24px rgba(28,10,5,0.02); }
+  .lc-bar-wrap.highlight { border-color: #EE4B1A; background: #FBE9D9; }
+  .lc-label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .lc-label { font-family: 'Sora'; font-weight: 700; font-size: 28px; color: #1C0A05; }
+  .lc-bar-wrap.highlight .lc-label { color: #B8380E; }
+  .lc-value { font-family: 'JetBrains Mono'; font-weight: 700; font-size: 26px; color: #EE4B1A; }
+  .lc-bar-wrap:not(.highlight) .lc-value { color: #3D2419; }
+  .lc-bar-container { width: 100%; height: 16px; background: rgba(28,10,5,0.06); border-radius: 8px; overflow: hidden; }
+  .lc-bar-wrap.highlight .lc-bar-container { background: rgba(184,56,14,0.08); }
+  .lc-bar { height: 100%; background: #EE4B1A; border-radius: 8px; transition: width 0.3s ease; }
+  .lc-bar-wrap:not(.highlight) .lc-bar { background: #7E6153; }
+
+  section:not(.paper) .lc-bar-wrap { border-color: #382E25; background: #2B241D; }
+  section:not(.paper) .lc-bar-wrap.highlight { border-color: #EE4B1A; background: rgba(238,75,26,0.12); }
+  section:not(.paper) .lc-bar-wrap:not(.highlight) .lc-label { color: #FFFFFF; }
+  section:not(.paper) .lc-bar-wrap:not(.highlight) .lc-value { color: rgba(247,241,232,0.80); }
+  section:not(.paper) .lc-bar-container { background: rgba(247,241,232,0.10); }
+  section:not(.paper) .lc-bar-wrap:not(.highlight) .lc-bar { background: rgba(247,241,232,0.40); }
+
+  /* Point Slide Layout Variations */
+  
+  /* Mockup-Forward layout: orders mockup (diag-wrap/card) to top of content */
+  .layout-mockup-forward { display: flex; flex-direction: column; }
+  .layout-mockup-forward .counter { order: 1; }
+  .layout-mockup-forward .diag-wrap { order: 2; margin-top: 32px !important; }
+  .layout-mockup-forward .card { order: 2; margin-top: 32px !important; }
+  .layout-mockup-forward .eyebrow { order: 3; margin-top: 40px !important; }
+  .layout-mockup-forward h1.compact { order: 4; margin-top: 16px !important; }
+  .layout-mockup-forward .body-text { order: 5; margin-top: 16px !important; margin-bottom: 40px !important; }
+
+  /* Split-Content layout: fits columns side-by-side using CSS Grid */
+  section.layout-split-content {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto auto 1fr;
+    column-gap: 50px;
+    row-gap: 0;
+    align-content: start;
+    justify-content: stretch;
+    box-sizing: border-box;
+  }
+  
+  /* Scale down custom mockups inside split layout to prevent width/height overflows */
+  .layout-split-content .cm-base {
+    padding: 24px 28px !important;
+    font-size: 22px !important;
+    gap: 12px !important;
+  }
+  .layout-split-content .cm-base .node {
+    font-size: 18px !important;
+    padding: 12px 18px !important;
+    min-height: 48px !important;
+    gap: 8px !important;
+    border-radius: 12px !important;
+  }
+  .layout-split-content .cm-base .chip {
+    font-size: 16px !important;
+    padding: 6px 12px !important;
+  }
+  section.layout-split-content .counter {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+  section.layout-split-content .eyebrow {
+    grid-column: 1;
+    grid-row: 2;
+    margin-top: 64px !important;
+    align-self: start;
+  }
+  section.layout-split-content h1.compact {
+    grid-column: 1;
+    grid-row: 3;
+    margin-top: 24px !important;
+    font-size: 72px !important;
+    line-height: 1.1;
+  }
+  section.layout-split-content .body-text {
+    grid-column: 1;
+    grid-row: 4;
+    margin-top: 32px !important;
+    font-size: 28px !important;
+    line-height: 1.4;
+  }
+  section.layout-split-content .diag-wrap {
+    grid-column: 2;
+    grid-row: 3 / span 2;
+    margin-top: 24px !important;
+    align-self: start;
+    justify-self: center;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  section.layout-split-content .card {
+    grid-column: 2;
+    grid-row: 3 / span 2;
+    margin-top: 24px !important;
+    align-self: start;
+    justify-self: center;
+    width: 100%;
+  }
+
+  /* Note-Emphasis layout: highlights the bottom note */
+  .layout-note-emphasis .catatan {
+    background: var(--ms-accent) !important;
+    border: none !important;
+    padding: 32px 40px !important;
+    box-shadow: 0 16px 40px rgba(238,75,26,0.12) !important;
+  }
+  .layout-note-emphasis .catatan-label.chip {
+    background: var(--ms-panel) !important;
+    color: var(--ms-accent) !important;
+    font-weight: 700 !important;
+  }
+  .layout-note-emphasis .catatan-body {
+    font-size: 36px !important;
+    line-height: 1.35 !important;
+    color: var(--ms-accent-on) !important;
+  }
+  section:not(.paper).layout-note-emphasis .catatan {
+    box-shadow: 0 16px 40px rgba(238,75,26,0.25) !important;
+  }
+
+  /* Config mockup */
+  .diag-config { width: 100%; background: #FFFFFF; border: 1.5px solid rgba(28,10,5,0.14); border-radius: 20px; overflow: hidden; box-shadow: 0 16px 40px rgba(28,10,5,0.06); }
+  .diag-config .terminal-bar { background: #FBF6EF; border-bottom: 1.5px solid rgba(28,10,5,0.10); padding: 18px 24px; margin-bottom: 0; display: flex; align-items: center; }
+  .diag-config .terminal-bar .title { color: #7E6153; font-weight: 700; margin-left: 12px; }
+  .config-body { padding: 28px 32px; background: #FFFFFF; font-family: 'JetBrains Mono'; font-size: 26px; line-height: 1.7; color: #1C0A05; text-align: left; }
+  .config-line { white-space: pre-wrap; }
+  .c-key { color: #B8380E; font-weight: 600; }
+  .c-val { color: #1C0A05; }
+  .c-cmt { color: #7E6153; margin-left: 12px; font-style: italic; }
+
+  section:not(.paper) .diag-config { background: #2B241D; border-color: #382E25; }
+  section:not(.paper) .diag-config .terminal-bar { background: #382E25; border-bottom-color: rgba(247,241,232,0.15); }
+  section:not(.paper) .diag-config .terminal-bar .title { color: rgba(247,241,232,0.60); }
+  section:not(.paper) .config-body { background: #2B241D; color: #FFFFFF; }
+  section:not(.paper) .c-key { color: #FF7A45; }
+  section:not(.paper) .c-val { color: #FFFFFF; }
+  section:not(.paper) .c-cmt { color: rgba(247,241,232,0.40); }
+
+  /* State Machine mockup */
+  .diag-state-machine { width: 100%; display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; padding: 20px 0; }
+  .sm-state-wrapper { display: flex; align-items: center; gap: 16px; }
+  .sm-state { border: 1.5px solid rgba(28,10,5,0.14); border-radius: 12px; padding: 18px 24px; font-family: 'Sora'; font-weight: 700; font-size: 26px; display: flex; align-items: center; gap: 10px; background: #FFFFFF; color: #1C0A05; }
+  .sm-state.active-active { border-color: #EE4B1A; background: #FBE9D9; color: #B8380E; box-shadow: 0 8px 24px rgba(238,75,26,0.10); }
+  .sm-state.active-passed { border-color: rgba(53,107,52,0.30); color: #356B34; background: #E3F1E1; }
+  .sm-state.active-pending { background: #EDE7DA; color: #726358; border-color: rgba(28,10,5,0.10); opacity: 0.7; }
+  .sm-arrow { font-family: 'JetBrains Mono'; font-size: 20px; color: var(--ms-accent); font-weight: 700; letter-spacing: -0.05em; }
+
+  section:not(.paper) .sm-state { background: #2B241D; border-color: #382E25; color: #FFFFFF; }
+  section:not(.paper) .sm-state.active-active { border-color: #EE4B1A; background: rgba(238,75,26,0.15); color: #FF7A45; }
+  section:not(.paper) .sm-state.active-passed { border-color: rgba(134,201,127,0.30); color: #86C97F; background: rgba(53,107,52,0.15); }
+  section:not(.paper) .sm-state.active-pending { background: #2B241D; color: rgba(247,241,232,0.40); border-color: #382E25; }
+  section:not(.paper) .sm-arrow { color: #FF7A45; }
+
+  /* Architecture mockup */
+  .diag-architecture { width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box; }
+  .arch-title { font-family: 'Sora'; font-weight: 800; font-size: 34px; color: #1C0A05; margin-bottom: 32px; text-align: center; }
+  .arch-row { display: flex; justify-content: center; gap: 32px; width: 100%; box-sizing: border-box; }
+  .arch-node { padding: 22px 32px; border: 1.5px solid #1C0A05; border-radius: 14px; font-family: 'JetBrains Mono'; font-size: 26px; font-weight: 700; text-align: center; background: #FFFFFF; color: #1C0A05; box-sizing: border-box; white-space: nowrap; max-width: 100%; }
+  .client-node { border-color: rgba(28,10,5,0.15); }
+  .router-node { background: #FBE9D9; border-color: #EE4B1A; color: #B8380E; box-shadow: 0 8px 24px rgba(238,75,26,0.10); }
+  .vm-node { min-width: 160px; flex: 1; max-width: 280px; box-shadow: 0 8px 24px rgba(28,10,5,0.03); }
+  .arch-arrow-down { color: #EE4B1A; display: flex; justify-content: center; margin: 12px 0; }
+  .arch-arrow-down svg { transform: rotate(90deg); width: 34px; height: 34px; display: block; }
+  .arch-split-arrows { width: 100%; max-width: 420px; height: 56px; margin-bottom: 16px; color: #EE4B1A; display: block; }
+
+  /* Node internal layouts and status chips */
+  .arch-node-content { display: flex; flex-direction: column; align-items: center; gap: 8px; justify-content: center; width: 100%; }
+  .arch-node-content.horizontal { flex-direction: row; gap: 12px; }
+  .arch-status { font-family: 'JetBrains Mono'; font-size: 16px; font-weight: 700; padding: 3px 10px; border-radius: 6px; letter-spacing: 0.02em; }
+  .arch-status.active { background: #E3F1E1; color: #356B34; border: 1px solid rgba(53,107,52,0.25); }
+  .arch-status.standby { background: #EDE7DA; color: #726358; border: 1px solid rgba(114,99,88,0.20); }
+
+  section:not(.paper) .arch-title { color: #FFFFFF; }
+  section:not(.paper) .arch-node { background: #2B241D; border-color: #382E25; color: #FFFFFF; }
+  section:not(.paper) .client-node { border-color: #382E25; }
+  section:not(.paper) .router-node { background: rgba(238,75,26,0.15); border-color: #EE4B1A; color: #FF7A45; }
+  section:not(.paper) .vm-node { border-color: #382E25; }
+  section:not(.paper) .arch-arrow-down { color: #FF7A45; }
+  section:not(.paper) .arch-split-arrows { color: #FF7A45; }
+  section:not(.paper) .arch-status.active { background: rgba(134,201,127,0.15); color: #86C97F; border-color: rgba(134,201,127,0.25); }
+  section:not(.paper) .arch-status.standby { background: rgba(176,164,154,0.12); color: #B0A49A; border-color: rgba(176,164,154,0.15); }
 `;
 
 // src/lib/ds/fonts-inline.ts
@@ -76995,135 +77794,6 @@ function buildPostText(caption, hashtags) {
   return `${body}
 
 ${tags}`;
-}
-
-// src/lib/history/repo.ts
-import { createClient as createClient4 } from "@libsql/client";
-var client3 = null;
-var schemaReady2 = null;
-function db2() {
-  if (!client3) {
-    client3 = createClient4({
-      url: process.env.DATABASE_URL ?? "file:local-auth.db",
-      authToken: process.env.DATABASE_AUTH_TOKEN
-    });
-  }
-  return client3;
-}
-function ensureSchema2() {
-  if (!schemaReady2) {
-    schemaReady2 = (async () => {
-      await db2().execute(`CREATE TABLE IF NOT EXISTS carousels (
-        id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        source TEXT NOT NULL,
-        title TEXT NOT NULL,
-        caption TEXT NOT NULL DEFAULT '',
-        hashtags TEXT NOT NULL DEFAULT '[]',
-        slide_count INTEGER NOT NULL DEFAULT 0,
-        status TEXT NOT NULL DEFAULT 'draft',
-        model TEXT,
-        thumbnail TEXT,
-        buffer_ig_id TEXT,
-        buffer_tt_id TEXT,
-        due_at TEXT,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL,
-        image_urls TEXT DEFAULT '[]'
-      )`);
-      try {
-        await db2().execute(`ALTER TABLE carousels ADD COLUMN image_urls TEXT DEFAULT '[]'`);
-      } catch (e) {
-      }
-      await db2().execute(
-        `CREATE INDEX IF NOT EXISTS idx_carousels_user ON carousels(user_id, created_at DESC)`
-      );
-    })();
-  }
-  return schemaReady2;
-}
-function rowToCarousel(r) {
-  return {
-    id: String(r.id),
-    userId: String(r.user_id),
-    source: r.source,
-    title: String(r.title),
-    caption: String(r.caption ?? ""),
-    hashtags: JSON.parse(String(r.hashtags ?? "[]")),
-    slideCount: Number(r.slide_count ?? 0),
-    status: r.status,
-    model: r.model ?? null,
-    thumbnail: r.thumbnail ?? null,
-    bufferIgId: r.buffer_ig_id ?? null,
-    bufferTtId: r.buffer_tt_id ?? null,
-    dueAt: r.due_at ?? null,
-    createdAt: Number(r.created_at),
-    updatedAt: Number(r.updated_at),
-    imageUrls: JSON.parse(String(r.image_urls ?? "[]"))
-  };
-}
-async function createCarousel(input) {
-  await ensureSchema2();
-  const now2 = Date.now();
-  const id = crypto.randomUUID();
-  await db2().execute({
-    sql: `INSERT INTO carousels
-      (id, user_id, source, title, caption, hashtags, slide_count, status, model, thumbnail, image_urls, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    args: [
-      id,
-      input.userId,
-      input.source,
-      input.title,
-      input.caption ?? "",
-      JSON.stringify(input.hashtags ?? []),
-      input.slideCount ?? 0,
-      input.status ?? "draft",
-      input.model ?? null,
-      input.thumbnail ?? null,
-      JSON.stringify(input.imageUrls ?? []),
-      now2,
-      now2
-    ]
-  });
-  const created = await getCarousel(id, input.userId);
-  if (!created) throw new Error("failed to create carousel");
-  return created;
-}
-var PATCH_COLUMNS = {
-  status: "status",
-  thumbnail: "thumbnail",
-  bufferIgId: "buffer_ig_id",
-  bufferTtId: "buffer_tt_id",
-  dueAt: "due_at",
-  title: "title",
-  caption: "caption",
-  imageUrls: "image_urls"
-};
-async function updateCarousel(id, patch) {
-  await ensureSchema2();
-  const sets = [];
-  const args = [];
-  for (const [key, col] of Object.entries(PATCH_COLUMNS)) {
-    if (key in patch) {
-      sets.push(`${col} = ?`);
-      const val = patch[key];
-      args.push(Array.isArray(val) ? JSON.stringify(val) : val);
-    }
-  }
-  if (sets.length === 0) return;
-  sets.push("updated_at = ?");
-  args.push(Date.now());
-  args.push(id);
-  await db2().execute({ sql: `UPDATE carousels SET ${sets.join(", ")} WHERE id = ?`, args });
-}
-async function getCarousel(id, userId2) {
-  await ensureSchema2();
-  const res = await db2().execute({
-    sql: `SELECT * FROM carousels WHERE id = ? AND user_id = ?`,
-    args: [id, userId2]
-  });
-  return res.rows[0] ? rowToCarousel(res.rows[0]) : null;
 }
 
 // src/routes/user/publish.ts
@@ -77646,7 +78316,8 @@ async function createAndPublishCarousel({
 }) {
   const ideaWithAngle = `${topic}${angleInstruction}`;
   const brief = await generateBrief(ideaWithAngle, resolvedModel);
-  const plan = await generateSlidePlan(brief, resolvedModel);
+  const underused = await getUnderusedMockupTypes(userId2).catch(() => []);
+  const plan = await generateSlidePlan(brief, resolvedModel, underused);
   await warmUpIllustrations();
   const html = assembleCarousel(plan);
   const imageBase64s = await captureQueue.capture(async (browser) => {
@@ -77703,7 +78374,8 @@ async function createAndPublishCarousel({
     model: modelId,
     status: "scheduled",
     thumbnail: imageUrls[0] || null,
-    imageUrls
+    imageUrls,
+    slidePlan: plan
   });
   const text2 = buildPostText(plan.caption, plan.hashtags);
   let igPostId;

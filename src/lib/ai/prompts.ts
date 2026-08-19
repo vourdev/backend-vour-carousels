@@ -567,6 +567,7 @@ Grouped by VISUAL DIRECTOR category (pick by the slide's content):
 - Comparison — two-panel loser vs winner
 - DataTable — ✗/✓ two-column table (jangan/lakukan, myth/reality)
 - Timeline — two dated cards (dulu/sekarang, then/now)
+- LatencyComp — horizontal bar comparison chart of response times/latencies (e.g., Redis vs Postgres vs Dynamo)
 
 **PROCESS** (flow / step-by-step / structure):
 - Flow — pipelines, sequences (request → handler → db)
@@ -575,6 +576,9 @@ Grouped by VISUAL DIRECTOR category (pick by the slide's content):
 - Hub — center concept wiring to 3-4 related items
 - FolderTree — project/file structure (mono directory listing)
 - GitBranch — branch/merge feature-branch workflow
+- EventQueue — Event-driven pub-sub diagram: Producer -> Topic Queue with message pills -> Consumer
+- StateMachine — State transition sequence: Passed states -> Active state -> Pending states
+- Architecture — Network topology nodes diagram: Clients -> Router/Load Balancer -> backend servers
 
 **CODE_DEMO** (real code / command / schema):
 - Terminal — code snippets, CLI, config (dark; use sparingly)
@@ -582,6 +586,8 @@ Grouped by VISUAL DIRECTOR category (pick by the slide's content):
 - CommandPalette — Cmd+K action menu (dark)
 - PromptCard — copy-paste AI prompt / snippet
 - Database — 2 related tables + relation glyph (ERD)
+- ApiRequest — API call visualiser: method (GET/POST/etc.), path/URL, response headers, and response text/JSON payload
+- Config — configuration details parser (database configs, YAML, server .env setups)
 
 **EVIDENCE** (real product/UI, incident logs, case study proof):
 - Screenshot — real user-uploaded evidence screenshot (screenshotBrief: source, mustShow, mustHide, cropRatio: "4:5"). MANDATORY for real case studies, incident reports, or real-world proof.
@@ -617,6 +623,12 @@ Grouped by VISUAL DIRECTOR category (pick by the slide's content):
 - CommandPalette: query (≤30) + 2-5 rows (icon + label ≤40)
 - Database: 2 tables (name ≤20, 2-4 rows of col ≤16 + type ≤8) + relation
 - PromptCard: label (≤20) + body (≤180)
+- ApiRequest: method (GET/POST/PUT/DELETE/PATCH), url (≤60), status (≤20), headers: array of {key, value} max 3, responseBody (≤300)
+- EventQueue: producer (≤24), topicName (≤24), events: array of string max 4, consumer (≤24)
+- LatencyComp: items: array of {label ≤24, value ≤16, percentage 5-100, highlight: boolean} min 2 max 3, note? (≤90)
+- Config: filename (≤40), lines: array of {key ≤24, val ≤48, comment? ≤48} min 2 max 6
+- StateMachine: states: array of {name ≤16, status "active"|"passed"|"pending"} min 2 max 4, transitions: array of string max 3
+- Architecture: title? (≤30), client (≤20), router (≤20), nodes: array of string min 2 max 3
 - Card: icon slug, title (≤40), body (≤100), tone
 - Callout: icon slug + takeaway (≤90)
 - Checklist: 3-6 items (≤48 each)
@@ -723,7 +735,11 @@ SLIDE ROLES
                  Same contract as the custom mockup: STRUCTURE ONLY. No css field, no
                  style attributes, no <style>; classes filtered to the whitelist. Plain
                  semantic HTML, styled automatically to the surface.)
-- "point": { counter (e.g. "02 / 05"), eyebrow, headline, accentWord?, body, surface?: "paper"|"ink", mockup: <one of the types below> }
+- "point": { counter (e.g. "02 / 05"), eyebrow, headline, accentWord?, body, surface?: "paper"|"ink", layout?: "standard"|"mockup-forward"|"split-content"|"note-emphasis", mockup: <one of the types below> }
+    layout — positioning & structure layout flow. Defaults to "standard" (standard sequence: eyebrow → headline → body → mockup at bottom).
+      - Use "mockup-forward" when the mockup itself is the hero element (terminal command, Git diagram, ERD tables) and body copy is just a caption.
+      - Use "split-content" (columns layout: text left, mockup right) for slides with short descriptions to add visual composition variety.
+      - Use "note-emphasis" when the mockup has an important notes box ("note") containing a critical conclusion or key warning that should stand out.
 - "outro": { eyebrow?, headline, accentWord?, body?, cta } — cta is REQUIRED:
     cta: { strong: "<the action, e.g. Simpan & bagikan>", sub?: "<why/how, 1 short line>" }
     → strong MUST be a concrete call-to-action (save / share / follow / try). Never omit the cta.
@@ -785,34 +801,34 @@ MOCKUP TYPES — every "point" slide MUST include a "mockup" object with one of 
    → 3-6 ticked recap items. Use for "what you learned" / summary slides.
 
 11. { type: "promptcard", label?: "COPY THIS", body: "<the prompt text, newlines allowed>" }
-   → Bordered mono block with a corner label. Use for a copy-paste AI prompt / snippet the reader can steal.
+   → Bordered mono block with a corner label. Use when sharing a specific ChatGPT/Claude prompt for refactoring, SQL generation, testing, or dev setup the reader can copy-paste.
 
 12. { type: "foldertree", lines: [{ text: "app/", active?: true }] }
-   → Mono directory listing (3-8 lines, one optional "active" row in accent). Use for project structure / file-layout.
+   → Mono directory listing (3-8 lines, one optional "active" row in accent). Use to explain project structure, folder layouts (like Next.js app router structure, MVC structures, models/controllers), monorepo structures, or files to edit/configure.
 
 13. { type: "commandpalette", query: "deploy pro", rows: [{ icon: "<allowlisted-slug>", label: "Deploy to production", active?: true }] }
-   → Dark Cmd+K menu (2-5 rows, one optional "active"). Use for command menus / action lists / keyboard-driven UX.
+   → Dark Cmd+K menu (2-5 rows, one optional "active"). Use to simulate IDE menus, run options, database client configurations, or other keyboard-driven tool selections.
 
 14. { type: "database", tables: [{ name: "users", rows: [{ col: "id", type: "uuid" }] }, { name: "posts", rows: [{ col: "user_id", type: "fk" }] }], relation?: "1 ─< ∞" }
-   → EXACTLY 2 related tables + a relation glyph. Use for schema / ERD / foreign-key relations.
+   → EXACTLY 2 related tables + a relation glyph. Use for schema/ERD explanations, detailing foreign-keys, showing primary-foreign key pairings, joins, or table mapping.
 
 15. { type: "gitbranch", main: ["init", "feat"], branch: { name: "feat/auth", at: 1 }, mergeLabel?: "merge" }
-   → Fixed branch/merge SVG. Use for git workflow / feature-branch stories.
+   → Fixed branch/merge SVG. Use for git branching workflows, branch merging stories, monorepo code reviews, pull requests, or trunk-based model comparisons.
 
 16. { type: "browser", url: "app.vour.dev/dashboard", cards: [{ label: "deploys", value: "1,284" }], note?: "..." }
-   → Browser chrome + 2-4 stat cards. Use for "here's what I built" / product/dashboard evidence. Max 1 per deck.
+   → Browser chrome + 2-4 stat cards. Use for showing dashboard evidence, API response metrics, live output displays, or "here is what I built" SaaS demo lookups. Max 1 per deck.
 
 17. { type: "quote", quote: "...", author?: "..." }
-   → Editorial pull-quote (serif). Use for a principle / expert claim / testimonial.
+   → Editorial pull-quote (serif). Use for expert recommendations, industry claims, quotes, key rules of thumb, or engineering philosophies.
 
 18. { type: "datatable", noLabel?: "Jangan", okLabel?: "Lakukan", rows: [{ no: "...", ok: "..." }] }
-   → ✗/✓ two-column table (2-4 rows). Use for don't/do, myth/reality, wrong/right.
+   → ✗/✓ two-column table (2-4 rows). Use for comparing bad practices vs good practices (Jangan vs Lakukan), myth vs reality, or wrong vs right.
 
 19. { type: "commandlist", rows: [{ cmd: "git switch -c", desc: "..." }], note?: "..." }
-   → Mono cmd → desc rows (2-6). Use for CLI menus, shortcut lists, command catalogs.
+   → Mono cmd → desc rows (2-6). Use for list of CLI commands, shortcuts, or terminal task catalogs (like docker-compose build vs up, npm run dev vs start).
 
 20. { type: "timeline", oldLabel: "2015", oldTitle: "...", oldBody: "...", newLabel: "Sekarang", newTitle: "...", newBody: "..." }
-   → Two dated cards (dulu/sekarang, then/now). Use for evolution over time.
+   → Two dated cards (dulu/sekarang, then/now). Use for evolution over time, historical architecture comparison, or legacy systems vs modern stacks.
 
 21. { type: "screenshot", screenshotBrief: { source: "AWS CloudWatch Metrics graph", mustShow: "504 Gateway Timeout spike at 14:02", mustHide: "Account ID and Secret Key", cropRatio: "4:5" }, evidenceStatus: "pending" }
    → Real user upload evidence screenshot. MANDATORY for real case studies, incident reports, or real-world proof. Must specify source (as specific as possible), mustShow, mustHide, cropRatio ("4:5"), and set evidenceStatus: "pending".
@@ -824,6 +840,24 @@ MOCKUP TYPES — every "point" slide MUST include a "mockup" object with one of 
    → unDraw editorial SVG — the MANDATORY choice for analogy/metaphor slides and abstract concepts with no natural technical visual. Pick a slug from ILLUSTRATION_CATEGORIES.
    RENDERER SIZES THESE AUTOMATICALLY — do NOT specify width/height/gap. A single slug fills the free space up to 500px tall; two slugs render side by side, up to 420px each. Both shrink on their own when the headline is long.
    WAJIB untuk: slide dengan kata "kayak/ibarat/mirip/bayangkan", topik psikologis (burnout, mindset), atau konsep abstrak yang lebih baik sebagai gambar editorial daripada diagram teknis.
+
+24. { type: "apirequest", method: "GET"|"POST"|"PUT"|"DELETE"|"PATCH", url: "/api/v1/users", status: "200 OK", headers?: [{ key: "Content-Type", value: "application/json" }], responseBody: '{"id": 1, "name": "Alice"}' }
+   → API Request/Response mockup. Use to display HTTP/REST API endpoints, status codes, request/response headers, and response payloads.
+
+25. { type: "eventqueue", producer: "Auth Service", topicName: "user-created", events: ["send-welcome-email", "create-profile"], consumer: "Notify Service" }
+   → Event Queue / Pub-Sub mockup. Use for event-driven message architectures (Kafka, RabbitMQ, queues, pub-sub). Displays Producer, Topic name, Message pills, and Consumer.
+
+26. { type: "latencycomp", items: [{ label: "Redis Cache", value: "0.2ms", percentage: 10, highlight: true }, { label: "PostgreSQL", value: "15ms", percentage: 70 }, { label: "External API", value: "120ms", percentage: 100 }], note?: "Makin pendek bar, makin cepat/baik." }
+   → Latency / Performance Comparison. Use to compare performance metrics, response times, or benchmark speeds. Renders 2-3 horizontal stacked bars where lower/higher percentage indicates visual bar width. Highlight the winning/critical item.
+
+27. { type: "config", filename: "application.yaml", lines: [{ key: "server.port", val: "8080" }, { key: "spring.datasource.url", val: "jdbc:postgresql://..." }] }
+   → Config file mockup. Use for environment variables, config files (.env, yaml, properties, config maps) and simple key-value settings lists.
+
+28. { type: "statemachine", states: [{ name: "PENDING", status: "passed" }, { name: "PROCESSING", status: "active" }, { name: "COMPLETED", status: "pending" }], transitions: ["pay", "done"] }
+   → State Machine mockup. Use to explain entity status lifecycles, states and logical transitions (e.g. Order payment lifecycles, checkout steps, state loops). Passed states go "passed", current state goes "active", future states go "pending".
+
+29. { type: "architecture", title?: "Network Topology", client: "User Browser", router: "Load Balancer", nodes: ["App Instance 1", "App Instance 2"] }
+   → Architecture/Topology mockup. Use to display simple node deployment architectures, proxy routes, or load balancers distributing requests to multiple backend server instances.
 
 ${MOCKUP_VARIETY_RULE}
 
@@ -875,7 +909,8 @@ ${TITLE_CAPTION_RULE}
    invent an unrelated caption, and do not paste the brief's Markdown headings.
 7. ${HASHTAG_RULE}
 8. Rotate tone colors across slides: ${TONES}.
-9. FINAL PASS (mandatory): re-read every eyebrow, headline, lede, body, mockup string, the
+9. VARY LAYOUT TEMPLATES: never reuse the exact same layout template on consecutive point slides (e.g. "standard" -> "standard" -> "standard" is strictly banned). You must use at least 2-3 different layout options per deck (mixing "standard", "mockup-forward", and "split-content", or "note-emphasis" when notes highlight key takeaways).
+10. FINAL PASS (mandatory): re-read every eyebrow, headline, lede, body, mockup string, the
    outro cta, and the caption against the HUMAN VOICE EDITOR rules above. Rewrite anything
    that trips a banned pattern BEFORE returning the plan. Also run the ritme check: no 3+
    consecutive slides with identical sentence structure, and no repeated headline opener

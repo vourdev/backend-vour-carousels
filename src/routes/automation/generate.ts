@@ -8,7 +8,7 @@ import { uploadImage } from "../../lib/publish/cloudinary";
 import { scheduleBufferPost } from "../../lib/publish/buffer";
 import { buildPostText } from "../../lib/publish/caption";
 import { nextWibSlot, POST_HOUR_WIB } from "../../lib/publish/schedule";
-import { createCarousel, updateCarousel } from "../../lib/history/repo";
+import { createCarousel, updateCarousel, getUnderusedMockupTypes } from "../../lib/history/repo";
 import { getTopics, updateTopic } from "../../lib/topics/bank";
 import { generateAndSaveTopics, type GenerateTopicsInput } from "../../lib/topics/service";
 import { dialect } from "../../lib/db";
@@ -59,7 +59,8 @@ async function createAndPublishCarousel({
   const brief = await generateBrief(ideaWithAngle, resolvedModel);
 
   // 2. Generate Slide Plan
-  const plan = await generateSlidePlan(brief, resolvedModel);
+  const underused = await getUnderusedMockupTypes(userId).catch(() => []);
+  const plan = await generateSlidePlan(brief, resolvedModel, underused);
 
   // 3. Assemble Carousel HTML
   await warmUpIllustrations();
@@ -131,6 +132,7 @@ async function createAndPublishCarousel({
     status: "scheduled",
     thumbnail: imageUrls[0] || null,
     imageUrls,
+    slidePlan: plan,
   });
 
   // 7. Publish to Buffer channels

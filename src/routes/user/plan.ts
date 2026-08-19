@@ -5,16 +5,24 @@ import { describeScope, RevisionScopeViolation } from "../../lib/ai/revision-sco
 import { appendRevision, listRevisions } from "../../lib/memory/repo";
 import { summarizePlanDiff } from "../../lib/memory/diff";
 import type { SlidePlan } from "../../lib/ds/schema";
+import { getUnderusedMockupTypes, getGlobalMockupStats } from "../../lib/history/repo";
 
 const app = new Hono<{ Variables: { session: any } }>();
 
+app.get("/mockup-stats", async (c) => {
+  const stats = await getGlobalMockupStats();
+  return c.json({ stats });
+});
+
 app.post("/", async (c) => {
+  const session = c.get("session") as { user: { id: string } };
   const { brief, modelId } = await c.req.json() as { brief: string; modelId: ModelId };
   if (!brief?.trim()) {
     return c.json({ error: "Missing brief" }, 400);
   }
   const model = resolveModel(modelId);
-  const plan = await generateSlidePlan(brief, model);
+  const underused = session?.user?.id ? await getUnderusedMockupTypes(session.user.id).catch(() => []) : [];
+  const plan = await generateSlidePlan(brief, model, underused);
   return c.json({ plan });
 });
 

@@ -159,13 +159,25 @@ function enforcePlanInvariants(plan: SlidePlan): SlidePlan {
   return enforceMockupForPointSlides(enforceIllustrationForAnalogySlides(plan));
 }
 
-export async function generateSlidePlan(brief: string, model: LanguageModel): Promise<SlidePlan> {
+export async function generateSlidePlan(brief: string, model: LanguageModel, underusedMockups?: string[]): Promise<SlidePlan> {
+  const underusedInstruction = underusedMockups && underusedMockups.length > 0
+    ? `\n\n═══════════════════════════════════════════════════════════════
+HISTORICAL MOCKUP DIVERSITY CONTEXT (Underused Mockups)
+═══════════════════════════════════════════════════════════════
+The following mockup types have been UNDERUSED in recent carousels.
+Prioritize using them in this deck IF they fit the content semantically (do not force them if irrelevant):
+${underusedMockups.map(m => `- ${m}`).join("\n")}
+═══════════════════════════════════════════════════════════════`
+    : "";
+
+  const systemPrompt = planSystem + underusedInstruction;
+
   return withRetry(async () => {
     try {
       const { object } = await generateObject({
         model,
         schema: slidePlanSchema,
-        system: planSystem,
+        system: systemPrompt,
         prompt: planUserPrompt(brief),
       });
       return enforcePlanInvariants(object);
@@ -173,7 +185,7 @@ export async function generateSlidePlan(brief: string, model: LanguageModel): Pr
       console.warn("generateObject failed, trying generateText + JSON parse fallback:", err?.message || err);
       const { text } = await generateText({
         model,
-        system: planSystem + "\nIMPORTANT: Return ONLY valid JSON matching the schema. No markdown codeblocks or extra text.",
+        system: systemPrompt + "\nIMPORTANT: Return ONLY valid JSON matching the schema. No markdown codeblocks or extra text.",
         prompt: planUserPrompt(brief),
       });
       const parsed = extractAndParseJson(text);
