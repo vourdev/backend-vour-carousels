@@ -7,6 +7,7 @@ import { captureQueue } from "../../services/capture-queue";
 import { uploadImage } from "../../lib/publish/cloudinary";
 import { scheduleBufferPost } from "../../lib/publish/buffer";
 import { createCarousel, updateCarousel } from "../../lib/history/repo";
+import { getTopics, updateTopic } from "../../lib/topics/bank";
 import { dialect } from "../../lib/db";
 import { Kysely } from "kysely";
 
@@ -18,6 +19,11 @@ const db = new Kysely<any>({ dialect });
 interface GenerateRequest {
   topic?: string;
   title?: string;
+}
+
+async function resolveUserId(): Promise<string | null> {
+  const user = await db.selectFrom("user").select("id").limit(1).executeTakeFirst();
+  return (user?.id as string | undefined) ?? null;
 }
 
 async function createAndPublishCarousel({
@@ -248,6 +254,31 @@ app.post("/generate", async (c) => {
     console.error("Batch carousel generation failed:", err);
     return c.json({ error: `Automation failed: ${err.message}` }, 500);
   }
+});
+
+// Hands the caller the next unstarted topic from the bank (status "idea"),
+// then flips it to "queued" so a retriggered cron doesn't hand out the same
+// topic twice before /generate has actually produced anything from it.
+app.get("/topic/next", async (c) => {
+  const userId = await resolveUserId().catch(() => null);
+  if (!userId) {
+    return c.json({ error: "No user found in the database. Seed the database first." }, 500);
+  }
+
+  const [topic] = await getTopics(userId, { status: "idea", limit: 1 });
+  if (!topic) {
+    return c.json({ error: "No idea-status topics available in the bank" }, 404);
+  }
+
+  await updateTopic(topic.id, userId, { status: "queued" });
+
+  return c.json({
+    id: topic.id,
+    title: topic.title,
+    category: topic.category,
+    description: topic.description,
+    angle: topic.angle,
+  });
 });
 
 export default app;
