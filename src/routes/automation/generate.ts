@@ -6,8 +6,10 @@ import { warmUpIllustrations } from "../../lib/ds/illustrations.server";
 import { captureQueue } from "../../services/capture-queue";
 import { uploadImage } from "../../lib/publish/cloudinary";
 import { scheduleBufferPost } from "../../lib/publish/buffer";
+import { buildPostText } from "../../lib/publish/caption";
 import { createCarousel, updateCarousel } from "../../lib/history/repo";
 import { getTopics, updateTopic } from "../../lib/topics/bank";
+import { generateAndSaveTopics, type GenerateTopicsInput } from "../../lib/topics/service";
 import { dialect } from "../../lib/db";
 import { Kysely } from "kysely";
 
@@ -124,10 +126,7 @@ async function createAndPublishCarousel({
   });
 
   // 7. Publish to Buffer channels
-  const hashtagsStr = plan.hashtags
-    .map((h) => (h.startsWith("#") ? h : `#${h}`))
-    .join(" ");
-  const text = plan.caption ? `${plan.caption}\n\n${hashtagsStr}` : hashtagsStr;
+  const text = buildPostText(plan.caption, plan.hashtags);
 
   let igPostId: string | undefined;
   let ttPostId: string | undefined;
@@ -279,6 +278,32 @@ app.get("/topic/next", async (c) => {
     description: topic.description,
     angle: topic.angle,
   });
+});
+
+/**
+ * Refill the topics bank on a schedule. Same batch logic the UI uses, reached
+ * with an API key instead of a session — `userId` is optional so an n8n workflow
+ * does not have to hardcode one for a single-tenant install.
+ */
+app.post("/topics/generate", async (c) => {
+  const body = (await c.req.json().catch(() => ({}))) as GenerateTopicsInput & { userId?: string };
+
+  if (!["ideas", "weekly", "monthly"].includes(body?.mode)) {
+    return c.json({ error: `Invalid mode "${body?.mode}" — use ideas | weekly | monthly` }, 400);
+  }
+
+  const uid = body.userId ?? (await resolveUserId().catch(() => null));
+  if (!uid) {
+    return c.json({ error: "No user found in the database. Seed the database first." }, 500);
+  }
+
+  const modelId = defaultModel();
+  if (!modelId) {
+    return c.json({ error: "No AI model API keys configured in .env" }, 500);
+  }
+
+  const topics = await generateAndSaveTopics(uid, resolveModel(modelId), body);
+  return c.json({ success: true, topics, count: topics.length });
 });
 
 export default app;

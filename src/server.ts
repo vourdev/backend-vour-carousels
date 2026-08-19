@@ -12,6 +12,7 @@ import planRoute from "./routes/user/plan";
 import assembleRoute from "./routes/user/assemble";
 import captureRoute from "./routes/user/capture";
 import publishRoute from "./routes/user/publish";
+import topicsRoute from "./routes/user/topics";
 import automationRoute from "./routes/automation/generate";
 
 // ==========================================
@@ -56,6 +57,7 @@ userApp.route("/api/plan", planRoute);
 userApp.route("/api/assemble", assembleRoute);
 userApp.route("/api/capture", captureRoute);
 userApp.route("/api/publish", publishRoute);
+userApp.route("/api/topics", topicsRoute);
 
 // Global Error Handler
 userApp.onError((err, c) => {

@@ -13140,11 +13140,11 @@ var init_kysely = __esm({
       async execute(callback) {
         return this.#props.executor.provideConnection(async (connection) => {
           const executor = this.#props.executor.withConnectionProvider(new SingleConnectionProvider(connection));
-          const db4 = new Kysely({
+          const db5 = new Kysely({
             ...this.#props,
             executor
           });
-          return await callback(db4);
+          return await callback(db5);
         });
       }
     };
@@ -14923,8 +14923,8 @@ var init_sqlite_introspector = __esm({
     init_sql();
     SqliteIntrospector = class {
       #db;
-      constructor(db4) {
-        this.#db = db4;
+      constructor(db5) {
+        this.#db = db5;
       }
       async getSchemas() {
         return [];
@@ -15884,8 +15884,8 @@ var init_lib_esm = __esm({
         }
         return new LibsqlDriver(client4, closeClient);
       }
-      createIntrospector(db4) {
-        return new SqliteIntrospector(db4);
+      createIntrospector(db5) {
+        return new SqliteIntrospector(db5);
       }
       createQueryCompiler() {
         return new SqliteQueryCompiler();
@@ -31458,14 +31458,14 @@ var Hono = class _Hono {
    * app.route("/api", app2) // GET /api/user
    * ```
    */
-  route(path, app8) {
+  route(path, app9) {
     const subApp = this.basePath(path);
-    app8.routes.map((r) => {
+    app9.routes.map((r) => {
       let handler;
-      if (app8.errorHandler === errorHandler) {
+      if (app9.errorHandler === errorHandler) {
         handler = r.handler;
       } else {
-        handler = async (c, next) => (await compose([], app8.errorHandler)(c, () => r.handler(c, next))).res;
+        handler = async (c, next) => (await compose([], app9.errorHandler)(c, () => r.handler(c, next))).res;
         handler[COMPOSED_HANDLER] = r.handler;
       }
       subApp.#addRoute(r.method, r.path, handler, r.basePath);
@@ -61697,10 +61697,6 @@ function has(env, ...keys) {
 }
 function availableModels(env = process.env) {
   const out = [];
-  if (has(env, "GOOGLE_GENERATIVE_AI_API_KEY")) out.push("gemini");
-  if (has(env, "DEEPSEEK_API_KEY")) out.push("deepseek");
-  if (has(env, "MIMO_API_KEY", "MIMO_BASE_URL", "MIMO_MODEL")) out.push("mimo");
-  if (has(env, "OPENROUTER_API_KEY")) out.push("openrouter");
   if (has(env, "OMNIROUTE_API_KEY", "OMNIROUTE_BASE_URL")) {
     out.push("vour-high");
     out.push("vour-lite");
@@ -61851,11 +61847,17 @@ var CaptureQueue = class {
     return limit ? parseInt(limit, 10) : 2;
   }
   async getBrowser() {
+    if (this.browser && !this.browser.isConnected()) {
+      this.browser = null;
+    }
     if (!this.browser) {
       const { chromium } = await import("playwright");
       this.browser = await chromium.launch({
         headless: true,
         args: ["--disable-dev-shm-usage", "--no-sandbox"]
+      });
+      this.browser.on("disconnected", () => {
+        this.browser = null;
       });
     }
     return this.browser;
@@ -72531,9 +72533,9 @@ var outroSlide = external_exports.object({
 });
 var slideSchema = external_exports.discriminatedUnion("role", [coverSlide, pointSlide, outroSlide]);
 var slidePlanSchema = external_exports.object({
-  title: external_exports.string(),
-  caption: external_exports.string(),
-  hashtags: external_exports.array(external_exports.string()),
+  title: external_exports.string().min(1).max(90),
+  caption: external_exports.string().min(1).max(2200),
+  hashtags: external_exports.array(external_exports.string().min(1).max(30)).length(5),
   slides: external_exports.array(slideSchema).min(1)
 });
 
@@ -72805,9 +72807,29 @@ function sanitizeCustomHtml(html) {
 var ICON_ALLOWLIST = ICON_SLUGS.join(", ");
 var ILLUSTRATION_CATALOG = Object.entries(ILLUSTRATION_CATEGORIES).map(([cat, slugs]) => `${cat} -> ${slugs.join(" | ")}`).join("\n  ");
 var TONES = `"peach" (neutral) | "stone" (loser/warning) | "mint" (success) | "sky" (tooling) | "pink" (design) | "amber" (highlight)`;
-var HASHTAG_RULE = `Hashtags: EXACTLY 5 \u2014 TikTok accepts at most 5 hashtags, never more, never fewer.
+var HASHTAG_RULE = `Hashtags: EXACTLY 5 \u2014 TikTok accepts at most 5 hashtags, never more, never fewer. This is a HARD schema constraint (an array of any other length is REJECTED, not truncated).
 Fixed shape: "fyp" first, 3 topic-specific tags in the middle, "vourdev" last.
-Example: fyp, backend, nodejs, database, vourdev. No "#" inside array values.`;
+Each tag: \u2264 30 characters, lowercase, no spaces, no punctuation, no "#" inside array values.
+The 3 middle tags MUST be drawn from the deck's actual subject matter (the tech, the
+problem, the domain) \u2014 never generic filler like "tips", "coding", "programming", "developer".
+Example: fyp, backend, nodejs, database, vourdev.`;
+var TITLE_CAPTION_RULE = `TITLE (schema-enforced: non-empty, \u2264 90 characters)
+- Bahasa Indonesia, descriptive, states the deck's actual value proposition.
+- This is the deck's LIBRARY name, not the cover headline. Do NOT copy the cover
+  headline verbatim \u2014 the cover teases, the title describes.
+- Plain text only: no emoji, no hashtags, no surrounding quotes, no trailing period.
+- Front-load the subject: "N+1 Query di Prisma" beats "Cara Mengatasi Masalah Yang..."
+
+CAPTION (schema-enforced: non-empty, \u2264 2200 characters)
+Always the SAME four-part shape, in this order \u2014 never omit a part, never reorder:
+  1. HOOK \u2014 one line, the problem or misconception. May open with ONE emoji.
+  2. (blank line)
+  3. TAKEAWAYS \u2014 3-5 bullets, each starting "\u2022 ", one slide insight each, \u2264 100 chars per bullet.
+  4. (blank line)
+  5. CTA \u2014 one line asking for a save/share/comment, phrased as a concrete ask.
+- Muhammad's voice throughout (see VOICE rules): "lo"/"kamu", casual, opinionated.
+- NEVER put hashtags in the caption. Hashtags are a separate field and get appended
+  by the publisher \u2014 writing them here duplicates them in the live post.`;
 var MOCKUP_BUDGETS = `- Terminal: filename + 4-6 code lines max (\u2264 45 chars per line).
 - Comparison: loser label/line vs winner label/line (\u2264 50 chars each).
 - Steps: 2-4 numbered steps (step title \u2264 35 chars, step body \u2264 55 chars).
@@ -73413,7 +73435,9 @@ Kesimpulan
 ---
 
 # Caption
-<Informative & comprehensive caption in Bahasa Indonesia: starts with an engaging hook line with emoji, provides a clear overview of the topic, lists key slide takeaways as bullet points, and ends with a clear Call To Action (Save, Share & Comment).>
+<Bahasa Indonesia, EXACTLY four parts in this order \u2014 hook line (may open with ONE emoji),
+blank line, 3-5 "\u2022 " takeaway bullets, blank line, CTA line (save/share/comment).
+No hashtags anywhere in the caption.>
 
 # Hashtag
 #fyp #<topic1> #<topic2> #<topic3> #vourdev
@@ -73423,14 +73447,16 @@ Every icon MUST be one of: ${ICON_ALLOWLIST}. Never invent an icon name; if unsu
 
 STRICT DESIGN & COPY BUDGET RULES
 1. Always write concise, punchy, highly informative Bahasa Indonesia.
-2. Title MUST be informative, descriptive, and clearly convey the main value proposition.
+2. Title and caption follow this exact spec \u2014 no deviation:
+${TITLE_CAPTION_RULE}
 3. Copy caps:
 ${COPY_CAPS}
 4. EVERY middle slide MUST specify a Mockup Type AND detailed Mockup Details. NEVER leave a slide without a mockup specification.
 5. VARY mockup types across slides \u2014 pick by content fit; NEVER the same type on consecutive slides; \u2265 3 distinct types per deck; Terminal at most ONCE and only for real code/CLI/config.
 6. Mockup content budgets:
 ${MOCKUP_BUDGETS}
-7. Caption MUST be detailed and informative: strong hook, key takeaway bullets, and a Call-To-Action (Save & Share).
+7. Caption follows the four-part shape specified in rule 2 above \u2014 hook, blank line,
+   3-5 "\u2022 " bullets, blank line, CTA. Same shape every deck.
 8. ${HASHTAG_RULE}
 9. Include Visual Direction (icon slug + tone) per slide, using the real tone palette: ${TONES}.
 10. FINAL PASS (mandatory): re-read every headline, description, highlight, and the caption
@@ -73612,8 +73638,12 @@ ${MOCKUP_BUDGETS}
    (terminal + commandpalette) MAX 1 per 5 slides combined, browser MAX 1 per deck.
    Every deck MUST use \u2265 5 distinct mockup types and must NEVER repeat a type on
    consecutive slides (nor the same category-visual twice running).
-5. Title MUST be highly informative, descriptive, and engaging.
-6. Caption MUST be comprehensive and detailed (hook, key takeaway bullets, and a CTA to save/share).
+5. Title and caption follow this exact spec \u2014 the schema REJECTS empty or oversized
+   values, and a rejection burns a retry attempt, so get them right the first time:
+${TITLE_CAPTION_RULE}
+6. The brief you were given already contains a "# Caption" section. Carry its substance
+   over into the caption field, reshaped to the four-part structure above \u2014 do not
+   invent an unrelated caption, and do not paste the brief's Markdown headings.
 7. ${HASHTAG_RULE}
 8. Rotate tone colors across slides: ${TONES}.
 9. FINAL PASS (mandatory): re-read every eyebrow, headline, lede, body, mockup string, the
@@ -73819,9 +73849,12 @@ WHAT YOU RETURN
   for \u2014 if a field is a target, give it a new value.
 
 FIELD RULES
-- title: the deck's own title. Informative and specific, not a slogan.
-- caption: the Instagram/TikTok caption. Muhammad's voice, ends with a save/share nudge.
+${TITLE_CAPTION_RULE}
+
 - hashtags: ${HASHTAG_RULE}
+
+A revision changes what the user asked to change. It does NOT change the shape: a revised
+caption still comes back as hook / blank / 3-5 "\u2022 " bullets / blank / CTA.
 
 ${SCOPED_REVISION_RULES}`;
 function scopedGlobalRevisePrompt(planJson, fields, message, history = []) {
@@ -74098,9 +74131,9 @@ async function reviseTargetSlides(plan, scope, message, model, history) {
 }
 async function reviseGlobalFields(plan, scope, message, model, history) {
   const shape = {};
-  if (scope.globals.includes("title")) shape.title = external_exports.string();
-  if (scope.globals.includes("caption")) shape.caption = external_exports.string();
-  if (scope.globals.includes("hashtags")) shape.hashtags = external_exports.array(external_exports.string()).length(5);
+  if (scope.globals.includes("title")) shape.title = external_exports.string().min(1).max(90);
+  if (scope.globals.includes("caption")) shape.caption = external_exports.string().min(1).max(2200);
+  if (scope.globals.includes("hashtags")) shape.hashtags = external_exports.array(external_exports.string().min(1).max(30)).length(5);
   const schema = external_exports.object(shape);
   const prompt = scopedGlobalRevisePrompt(JSON.stringify(plan), scope.globals, message, history);
   return withRetry(async () => {
@@ -74308,14 +74341,14 @@ async function appendRevision(input) {
     createdAt: now2
   };
 }
-async function listRevisions(userId, draftId, stage) {
+async function listRevisions(userId2, draftId, stage) {
   await ensureSchema();
   const res = await db().execute({
     sql: `SELECT * FROM revision_memory
           WHERE user_id = ? AND draft_id = ?${stage ? " AND stage = ?" : ""}
           ORDER BY rowid DESC
           LIMIT ?`,
-    args: stage ? [userId, draftId, stage, MAX_REMEMBERED_TURNS] : [userId, draftId, MAX_REMEMBERED_TURNS]
+    args: stage ? [userId2, draftId, stage, MAX_REMEMBERED_TURNS] : [userId2, draftId, MAX_REMEMBERED_TURNS]
   });
   return res.rows.map(rowToTurn).reverse();
 }
@@ -74652,8 +74685,8 @@ async function warmUpIllustrations() {
   if (warmUpPromise) return warmUpPromise;
   warmUpPromise = (async () => {
     try {
-      const db4 = getDbClient();
-      const res = await db4.execute("SELECT slug, variant, svg FROM illustrations");
+      const db5 = getDbClient();
+      const res = await db5.execute("SELECT slug, variant, svg FROM illustrations");
       for (const row of res.rows) {
         const slug = String(row.slug);
         const variant = String(row.variant);
@@ -76842,6 +76875,13 @@ async function uploadImage(base64Data) {
   });
   return response.secure_url;
 }
+function toTikTokSafeUrl(url2) {
+  const marker25 = "/upload/";
+  const idx = url2.indexOf(marker25);
+  if (idx === -1) return url2;
+  const insertAt = idx + marker25.length;
+  return `${url2.slice(0, insertAt)}c_limit,w_1280,h_1600/${url2.slice(insertAt)}`;
+}
 
 // src/lib/publish/buffer.ts
 async function scheduleBufferPost(params) {
@@ -76872,7 +76912,7 @@ async function scheduleBufferPost(params) {
     dueAt: params.dueAt,
     saveToDraft: false,
     assets: params.assets.map((url2) => ({
-      image: { url: url2 }
+      image: { url: params.isTikTok ? toTikTokSafeUrl(url2) : url2 }
     }))
   };
   if (params.isTikTok) {
@@ -76923,55 +76963,16 @@ async function scheduleBufferPost(params) {
   return id;
 }
 
-// src/routes/user/publish.ts
-var app6 = new Hono2();
-app6.post("/upload", async (c) => {
-  const { image } = await c.req.json();
-  if (!image) {
-    return c.json({ error: "Missing image base64" }, 400);
-  }
-  const secureUrl = await uploadImage(image);
-  return c.json({ url: secureUrl });
-});
-app6.post("/schedule", async (c) => {
-  const { urls, plan, dueAt } = await c.req.json();
-  if (!urls || !plan || !dueAt) {
-    return c.json({ error: "Missing urls, plan or dueAt" }, 400);
-  }
-  const igChannelId = process.env.BUFFER_IG_CHANNEL_ID;
-  const ttChannelId = process.env.BUFFER_TIKTOK_CHANNEL_ID;
-  if (!igChannelId && !ttChannelId) {
-    return c.json(
-      { error: "Neither BUFFER_IG_CHANNEL_ID nor BUFFER_TIKTOK_CHANNEL_ID is configured in the environment" },
-      500
-    );
-  }
-  const hashtagsStr = plan.hashtags.map((h) => h.startsWith("#") ? h : `#${h}`).join(" ");
-  const text2 = plan.caption ? `${plan.caption}
+// src/lib/publish/caption.ts
+function buildPostText(caption, hashtags) {
+  const tags = (hashtags ?? []).map((h) => h.trim()).filter(Boolean).map((h) => h.startsWith("#") ? h : `#${h}`).join(" ");
+  const body = (caption ?? "").trim();
+  if (!body) return tags;
+  if (!tags) return body;
+  return `${body}
 
-${hashtagsStr}` : hashtagsStr;
-  const results = {};
-  if (igChannelId) {
-    results.igPostId = await scheduleBufferPost({
-      channelId: igChannelId,
-      text: text2,
-      assets: urls,
-      dueAt
-    });
-  }
-  if (ttChannelId) {
-    results.ttPostId = await scheduleBufferPost({
-      channelId: ttChannelId,
-      text: text2,
-      assets: urls,
-      dueAt,
-      isTikTok: true,
-      title: plan.title
-    });
-  }
-  return c.json(results);
-});
-var publish_default = app6;
+${tags}`;
+}
 
 // src/lib/history/repo.ts
 import { createClient as createClient4 } from "@libsql/client";
@@ -77093,25 +77094,520 @@ async function updateCarousel(id, patch) {
   args.push(id);
   await db2().execute({ sql: `UPDATE carousels SET ${sets.join(", ")} WHERE id = ?`, args });
 }
-async function getCarousel(id, userId) {
+async function getCarousel(id, userId2) {
   await ensureSchema2();
   const res = await db2().execute({
     sql: `SELECT * FROM carousels WHERE id = ? AND user_id = ?`,
-    args: [id, userId]
+    args: [id, userId2]
   });
   return res.rows[0] ? rowToCarousel(res.rows[0]) : null;
 }
 
+// src/routes/user/publish.ts
+var app6 = new Hono2();
+async function scheduleToChannels(params) {
+  const igChannelId = process.env.BUFFER_IG_CHANNEL_ID;
+  const ttChannelId = process.env.BUFFER_TIKTOK_CHANNEL_ID;
+  const results = {};
+  if (igChannelId) {
+    results.igPostId = await scheduleBufferPost({
+      channelId: igChannelId,
+      text: params.text,
+      assets: params.assets,
+      dueAt: params.dueAt
+    });
+  }
+  if (ttChannelId) {
+    results.ttPostId = await scheduleBufferPost({
+      channelId: ttChannelId,
+      text: params.text,
+      assets: params.assets,
+      dueAt: params.dueAt,
+      isTikTok: true,
+      title: params.title
+    });
+  }
+  return results;
+}
+function hasChannels() {
+  return Boolean(process.env.BUFFER_IG_CHANNEL_ID || process.env.BUFFER_TIKTOK_CHANNEL_ID);
+}
+app6.post("/upload", async (c) => {
+  const { image } = await c.req.json();
+  if (!image) {
+    return c.json({ error: "Missing image base64" }, 400);
+  }
+  const secureUrl = await uploadImage(image);
+  return c.json({ url: secureUrl });
+});
+app6.post("/schedule", async (c) => {
+  const { urls, plan, dueAt } = await c.req.json();
+  if (!urls || !plan || !dueAt) {
+    return c.json({ error: "Missing urls, plan or dueAt" }, 400);
+  }
+  if (!hasChannels()) {
+    return c.json(
+      { error: "Neither BUFFER_IG_CHANNEL_ID nor BUFFER_TIKTOK_CHANNEL_ID is configured in the environment" },
+      500
+    );
+  }
+  const results = await scheduleToChannels({
+    text: buildPostText(plan.caption, plan.hashtags),
+    title: plan.title,
+    assets: urls,
+    dueAt
+  });
+  return c.json(results);
+});
+app6.post("/carousel", async (c) => {
+  const session = c.get("session");
+  const { carouselId, dueAt } = await c.req.json();
+  if (!carouselId || !dueAt) {
+    return c.json({ error: "Missing carouselId or dueAt" }, 400);
+  }
+  const carousel = await getCarousel(carouselId, session.user.id);
+  if (!carousel) {
+    return c.json({ error: "Carousel not found" }, 404);
+  }
+  if (!carousel.imageUrls || carousel.imageUrls.length === 0) {
+    return c.json({ error: "Carousel has no exported slides" }, 400);
+  }
+  if (!hasChannels()) {
+    return c.json(
+      { error: "Neither BUFFER_IG_CHANNEL_ID nor BUFFER_TIKTOK_CHANNEL_ID is configured in the environment" },
+      500
+    );
+  }
+  const results = await scheduleToChannels({
+    text: buildPostText(carousel.caption, carousel.hashtags),
+    title: carousel.title,
+    assets: carousel.imageUrls,
+    dueAt
+  });
+  await updateCarousel(carouselId, {
+    status: "scheduled",
+    bufferIgId: results.igPostId || null,
+    bufferTtId: results.ttPostId || null,
+    dueAt
+  });
+  return c.json(results);
+});
+var publish_default = app6;
+
+// src/lib/topics/bank.ts
+import { createClient as createClient5 } from "@libsql/client";
+var clientInstance = null;
+function db3() {
+  if (!clientInstance) {
+    clientInstance = createClient5({
+      url: process.env.DATABASE_URL ?? "file:local-auth.db",
+      authToken: process.env.DATABASE_AUTH_TOKEN
+    });
+  }
+  return clientInstance;
+}
+var TOPICS_SCHEMA = `
+CREATE TABLE IF NOT EXISTS topics (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  category TEXT NOT NULL,
+  description TEXT,
+  keywords TEXT NOT NULL,
+  angle TEXT,
+  status TEXT NOT NULL DEFAULT 'idea',
+  priority INTEGER NOT NULL DEFAULT 0,
+  scheduled_date TEXT,
+  carousel_id TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+)`;
+var schemaEnsured = false;
+async function ensureSchema3() {
+  if (schemaEnsured) return;
+  await db3().execute(TOPICS_SCHEMA);
+  schemaEnsured = true;
+}
+function rowToTopic(row) {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    title: row.title,
+    category: row.category,
+    description: row.description,
+    keywords: JSON.parse(row.keywords),
+    angle: row.angle,
+    status: row.status,
+    priority: row.priority,
+    scheduledDate: row.scheduled_date,
+    carouselId: row.carousel_id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+async function createTopic(data) {
+  await ensureSchema3();
+  const now2 = Date.now();
+  const id = `topic_${now2}_${Math.random().toString(36).substring(2, 9)}`;
+  await db3().execute({
+    sql: `INSERT INTO topics (id, user_id, title, category, description, keywords, angle, status, priority, scheduled_date, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [
+      id,
+      data.userId,
+      data.title,
+      data.category,
+      data.description || null,
+      JSON.stringify(data.keywords || []),
+      data.angle || null,
+      "idea",
+      data.priority || 0,
+      data.scheduledDate || null,
+      now2,
+      now2
+    ]
+  });
+  const res = await db3().execute({
+    sql: `SELECT * FROM topics WHERE id = ?`,
+    args: [id]
+  });
+  if (!res.rows[0]) throw new Error("Failed to create topic");
+  return rowToTopic(res.rows[0]);
+}
+async function updateTopic(id, userId2, data) {
+  await ensureSchema3();
+  const updates = [];
+  const args = [];
+  if (data.title !== void 0) {
+    updates.push("title = ?");
+    args.push(data.title);
+  }
+  if (data.category !== void 0) {
+    updates.push("category = ?");
+    args.push(data.category);
+  }
+  if (data.description !== void 0) {
+    updates.push("description = ?");
+    args.push(data.description);
+  }
+  if (data.keywords !== void 0) {
+    updates.push("keywords = ?");
+    args.push(JSON.stringify(data.keywords));
+  }
+  if (data.angle !== void 0) {
+    updates.push("angle = ?");
+    args.push(data.angle);
+  }
+  if (data.status !== void 0) {
+    updates.push("status = ?");
+    args.push(data.status);
+  }
+  if (data.priority !== void 0) {
+    updates.push("priority = ?");
+    args.push(data.priority);
+  }
+  if (data.scheduledDate !== void 0) {
+    updates.push("scheduled_date = ?");
+    args.push(data.scheduledDate);
+  }
+  if (data.carouselId !== void 0) {
+    updates.push("carousel_id = ?");
+    args.push(data.carouselId);
+  }
+  updates.push("updated_at = ?");
+  args.push(Date.now());
+  args.push(id, userId2);
+  await db3().execute({
+    sql: `UPDATE topics SET ${updates.join(", ")} WHERE id = ? AND user_id = ?`,
+    args
+  });
+}
+async function getTopics(userId2, filters) {
+  await ensureSchema3();
+  let sql2 = `SELECT * FROM topics WHERE user_id = ?`;
+  const args = [userId2];
+  if (filters?.status) {
+    sql2 += ` AND status = ?`;
+    args.push(filters.status);
+  }
+  if (filters?.category) {
+    sql2 += ` AND category = ?`;
+    args.push(filters.category);
+  }
+  sql2 += ` ORDER BY priority DESC, created_at DESC`;
+  if (filters?.limit) {
+    sql2 += ` LIMIT ?`;
+    args.push(filters.limit);
+  }
+  const res = await db3().execute({ sql: sql2, args });
+  return res.rows.map(rowToTopic);
+}
+async function getTopic(id, userId2) {
+  await ensureSchema3();
+  const res = await db3().execute({
+    sql: `SELECT * FROM topics WHERE id = ? AND user_id = ?`,
+    args: [id, userId2]
+  });
+  return res.rows[0] ? rowToTopic(res.rows[0]) : null;
+}
+async function deleteTopic(id, userId2) {
+  await ensureSchema3();
+  await db3().execute({
+    sql: `DELETE FROM topics WHERE id = ? AND user_id = ?`,
+    args: [id, userId2]
+  });
+}
+
+// src/lib/topics/schema.ts
+var TOPIC_CATEGORIES = [
+  "ai-workflow",
+  "developer-tools",
+  "automation",
+  "nextjs",
+  "angular",
+  "productivity",
+  "tutorial",
+  "common-mistakes",
+  "case-study",
+  "deep-dive"
+];
+var categoryField = external_exports.string().transform((raw2) => {
+  const slug = raw2.trim().toLowerCase();
+  return TOPIC_CATEGORIES.includes(slug) ? slug : "tutorial";
+}).pipe(external_exports.enum(TOPIC_CATEGORIES));
+var generatedTopicSchema = external_exports.object({
+  title: external_exports.string().min(4).max(120),
+  category: categoryField,
+  description: external_exports.string().max(500),
+  keywords: external_exports.array(external_exports.string()).min(1).max(6),
+  angle: external_exports.string().max(120),
+  priority: external_exports.number().int().min(1).max(10).catch(5)
+});
+var generatedTopicListSchema = external_exports.object({
+  topics: external_exports.array(generatedTopicSchema).min(1)
+});
+
+// src/lib/topics/generator.ts
+var VOUR_CONTEXT = `
+Brand: Vour (vour.dev)
+Creator: Muhammad Adhinugroho
+Positioning: Building AI workflows, developer tools, automation, and digital products.
+
+Target Audience: Junior/Mid developers (learning-focused)
+Content Focus: 80% coding/AI/automation/productivity, 20% setup/gadgets
+Tech Stack: Next.js, React, TypeScript, Prisma, PostgreSQL, AI workflows
+Content Style: Educational carousel content (Instagram & TikTok)
+Tone: Casual Indonesian, first-person "saya", senior-dev-to-junior, sedikit opinionated
+North Star: "Developer yang builds AI workflows, tools, dan automation yang save people time."
+`;
+var TOPIC_GENERATION_SYSTEM = `You are a content strategist for Vour, an educational tech content brand targeting junior/mid developers in Indonesia.
+
+${VOUR_CONTEXT}
+
+Your task: generate carousel content topics that are:
+1. Educational & practical (solve real problems)
+2. Engaging for TikTok/Instagram audience (clickable titles)
+3. Aligned with Vour's positioning (AI workflows, developer tools, automation)
+4. Specific enough to fit an 8-slide carousel with clear learning outcomes
+5. Written in casual Indonesian tone
+
+Categories: ai-workflow, developer-tools, automation, nextjs, angular, productivity, tutorial, common-mistakes, case-study, deep-dive.
+
+Good title examples:
+- "JWT Itu Bukan Enkripsi" (common misconception)
+- "3 AI Tools yang Save 5 Jam per Minggu" (specific benefit)
+- "Kenapa Middleware Next.js Sering Bikin Bug" (problem-focused)
+- "Docker Compose vs Kubernetes: Kapan Pakai Apa?" (comparison)
+
+For every topic set "angle" like "fokus: Panduan Praktis" / "fokus: Kesalahan Umum" / "fokus: Konsep Mendalam", and "priority" 1-10 (10 = most on-brand + highest engagement potential).`;
+var WEEK_RHYTHM = `Daily rhythm for each week (repeat per week when generating more than 7):
+- Day 1: easy, accessible topic (broad appeal, high shareability)
+- Day 2: tutorial/how-to (practical, actionable)
+- Day 3: common mistakes (engaging, relatable)
+- Day 4: deep-dive technical (for serious learners)
+- Day 5: tools/productivity (weekend prep)
+- Day 6: case study or comparison (analytical)
+- Day 7: myth-busting or concept explanation (educational)
+Never repeat the same category on consecutive days. Balance trending topics with evergreen content.`;
+async function researchCurrentTrends(focusArea) {
+  const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+  if (!apiKey) return null;
+  try {
+    const google2 = createGoogle({ apiKey });
+    const { text: text2 } = await generateText({
+      model: google2("gemini-2.5-flash"),
+      tools: { google_search: google2.tools.googleSearch({}) },
+      prompt: `Search the web for what is happening RIGHT NOW (this week/month) in the developer world relevant to: ${focusArea}.
+Summarize in 8-12 concise bullets: new releases, breaking changes, trending tools/frameworks, viral dev discussions, and common pain points being talked about. Include names + versions where relevant. Plain text bullets only.`
+    });
+    return text2.trim() || null;
+  } catch (err) {
+    console.error("trend research failed (continuing without it):", err);
+    return null;
+  }
+}
+async function generateTopicBatch(model, options) {
+  const { mode, count } = options;
+  const focusArea = options.focusArea || "trending developer topics and common learning gaps for junior/mid developers";
+  const researchContext = options.research ? await researchCurrentTrends(focusArea) : null;
+  const sections = [
+    `Generate EXACTLY ${count} carousel content topics for Vour.`,
+    options.category ? `Focus ONLY on category: ${options.category}` : "Mix categories based on Vour's content strategy (80% technical, 20% productivity/tools).",
+    `Focus Area: ${focusArea}`,
+    mode !== "ideas" ? `These topics form a ${mode === "weekly" ? "1-week (7 days)" : "4-week (28 days)"} daily posting calendar, in day order.
+${WEEK_RHYTHM}` : "These are backlog ideas \u2014 optimize for variety and evergreen value.",
+    researchContext ? `CURRENT TRENDS & NEWS (from live web research \u2014 ground at least half of the topics in these):
+${researchContext}` : "",
+    options.directives ? `ADDITIONAL QUALITY DIRECTIVES from the user (MUST follow):
+${options.directives}` : "",
+    `Every title must be catchy & clickable in Indonesian. No duplicate or near-duplicate topics.`
+  ].filter(Boolean);
+  const { object: object3 } = await generateObject({
+    model,
+    schema: generatedTopicListSchema,
+    system: TOPIC_GENERATION_SYSTEM,
+    prompt: sections.join("\n\n")
+  });
+  return object3.topics.slice(0, count);
+}
+async function expandTopicToBrief(topic, model) {
+  const idea = [
+    `Topik: ${topic.title}`,
+    `Kategori: ${topic.category}`,
+    topic.description ? `Deskripsi: ${topic.description}` : "",
+    topic.angle ? `Angle: ${topic.angle}` : "",
+    topic.keywords?.length ? `Keywords: ${topic.keywords.join(", ")}` : ""
+  ].filter(Boolean).join("\n");
+  return generateBrief(idea, model);
+}
+
+// src/lib/topics/schedule.ts
+var MODE_COUNTS = {
+  weekly: 7,
+  monthly: 28
+  // 4 full weeks — keeps one topic/day without month-length edge cases
+};
+function scheduleDates(mode, start, count) {
+  if (mode === "ideas") return Array.from({ length: count }, () => void 0);
+  const base = new Date(start);
+  base.setHours(0, 0, 0, 0);
+  return Array.from({ length: count }, (_, i) => {
+    const d = new Date(base);
+    d.setDate(d.getDate() + i);
+    return d.toISOString();
+  });
+}
+
+// src/lib/topics/service.ts
+async function generateAndSaveTopics(userId2, model, input) {
+  const mode = input.mode;
+  const count = mode === "ideas" ? Math.min(Math.max(input.count ?? 7, 1), 31) : MODE_COUNTS[mode];
+  const generated = await generateTopicBatch(model, {
+    mode,
+    count,
+    category: input.category,
+    focusArea: input.focusArea,
+    directives: input.directives,
+    research: input.research
+  });
+  const start = input.startDate ? new Date(input.startDate) : /* @__PURE__ */ new Date();
+  const dates = scheduleDates(mode, start, generated.length);
+  const saved = [];
+  for (let i = 0; i < generated.length; i++) {
+    const t = generated[i];
+    saved.push(
+      await createTopic({
+        userId: userId2,
+        title: t.title,
+        category: t.category,
+        description: t.description,
+        keywords: t.keywords,
+        angle: t.angle,
+        priority: t.priority,
+        scheduledDate: dates[i]
+      })
+    );
+  }
+  return saved;
+}
+
+// src/routes/user/topics.ts
+var app7 = new Hono2();
+function userId(c) {
+  return c.get("session").user.id;
+}
+app7.get("/", async (c) => {
+  const status = c.req.query("status");
+  const category = c.req.query("category");
+  const limitRaw = c.req.query("limit");
+  const limit = limitRaw ? Number(limitRaw) : void 0;
+  const topics = await getTopics(userId(c), {
+    status,
+    category,
+    limit: Number.isFinite(limit) ? limit : void 0
+  });
+  return c.json({ topics });
+});
+app7.post("/", async (c) => {
+  const body = await c.req.json();
+  if (!body?.title?.trim()) {
+    return c.json({ error: "Missing title" }, 400);
+  }
+  const topic = await createTopic({ ...body, userId: userId(c) });
+  return c.json({ topic });
+});
+app7.patch("/:id", async (c) => {
+  const patch = await c.req.json();
+  const topic = await updateTopic(c.req.param("id"), userId(c), patch);
+  return c.json({ topic });
+});
+app7.delete("/:id", async (c) => {
+  await deleteTopic(c.req.param("id"), userId(c));
+  return c.json({ success: true });
+});
+app7.post("/generate", async (c) => {
+  const input = await c.req.json();
+  if (!["ideas", "weekly", "monthly"].includes(input?.mode)) {
+    return c.json({ error: `Invalid mode "${input?.mode}" \u2014 use ideas | weekly | monthly` }, 400);
+  }
+  const modelId = defaultModel();
+  if (!modelId) {
+    return c.json({ error: "No AI model API keys configured in .env" }, 500);
+  }
+  const topics = await generateAndSaveTopics(userId(c), resolveModel(modelId), input);
+  return c.json({ topics, count: topics.length });
+});
+app7.post("/:id/brief", async (c) => {
+  const { modelId } = await c.req.json().catch(() => ({}));
+  const id = c.req.param("id");
+  const topic = await getTopic(id, userId(c));
+  if (!topic) {
+    return c.json({ error: "Topic not found" }, 404);
+  }
+  const resolved = modelId ?? defaultModel();
+  if (!resolved) {
+    return c.json({ error: "No AI model API keys configured in .env" }, 500);
+  }
+  const brief = await expandTopicToBrief(topic, resolveModel(resolved));
+  return c.json({ brief });
+});
+var topics_default = app7;
+
 // src/routes/automation/generate.ts
 init_db();
 init_esm();
-var app7 = new Hono2();
-var db3 = new Kysely({ dialect });
+var app8 = new Hono2();
+var db4 = new Kysely({ dialect });
+async function resolveUserId() {
+  const user = await db4.selectFrom("user").select("id").limit(1).executeTakeFirst();
+  return user?.id ?? null;
+}
 async function createAndPublishCarousel({
   topic,
   angleInstruction,
   dueAt,
-  userId,
+  userId: userId2,
   modelId,
   resolvedModel,
   channels
@@ -77166,7 +77662,7 @@ async function createAndPublishCarousel({
     imageUrls.push(secureUrl);
   }
   const dbItem = await createCarousel({
-    userId,
+    userId: userId2,
     source: "ai",
     title: plan.title,
     caption: plan.caption,
@@ -77177,10 +77673,7 @@ async function createAndPublishCarousel({
     thumbnail: imageUrls[0] || null,
     imageUrls
   });
-  const hashtagsStr = plan.hashtags.map((h) => h.startsWith("#") ? h : `#${h}`).join(" ");
-  const text2 = plan.caption ? `${plan.caption}
-
-${hashtagsStr}` : hashtagsStr;
+  const text2 = buildPostText(plan.caption, plan.hashtags);
   let igPostId;
   let ttPostId;
   if (channels.igChannelId) {
@@ -77216,7 +77709,7 @@ ${hashtagsStr}` : hashtagsStr;
     ttPostId
   };
 }
-app7.post("/generate", async (c) => {
+app8.post("/generate", async (c) => {
   let body;
   try {
     body = await c.req.json();
@@ -77227,14 +77720,14 @@ app7.post("/generate", async (c) => {
   if (!topic || !topic.trim()) {
     return c.json({ error: "Missing topic or title in request body" }, 400);
   }
-  let userId = null;
+  let userId2 = null;
   try {
-    const user = await db3.selectFrom("user").select("id").limit(1).executeTakeFirst();
-    userId = user?.id;
+    const user = await db4.selectFrom("user").select("id").limit(1).executeTakeFirst();
+    userId2 = user?.id;
   } catch (err) {
     return c.json({ error: `Database user lookup failed: ${err.message}` }, 500);
   }
-  if (!userId) {
+  if (!userId2) {
     return c.json({ error: "No user found in the database. Seed the database first." }, 500);
   }
   const modelId = defaultModel();
@@ -77262,7 +77755,7 @@ app7.post("/generate", async (c) => {
         topic,
         angleInstruction: " (fokus: Panduan Praktis, Tips & Tutorial)",
         dueAt: dueAt1,
-        userId,
+        userId: userId2,
         modelId,
         resolvedModel,
         channels
@@ -77271,7 +77764,7 @@ app7.post("/generate", async (c) => {
         topic,
         angleInstruction: " (fokus: Kesalahan Umum, Mitos, Studi Kasus & Konsep Mendalam)",
         dueAt: dueAt2,
-        userId,
+        userId: userId2,
         modelId,
         resolvedModel,
         channels
@@ -77287,7 +77780,41 @@ app7.post("/generate", async (c) => {
     return c.json({ error: `Automation failed: ${err.message}` }, 500);
   }
 });
-var generate_default = app7;
+app8.get("/topic/next", async (c) => {
+  const userId2 = await resolveUserId().catch(() => null);
+  if (!userId2) {
+    return c.json({ error: "No user found in the database. Seed the database first." }, 500);
+  }
+  const [topic] = await getTopics(userId2, { status: "idea", limit: 1 });
+  if (!topic) {
+    return c.json({ error: "No idea-status topics available in the bank" }, 404);
+  }
+  await updateTopic(topic.id, userId2, { status: "queued" });
+  return c.json({
+    id: topic.id,
+    title: topic.title,
+    category: topic.category,
+    description: topic.description,
+    angle: topic.angle
+  });
+});
+app8.post("/topics/generate", async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  if (!["ideas", "weekly", "monthly"].includes(body?.mode)) {
+    return c.json({ error: `Invalid mode "${body?.mode}" \u2014 use ideas | weekly | monthly` }, 400);
+  }
+  const uid = body.userId ?? await resolveUserId().catch(() => null);
+  if (!uid) {
+    return c.json({ error: "No user found in the database. Seed the database first." }, 500);
+  }
+  const modelId = defaultModel();
+  if (!modelId) {
+    return c.json({ error: "No AI model API keys configured in .env" }, 500);
+  }
+  const topics = await generateAndSaveTopics(uid, resolveModel(modelId), body);
+  return c.json({ success: true, topics, count: topics.length });
+});
+var generate_default = app8;
 
 // src/server.ts
 var userApp = new Hono2();
@@ -77322,6 +77849,7 @@ userApp.route("/api/plan", plan_default);
 userApp.route("/api/assemble", assemble_default);
 userApp.route("/api/capture", capture_default);
 userApp.route("/api/publish", publish_default);
+userApp.route("/api/topics", topics_default);
 userApp.onError((err, c) => {
   console.error("User Server Error:", err);
   return c.json({ error: err.message || "Internal Server Error" }, 500);
