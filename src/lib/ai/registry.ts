@@ -9,14 +9,10 @@ function has(env: NodeJS.ProcessEnv, ...keys: string[]): boolean {
   return keys.every((k) => Boolean(env[k]));
 }
 
-/** Ordered: gemini (free) first, then opt-in providers. */
+/** OmniRoute only — combos already fall back across models internally, so no other provider should be selectable. */
 export function availableModels(env: NodeJS.ProcessEnv = process.env): ModelId[] {
   const out: ModelId[] = [];
-  if (has(env, "GOOGLE_GENERATIVE_AI_API_KEY")) out.push("gemini");
-  if (has(env, "DEEPSEEK_API_KEY")) out.push("deepseek");
-  if (has(env, "MIMO_API_KEY", "MIMO_BASE_URL", "MIMO_MODEL")) out.push("mimo");
-  if (has(env, "OPENROUTER_API_KEY")) out.push("openrouter");
-  
+
   // OmniRoute combos - vour-high (vour-combos) and vour-lite (vour-learning)
   if (has(env, "OMNIROUTE_API_KEY", "OMNIROUTE_BASE_URL")) {
     out.push("vour-high");   // Maps to vour-combos
