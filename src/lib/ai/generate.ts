@@ -309,9 +309,9 @@ async function reviseGlobalFields(
 ): Promise<ScopedPatch> {
   // Built from the scope so the model has no field to fill in that it was not asked for.
   const shape: Record<string, z.ZodTypeAny> = {};
-  if (scope.globals.includes("title")) shape.title = z.string();
-  if (scope.globals.includes("caption")) shape.caption = z.string();
-  if (scope.globals.includes("hashtags")) shape.hashtags = z.array(z.string()).length(5);
+  if (scope.globals.includes("title")) shape.title = z.string().min(1).max(90);
+  if (scope.globals.includes("caption")) shape.caption = z.string().min(1).max(2200);
+  if (scope.globals.includes("hashtags")) shape.hashtags = z.array(z.string().min(1).max(30)).length(5);
   const schema = z.object(shape);
 
   const prompt = scopedGlobalRevisePrompt(JSON.stringify(plan), scope.globals, message, history);

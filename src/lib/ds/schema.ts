@@ -439,9 +439,9 @@ const outroSlide = z.object({
 export const slideSchema = z.discriminatedUnion("role", [coverSlide, pointSlide, outroSlide]);
 
 export const slidePlanSchema = z.object({
-  title: z.string(),
-  caption: z.string(),
-  hashtags: z.array(z.string()),
+  title: z.string().min(1).max(90),
+  caption: z.string().min(1).max(2200),
+  hashtags: z.array(z.string().min(1).max(30)).length(5),
   slides: z.array(slideSchema).min(1),
 });
 
