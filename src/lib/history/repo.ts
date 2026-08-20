@@ -128,7 +128,7 @@ export async function createCarousel(input: CreateCarouselInput): Promise<Carous
   await db().execute({
     sql: `INSERT INTO carousels
       (id, user_id, source, title, caption, hashtags, slide_count, status, model, thumbnail, image_urls, slide_plan, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       id,
       input.userId,
