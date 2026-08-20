@@ -142,7 +142,7 @@ src/
       revision-scope.ts  works out what a revision targets, merges it back, proves
                          nothing else moved
       brief-sections.ts  same idea, for Markdown briefs
-    ds/                  the design system: schema, renderer, 23 mockup templates
+    ds/                  the design system: schema, renderer, 29 mockup templates
       schema.ts          zod contract for a slide plan — the source of truth
       repair.ts          salvages recoverable model slop (runs on every generation)
       assemble.ts        slide plan -> standalone HTML
