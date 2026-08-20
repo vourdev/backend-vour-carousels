@@ -72469,6 +72469,34 @@ var mockupArchitecture = external_exports.object({
   router: external_exports.string().max(20).default("Load Balancer"),
   nodes: external_exports.array(external_exports.string().max(20)).min(2).max(3)
 });
+var mockupDecision = external_exports.object({
+  type: external_exports.literal("decision"),
+  question: external_exports.string().max(60).optional(),
+  options: external_exports.array(
+    external_exports.object({
+      name: external_exports.string().max(22),
+      when: external_exports.string().max(80),
+      tag: external_exports.string().max(14).optional()
+    })
+  ).min(2).max(3),
+  note: external_exports.string().max(90).optional()
+});
+var mockupMythFact = external_exports.object({
+  type: external_exports.literal("mythfact"),
+  myth: external_exports.string().max(90),
+  fact: external_exports.string().max(90),
+  because: external_exports.string().max(110).optional()
+});
+var mockupPitfalls = external_exports.object({
+  type: external_exports.literal("pitfalls"),
+  items: external_exports.array(
+    external_exports.object({
+      text: external_exports.string().max(64),
+      level: external_exports.enum(["low", "mid", "high"]).optional()
+    })
+  ).min(3).max(5),
+  note: external_exports.string().max(90).optional()
+});
 var mockupUnion = external_exports.discriminatedUnion("type", [
   mockupCard,
   mockupTerminal,
@@ -72498,7 +72526,10 @@ var mockupUnion = external_exports.discriminatedUnion("type", [
   mockupLatencyComp,
   mockupConfig,
   mockupStateMachine,
-  mockupArchitecture
+  mockupArchitecture,
+  mockupDecision,
+  mockupMythFact,
+  mockupPitfalls
 ]);
 var mockupSchema = external_exports.preprocess(migrateLegacyIllustration, mockupUnion);
 var coverHookDevice = external_exports.object({
@@ -72570,7 +72601,15 @@ var pointSlide = external_exports.object({
   body: external_exports.string().max(160),
   /** Slide surface: "ink" (full dark) for deck rhythm; absent/"paper" = default cream */
   surface: external_exports.enum(["paper", "ink"]).optional(),
-  layout: external_exports.enum(["standard", "mockup-forward", "split-content", "note-emphasis"]).default("standard").optional(),
+  /**
+   * Composition template. Absent means "renderer's choice" — NOT "standard".
+   *
+   * This carried .default("standard"), which made the field impossible to leave unset:
+   * every plan came out of parsing with an explicit "standard" on every point slide, so
+   * the renderer could not tell a deliberate choice from an omission and the whole deck
+   * fell back to one composition. See resolveLayout in render-slide.ts.
+   */
+  layout: external_exports.enum(["standard", "mockup-forward", "split-content", "note-emphasis"]).optional(),
   /** New: rich mockup component (preferred) */
   mockup: mockupSchema.optional(),
   /** Legacy: simple info card (backward compat — used when mockup is absent) */
@@ -72627,7 +72666,9 @@ var MOCKUP_ARRAY_MAX = {
   latencycomp: { key: "items", max: 3 },
   config: { key: "lines", max: 6 },
   statemachine: { key: "states", max: 4 },
-  architecture: { key: "nodes", max: 3 }
+  architecture: { key: "nodes", max: 3 },
+  decision: { key: "options", max: 3 },
+  pitfalls: { key: "items", max: 5 }
 };
 function stripDashesDeep(v) {
   if (Array.isArray(v)) {
@@ -72693,10 +72734,8 @@ function repairSlidePlan(raw2) {
           if (fixed) s.mockup = fixed;
           else delete s.mockup;
         }
-        if (s.role === "point") {
-          if (!s.layout || !["standard", "mockup-forward", "split-content", "note-emphasis"].includes(s.layout)) {
-            s.layout = "standard";
-          }
+        if (s.role === "point" && s.layout !== void 0 && !["standard", "mockup-forward", "split-content", "note-emphasis"].includes(s.layout)) {
+          delete s.layout;
         }
         if (s.role === "point" && s.surface === "ink" && s.mockup && ALWAYS_DARK_MOCKUPS.has(s.mockup.type)) {
           s.surface = "paper";
@@ -73211,13 +73250,29 @@ plain card, which reads as generic).
 
 CATEGORY \u2192 allowed mockup types (choose by the slide's actual content):
 - STAT_HOOK  (big number / count as a hook)      \u2192 bigstat
-- COMPARISON (X vs Y, before/after, two options) \u2192 comparison \xB7 datatable \xB7 timeline
+- PERF       (latency, throughput, benchmark)    \u2192 latencycomp \xB7 bigstat
+- COMPARISON (X vs Y where one of them wins)     \u2192 comparison \xB7 datatable \xB7 timeline
+- DECISION   (kapan pakai yang mana, 2-3 pilihan, jawabannya tergantung situasi pembaca dan TIDAK ada yang menang) \u2192 decision
+- MYTH       (salah kaprah: "X itu bukan Y", "sering dikira", "ternyata nggak selalu") \u2192 mythfact
+- PITFALL    (daftar kesalahan / tanda bahaya: "5 kesalahan", "7 tanda", "3 alasan kenapa lambat") \u2192 pitfalls
 - PROCESS    (flow / step-by-step / how it works)\u2192 flow \xB7 steps \xB7 concept \xB7 hub \xB7 foldertree \xB7 gitbranch
+- LIFECYCLE  (status that moves: order, payment, job, request) \u2192 statemachine \xB7 flow
+- EVENT_FLOW (queue, pub/sub, async messaging, webhook fan-out) \u2192 eventqueue \xB7 flow
+- API_CONTRACT (endpoint, HTTP verb, status code, request/response body) \u2192 apirequest
+- DATA_MODEL (schema, tables, relations, keys)   \u2192 database \xB7 datatable
+- INFRA      (deployment topology, load balancing, replicas, scaling) \u2192 architecture \xB7 hub
+- CONFIG     (env vars, config files, settings, connection strings) \u2192 config \xB7 terminal \xB7 foldertree
 - ERROR_FIX  (wrong\u2192right, bug, anti-pattern)    \u2192 datatable \xB7 comparison \xB7 terminal (diff-style)
-- CODE_DEMO  (real code / command / config)      \u2192 terminal \xB7 commandlist \xB7 commandpalette \xB7 promptcard \xB7 database
-- EVIDENCE   (a real product / UI you built)     \u2192 browser
+- CODE_DEMO  (real code / command)               \u2192 terminal \xB7 commandlist \xB7 commandpalette \xB7 promptcard
+- EVIDENCE   (a real product / UI you built)     \u2192 browser \xB7 screenshot
+- RECAP      (ringkasan, takeaway, "yang perlu lo inget") \u2192 checklist \xB7 callout
+- WARNING    (one rule or caveat that must stick) \u2192 callout \xB7 quote
 - ABSTRACT   (concept / principle / analogy)     \u2192 illustration \xB7 concept \xB7 hub \xB7 quote \xB7 card \xB7 custom
 - BESPOKE    (a layout none of the above can draw)\u2192 custom (hand-written HTML, structure only \u2014 no styling)
+
+Every mockup type in the catalogue below is reachable from exactly this table. If a slide's
+content fits a category, prefer a type listed for it over re-using a type you already used
+earlier in the deck.
 
 KRITERIA WAJIB mockup: "illustration" \u2014 cek berurutan, begitu SALAH SATU match WAJIB illustration:
 1. Slide TIDAK menampilkan kode/command/terminal output secara langsung, DAN
@@ -73735,6 +73790,15 @@ MOCKUP TYPES \u2014 every "point" slide MUST include a "mockup" object with one 
 29. { type: "architecture", title?: "Network Topology", client: "User Browser", router: "Load Balancer", nodes: ["App Instance 1", "App Instance 2"] }
    \u2192 Architecture/Topology mockup. Use to display simple node deployment architectures, proxy routes, or load balancers distributing requests to multiple backend server instances.
 
+30. { type: "decision", question?: "Pakai yang mana?", options: [{ name: "REST", when: "Client-nya banyak dan butuh caching HTTP standar", tag?: "Default" }, { name: "GraphQL", when: "Satu layar butuh data dari banyak endpoint sekaligus" }], note?: "..." }
+   \u2192 Decision guide, 2-3 options, EACH with the condition that selects it. Use for "kapan pakai yang mana" content: REST vs GraphQL, on-prem vs cloud, /24 vs /29 vs /30, monolith vs microservices, Docker atau nggak. Pick this over "comparison" whenever the honest answer is "tergantung" \u2014 comparison paints a loser and a winner, and this one deliberately does not. It is also the ONLY mockup that can hold a third option.
+
+31. { type: "mythfact", myth: "JWT itu terenkripsi, jadi payload-nya aman", fact: "JWT cuma di-encode base64url, siapa pun bisa baca isinya", because?: "Naruh nomor kartu atau role admin di payload sama saja menaruhnya di public." }
+   \u2192 Myth/fact. Use whenever the slide corrects a misconception: "X itu bukan Y", "sering dikira aman", "ternyata nggak selalu bikin cepat". The myth renders recessive and the fact carries the accent, so the correction is readable before either line is read. Prefer this over "datatable" for myth-busting: datatable cells are terse and paired, and cannot hold a claim, its correction and the reason at once.
+
+32. { type: "pitfalls", items: [{ text: "Query di dalam loop, bukan sekali di luar", level: "high" }, { text: "Nggak ada index di kolom yang di-filter", level: "mid" }, { text: "Log error ditelan diam-diam", level: "low" }], note?: "..." }
+   \u2192 Numbered list of 3-5 mistakes or warning signs, optional level "low" | "mid" | "high" driving a severity stripe. Use for the "N Kesalahan / N Tanda / N Alasan" deck. Do NOT use "checklist" for mistakes: checklist ticks every row with a \u2713, and a tick against a mistake reads as "done".
+
 ${MOCKUP_VARIETY_RULE}
 
 ICON RULES
@@ -73746,14 +73810,38 @@ VARIETY EXAMPLE (a good, non-monotone deck \u2014 mirror this diversity, not the
 - cover (text-only, no hook): eyebrow "AI 101", headline "istilah AI yang wajib lo tau"
   (accentWord "tau"), lede "biar lo gak cuma nge-prompt doang tapi ngerti cara kerjanya.",
   stamp "Engineering Notes", ghostNumeral "01"
-- point \u2192 concept (parent + 2-3 children)
-- point \u2192 flow (3-4 steps, one focus)
-- point \u2192 hub (center + 3-4 tool icons)
-- point \u2192 terminal (only if a real code scene \u2014 max 1)
-- point \u2192 comparison (bad vs good)
-- point \u2192 checklist (recap)
+- point \u2192 concept (parent + 2-3 children), layout "standard"
+- point \u2192 flow (3-4 steps, one focus), layout "note-emphasis" (its note carries the point)
+- point \u2192 hub (center + 3-4 tool icons), layout "split-content"
+- point \u2192 terminal (only if a real code scene \u2014 max 1), layout "mockup-forward"
+- point \u2192 comparison (bad vs good), layout "standard"
+- point \u2192 checklist (recap), layout "standard"
 - outro \u2192 cta { strong: "Simpan & bagikan" }
-Use \u2265 3 distinct mockup types and rotate tone colors across slides.
+
+SECOND VARIETY EXAMPLE (a backend deck \u2014 same deck shape, a completely different type mix.
+Note that NONE of the types below appear in the first example: the catalogue is 29 types wide
+and both of these decks are equally correct):
+- cover (hook nocgrid): eyebrow "INCIDENT", headline "kenapa API lo tumbang jam 2 pagi"
+- point \u2192 apirequest (the 504 the client actually saw), layout "mockup-forward"
+- point \u2192 architecture (load balancer + 2 instances), layout "standard"
+- point \u2192 latencycomp (cache 0.2ms vs db 15ms vs api 120ms), layout "note-emphasis"
+- point \u2192 statemachine (request lifecycle: PENDING \u2192 PROCESSING \u2192 FAILED), layout "standard"
+- point \u2192 config (the pool setting that was wrong), layout "split-content"
+- point \u2192 eventqueue (retry queue that saved it), layout "standard"
+- outro \u2192 cta { strong: "Simpan buat jaga-jaga" }
+
+THIRD VARIETY EXAMPLE (a "kapan pakai yang mana" deck \u2014 the shape that keeps getting
+forced into comparison. Note there is no winner anywhere in it):
+- cover (text-only): eyebrow "PILIH STACK", headline "REST atau GraphQL, kapan pakai yang mana"
+- point \u2192 mythfact (mitos "GraphQL selalu lebih cepat" vs faktanya), layout "standard"
+- point \u2192 decision (REST / GraphQL, masing-masing dengan "pakai kalau"), layout "mockup-forward"
+- point \u2192 pitfalls (3 kesalahan waktu pindah ke GraphQL, level high/mid/low), layout "standard"
+- point \u2192 apirequest (satu contoh response yang over-fetch), layout "mockup-forward"
+- point \u2192 checklist (recap), layout "note-emphasis"
+- outro \u2192 cta { strong: "Simpan buat rapat stack berikutnya" }
+
+Use \u2265 5 distinct mockup types per deck, rotate tone colors, and do not let any example
+above narrow your choice \u2014 pick by the CATEGORY table, not by which types you have seen most.
 
 STRICT DESIGN & COPY BUDGET RULES
 1. Copy caps (accentWord MUST appear verbatim inside the headline):
@@ -74171,6 +74259,25 @@ function enforceMockupForPointSlides(plan) {
 }
 function enforcePlanInvariants(plan) {
   return enforceMockupForPointSlides(enforceIllustrationForAnalogySlides(plan));
+}
+function stripUnfulfillableEvidence(plan) {
+  const slides = plan.slides.map((slide) => {
+    if (slide.role !== "point" || slide.mockup?.type !== "screenshot") return slide;
+    if (slide.mockup.evidenceStatus === "captured" && slide.mockup.screenshotImage?.dataUrl) {
+      return slide;
+    }
+    console.warn(
+      `[evidence-guard] Slide "${slide.eyebrow}" wants a screenshot nobody can upload on this path. Replacing with an illustration.`
+    );
+    return {
+      ...slide,
+      mockup: {
+        type: "illustration",
+        illustrationSlugs: [normalizeIllustration(ILLUSTRATION_FALLBACK_SLUG)]
+      }
+    };
+  });
+  return { ...plan, slides };
 }
 async function generateSlidePlan(brief, model, underusedMockups) {
   const underusedInstruction = underusedMockups && underusedMockups.length > 0 ? `
@@ -74809,7 +74916,10 @@ var ALL_MOCKUP_TYPES = [
   "latencycomp",
   "config",
   "statemachine",
-  "architecture"
+  "architecture",
+  "decision",
+  "mythfact",
+  "pitfalls"
 ];
 async function getRecentMockupStats(userId2, limit = 20) {
   await ensureSchema2();
@@ -74834,9 +74944,11 @@ async function getRecentMockupStats(userId2, limit = 20) {
   }
   return counts;
 }
+var NEVER_PROMOTE = /* @__PURE__ */ new Set(["screenshot", "custom", "browser"]);
 async function getUnderusedMockupTypes(userId2, limit = 25) {
   const stats = await getRecentMockupStats(userId2, limit);
-  return ALL_MOCKUP_TYPES.map((type) => ({ type, count: stats[type] || 0 })).sort((a, b) => a.count - b.count).slice(0, 10).map((x) => x.type);
+  if (Object.keys(stats).length === 0) return [];
+  return ALL_MOCKUP_TYPES.filter((type) => !NEVER_PROMOTE.has(type)).map((type) => ({ type, count: stats[type] || 0 })).sort((a, b) => a.count - b.count).slice(0, 8).map((x) => x.type);
 }
 async function getGlobalMockupStats() {
   await ensureSchema2();
@@ -75430,6 +75542,36 @@ var architectureTemplate = String.raw`<div class="diag-wrap mt-40">
   </div>
 </div>`;
 
+// src/lib/ds/templates/decision.ts
+var decisionTemplate = String.raw`<div class="diag-wrap mt-40">
+    <div class="dec">
+      <div class="dec-q">DEC_Q_INJECT</div>
+      <div class="dec-grid">DEC_OPTS_INJECT</div>
+    </div>
+  </div>
+  NOTE_INJECT`;
+
+// src/lib/ds/templates/mythfact.ts
+var mythFactTemplate = String.raw`<div class="diag-wrap mt-40">
+    <div class="mf">
+      <div class="mf-row mf-myth">
+        <span class="mf-tag">MITOS</span>
+        <span class="mf-text">MF_MYTH_INJECT</span>
+      </div>
+      <div class="mf-row mf-fact">
+        <span class="mf-tag">FAKTANYA</span>
+        <span class="mf-text">MF_FACT_INJECT</span>
+      </div>
+      MF_WHY_INJECT
+    </div>
+  </div>`;
+
+// src/lib/ds/templates/pitfalls.ts
+var pitfallsTemplate = String.raw`<div class="diag-wrap mt-40">
+    <div class="pf">PF_ROWS_INJECT</div>
+  </div>
+  NOTE_INJECT`;
+
 // src/lib/ds/hub-lines.ts
 function diagLines(count, o) {
   const n = count <= 2 ? 2 : count === 3 ? 3 : 4;
@@ -75492,6 +75634,35 @@ function paperClass(slide, slideIndex) {
 }
 function eyebrowClass(slideIndex) {
   return slideIndex % 2 === 0 ? "chip" : "";
+}
+function mockupHasNote(m) {
+  if (!m) return false;
+  if ("note" in m && typeof m.note === "string" && m.note.trim() !== "") return true;
+  if (m.type === "comparison") return Boolean(m.winnerRationale?.trim());
+  if (m.type === "illustration") return Boolean(m.caption?.trim());
+  return false;
+}
+var NARROW_SAFE_MOCKUPS = /* @__PURE__ */ new Set([
+  "card",
+  "callout",
+  "quote",
+  "bigstat",
+  "checklist",
+  "illustration",
+  "promptcard",
+  "concept"
+]);
+function resolveLayout(layout, slideIndex, mockup) {
+  if (!mockup) return "standard";
+  if (layout) {
+    if (layout === "note-emphasis" && !mockupHasNote(mockup)) return "standard";
+    if (layout === "split-content" && !NARROW_SAFE_MOCKUPS.has(mockup.type)) return "standard";
+    return layout;
+  }
+  if (slideIndex % 2 === 1) return "mockup-forward";
+  if (mockupHasNote(mockup)) return "note-emphasis";
+  if (NARROW_SAFE_MOCKUPS.has(mockup.type)) return "split-content";
+  return "standard";
 }
 function renderNote(note) {
   if (!note) return "";
@@ -75805,6 +75976,44 @@ function renderIllustrationMockup(m, variant) {
   const items = m.illustrationSlugs.map((slug) => `<div class="illus-item">${renderIllustration(slug, variant)}</div>`).join("");
   return `<div class="diag-wrap"><div class="diag-illustration"><div class="illustration-group ${sizeClass}">${items}</div>${caption}</div></div>`;
 }
+function renderDecisionMockup(m) {
+  const opts = m.options.map(
+    // Name first, tag second. With the tag above the name, the one option that carries
+    // a tag pushed its name a row lower than the others and the three option names
+    // stopped sharing a baseline — the first thing the eye compares, misaligned.
+    (o) => `<div class="dec-opt">
+        <div class="dec-name">${escapeHtml(o.name)}</div>
+        ${o.tag ? `<span class="dec-tag">${escapeHtml(o.tag)}</span>` : ""}
+        <div class="dec-when-label">Pakai kalau</div>
+        <div class="dec-when">${escapeHtml(o.when)}</div>
+      </div>`
+  ).join("");
+  return injectSentinels(decisionTemplate, {
+    DEC_Q_INJECT: escapeHtml(m.question ?? "Pakai yang mana?"),
+    DEC_OPTS_INJECT: opts,
+    NOTE_INJECT: renderNote(m.note)
+  });
+}
+function renderMythFactMockup(m) {
+  const why = m.because ? `<div class="mf-why"><span class="mf-why-label">Kenapa penting</span>${escapeHtml(m.because)}</div>` : "";
+  return injectSentinels(mythFactTemplate, {
+    MF_MYTH_INJECT: escapeHtml(m.myth),
+    MF_FACT_INJECT: escapeHtml(m.fact),
+    MF_WHY_INJECT: why
+  });
+}
+function renderPitfallsMockup(m) {
+  const rows = m.items.map(
+    (it, i) => `<div class="pf-row pf-${it.level ?? "mid"}">
+        <span class="pf-num">${String(i + 1).padStart(2, "0")}</span>
+        <span class="pf-text">${escapeHtml(it.text)}</span>
+      </div>`
+  ).join("");
+  return injectSentinels(pitfallsTemplate, {
+    PF_ROWS_INJECT: rows,
+    NOTE_INJECT: renderNote(m.note)
+  });
+}
 function renderScreenshotMockup(m) {
   if (m.evidenceStatus === "captured" && m.screenshotImage?.dataUrl) {
     return `<div class="diag-wrap"><div class="diag-screenshot"><img src="${escapeHtml(m.screenshotImage.dataUrl)}" alt="Evidence Screenshot" /></div></div>`;
@@ -75870,6 +76079,12 @@ function renderMockup(m, scopeId, variant) {
       return renderStateMachineMockup(m);
     case "architecture":
       return renderArchitectureMockup(m);
+    case "decision":
+      return renderDecisionMockup(m);
+    case "mythfact":
+      return renderMythFactMockup(m);
+    case "pitfalls":
+      return renderPitfallsMockup(m);
     case "illustration":
       return renderIllustrationMockup(m, variant);
     case "screenshot":
@@ -75944,7 +76159,7 @@ function renderSlide(slide, slideIndex = 0) {
           cardBody: "",
           cardTone: "peach",
           mockupHtml: "",
-          layout: slide.layout || "standard"
+          layout: resolveLayout(slide.layout, slideIndex, mockup)
         });
       }
       if (mockup.type === "card") {
@@ -75961,7 +76176,7 @@ function renderSlide(slide, slideIndex = 0) {
           cardBody: mockup.body,
           cardTone: mockup.tone || "peach",
           mockupHtml: "",
-          layout: slide.layout || "standard"
+          layout: resolveLayout(slide.layout, slideIndex, mockup)
         });
         return filled.replace(
           "ICON_INJECT",
@@ -75984,7 +76199,7 @@ function renderSlide(slide, slideIndex = 0) {
         cardTone: "peach",
         mockupHtml: "1",
         // truthy to activate the block
-        layout: slide.layout || "standard"
+        layout: resolveLayout(slide.layout, slideIndex, mockup)
       });
       return base.replace("MOCKUP_INJECT", () => mockupHtml);
     }
@@ -77188,6 +77403,16 @@ var carouselExtraCss = String.raw`
   .diag-screenshot-source span { color: #B8380E; }
   .diag-screenshot-brief-item { font-size: 22px; line-height: 1.4; color: #7E6153; }
   .diag-screenshot-brief-item strong { color: #1C0A05; }
+  /* Ink counterparts. The whole placeholder was authored for cream and never given a
+     dark variant, so on an Ink slide the badge, the "Target:" line and every bold label
+     were near-black or deep ember on near-black — a brief addressed to a human that the
+     human cannot read. It went unnoticed because no plan could select a screenshot
+     mockup until the type became reachable from the category table. */
+  section:not(.paper) .diag-screenshot-badge { color: #FF7A45; }
+  section:not(.paper) .diag-screenshot-source { color: rgba(247,241,232,0.93); }
+  section:not(.paper) .diag-screenshot-source span { color: #FF7A45; }
+  section:not(.paper) .diag-screenshot-brief-item { color: rgba(247,241,232,0.62); }
+  section:not(.paper) .diag-screenshot-brief-item strong { color: rgba(247,241,232,0.93); }
 
   /* API Request mockup */
   .diag-api-request { width: 100%; background: #FFFFFF; border: 1.5px solid rgba(28,10,5,0.14); border-radius: 20px; overflow: hidden; box-shadow: 0 16px 40px rgba(28,10,5,0.06); }
@@ -77257,6 +77482,12 @@ var carouselExtraCss = String.raw`
   section:not(.paper) .lc-bar-wrap:not(.highlight) .lc-value { color: rgba(247,241,232,0.80); }
   section:not(.paper) .lc-bar-container { background: rgba(247,241,232,0.10); }
   section:not(.paper) .lc-bar-wrap:not(.highlight) .lc-bar { background: rgba(247,241,232,0.40); }
+  /* The highlighted row was the one case the Ink block skipped: every rule above is
+     scoped :not(.highlight), so the winning bar kept its cream-surface label (#B8380E)
+     and value (#EE4B1A) on a dark panel — the row the mockup exists to emphasise was the
+     only one you could not read. Ember-bright is the token for accent on dark. */
+  section:not(.paper) .lc-bar-wrap.highlight .lc-label { color: #FF7A45; }
+  section:not(.paper) .lc-bar-wrap.highlight .lc-value { color: #FF7A45; }
 
   /* Point Slide Layout Variations */
   
@@ -77268,6 +77499,13 @@ var carouselExtraCss = String.raw`
   .layout-mockup-forward .eyebrow { order: 3; margin-top: 40px !important; }
   .layout-mockup-forward h1.compact { order: 4; margin-top: 16px !important; }
   .layout-mockup-forward .body-text { order: 5; margin-top: 16px !important; margin-bottom: 40px !important; }
+  /* The note annotates the mockup, so it has to travel with it. Mockup templates emit
+     .catatan as a SIBLING of .diag-wrap (see flow.ts), and an unordered flex child
+     defaults to order:0 — which sorted it ahead of even the counter and parked the
+     conclusion at the top of the slide, 230px above the diagram it explains. Same order
+     as .diag-wrap keeps the pair together; equal order falls back to DOM order, and the
+     note already follows the mockup there. */
+  .layout-mockup-forward .catatan { order: 2; margin-top: 24px !important; }
 
   /* Split-Content layout: fits columns side-by-side using CSS Grid */
   section.layout-split-content {
@@ -77324,7 +77562,7 @@ var carouselExtraCss = String.raw`
   }
   section.layout-split-content .diag-wrap {
     grid-column: 2;
-    grid-row: 3 / span 2;
+    grid-row: 2 / 4;
     margin-top: 24px !important;
     align-self: start;
     justify-self: center;
@@ -77335,11 +77573,20 @@ var carouselExtraCss = String.raw`
   }
   section.layout-split-content .card {
     grid-column: 2;
-    grid-row: 3 / span 2;
+    grid-row: 2 / 4;
     margin-top: 24px !important;
     align-self: start;
     justify-self: center;
     width: 100%;
+  }
+  /* Explicit placement, because auto-placement put the note in the first free cell —
+     column 2 row 2, i.e. directly ABOVE the mockup it annotates. Row 4 is the tall 1fr
+     row, so the note sits under the diagram in the same column. */
+  section.layout-split-content .catatan {
+    grid-column: 2;
+    grid-row: 4;
+    margin-top: 24px !important;
+    align-self: start;
   }
 
   /* Note-Emphasis layout: highlights the bottom note */
@@ -77424,6 +77671,68 @@ var carouselExtraCss = String.raw`
   section:not(.paper) .arch-split-arrows { color: #FF7A45; }
   section:not(.paper) .arch-status.active { background: rgba(134,201,127,0.15); color: #86C97F; border-color: rgba(134,201,127,0.25); }
   section:not(.paper) .arch-status.standby { background: rgba(176,164,154,0.12); color: #B0A49A; border-color: rgba(176,164,154,0.15); }
+
+  /* ── Decision guide ──────────────────────────────────────────────────────
+     Every option carries the same weight on purpose: this mockup exists for the
+     "kapan pakai yang mana" deck, where the answer is the reader's situation and
+     not one of the columns. No winner tone, no loser tone. */
+  .dec { width: 100%; display: flex; flex-direction: column; gap: 22px; }
+  .dec-q { font-family: 'JetBrains Mono'; font-weight: 700; font-size: 22px; letter-spacing: 0.1em; text-transform: uppercase; color: #B8380E; }
+  .dec-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 18px; }
+  .dec-opt { display: flex; flex-direction: column; gap: 10px; padding: 24px 22px; border: 1.5px solid rgba(28,10,5,0.14); border-radius: 18px; background: #FFFFFF; }
+  .dec-tag { align-self: flex-start; font-family: 'JetBrains Mono'; font-weight: 700; font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 10px; border-radius: 6px; color: #B8380E; background: #FBE9D9; }
+  .dec-name { font-family: 'Sora'; font-weight: 700; font-size: 30px; line-height: 1.15; color: #1C0A05; }
+  .dec-when-label { font-family: 'JetBrains Mono'; font-weight: 700; font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase; color: #7E6153; }
+  .dec-when { font-size: 22px; line-height: 1.4; color: #3D2419; }
+  section:not(.paper) .dec-q { color: #FF7A45; }
+  section:not(.paper) .dec-opt { border-color: #382E25; background: #2B241D; }
+  section:not(.paper) .dec-tag { color: #FF7A45; background: rgba(238,75,26,0.14); }
+  section:not(.paper) .dec-name { color: #FFFFFF; }
+  section:not(.paper) .dec-when-label { color: rgba(247,241,232,0.55); }
+  section:not(.paper) .dec-when { color: rgba(247,241,232,0.82); }
+
+  /* ── Myth / fact ─────────────────────────────────────────────────────────
+     The myth row is deliberately recessive and the fact row carries the accent:
+     the reader should be able to tell which half is the correction without
+     reading either. */
+  .mf { width: 100%; display: flex; flex-direction: column; gap: 16px; }
+  .mf-row { display: flex; gap: 18px; align-items: flex-start; padding: 22px 24px; border-radius: 16px; }
+  .mf-myth { background: rgba(28,10,5,0.05); border: 1.5px solid rgba(28,10,5,0.12); }
+  .mf-fact { background: #FBE9D9; border: 1.5px solid #EE4B1A; }
+  .mf-tag { flex: none; font-family: 'JetBrains Mono'; font-weight: 700; font-size: 15px; letter-spacing: 0.1em; text-transform: uppercase; padding: 6px 10px; border-radius: 6px; }
+  .mf-myth .mf-tag { background: rgba(28,10,5,0.10); color: #7E6153; }
+  .mf-fact .mf-tag { background: #EE4B1A; color: #FFFFFF; }
+  .mf-text { font-size: 25px; line-height: 1.35; font-weight: 500; }
+  .mf-myth .mf-text { color: #7E6153; }
+  .mf-fact .mf-text { color: #1C0A05; }
+  .mf-why { font-size: 21px; line-height: 1.45; color: #3D2419; padding-left: 4px; }
+  .mf-why-label { display: block; font-family: 'JetBrains Mono'; font-weight: 700; font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase; color: #B8380E; margin-bottom: 6px; }
+  section:not(.paper) .mf-myth { background: rgba(247,241,232,0.05); border-color: #382E25; }
+  section:not(.paper) .mf-fact { background: rgba(238,75,26,0.13); border-color: #EE4B1A; }
+  section:not(.paper) .mf-myth .mf-tag { background: rgba(247,241,232,0.10); color: rgba(247,241,232,0.62); }
+  section:not(.paper) .mf-fact .mf-tag { background: #EE4B1A; color: #1C0A05; }
+  section:not(.paper) .mf-myth .mf-text { color: rgba(247,241,232,0.62); }
+  section:not(.paper) .mf-fact .mf-text { color: #FFFFFF; }
+  section:not(.paper) .mf-why { color: rgba(247,241,232,0.78); }
+  section:not(.paper) .mf-why-label { color: #FF7A45; }
+
+  /* ── Pitfalls ────────────────────────────────────────────────────────────
+     Numbered, never ticked. Severity rides the left border only, so the rows stay
+     a list rather than becoming three differently coloured cards. Level rules come
+     after .pf-row so they win the border-left-color they share with it. */
+  .pf { width: 100%; display: flex; flex-direction: column; gap: 12px; }
+  .pf-row { display: flex; align-items: center; gap: 20px; padding: 18px 22px; border-radius: 14px; background: #FFFFFF; border: 1.5px solid rgba(28,10,5,0.14); border-left-width: 6px; }
+  .pf-num { flex: none; font-family: 'JetBrains Mono'; font-weight: 700; font-size: 24px; color: #B8380E; font-variant-numeric: tabular-nums; }
+  .pf-text { font-size: 24px; line-height: 1.35; font-weight: 500; color: #1C0A05; }
+  .pf-low { border-left-color: #7E6153; }
+  .pf-mid { border-left-color: #B8380E; }
+  .pf-high { border-left-color: #EE4B1A; }
+  section:not(.paper) .pf-row { background: #2B241D; border-color: #382E25; }
+  section:not(.paper) .pf-num { color: #FF7A45; }
+  section:not(.paper) .pf-text { color: #FFFFFF; }
+  section:not(.paper) .pf-low { border-left-color: rgba(247,241,232,0.30); }
+  section:not(.paper) .pf-mid { border-left-color: #EE4B1A; }
+  section:not(.paper) .pf-high { border-left-color: #FF7A45; }
 `;
 
 // src/lib/ds/fonts-inline.ts
@@ -78788,7 +79097,7 @@ async function createAndPublishCarousel({
   const ideaWithAngle = `${topic}${angleInstruction}`;
   const brief = await generateBrief(ideaWithAngle, resolvedModel);
   const underused = await getUnderusedMockupTypes(userId2).catch(() => []);
-  const plan = await generateSlidePlan(brief, resolvedModel, underused);
+  const plan = stripUnfulfillableEvidence(await generateSlidePlan(brief, resolvedModel, underused));
   await warmUpIllustrations();
   const html = assembleCarousel(plan);
   const imageBase64s = await captureQueue.capture(async (browser) => {
@@ -78920,44 +79229,48 @@ app9.post("/generate", async (c) => {
   const due2 = new Date(due1.getTime() + 30 * 60 * 1e3);
   const dueAt1 = due1.toISOString();
   const dueAt2 = due2.toISOString();
-  try {
-    const [carousel1, carousel2] = await Promise.all([
-      createAndPublishCarousel({
-        topic,
-        angleInstruction: " (fokus: Panduan Praktis, Tips & Tutorial)",
-        dueAt: dueAt1,
-        userId: userId2,
-        modelId,
-        resolvedModel,
-        channels
-      }),
-      createAndPublishCarousel({
-        topic,
-        angleInstruction: " (fokus: Kesalahan Umum, Mitos, Studi Kasus & Konsep Mendalam)",
-        dueAt: dueAt2,
-        userId: userId2,
-        modelId,
-        resolvedModel,
-        channels
-      })
-    ]);
-    if (body.topicId) {
-      await updateTopic(body.topicId, userId2, {
-        status: "published",
-        carouselId: carousel1.id
-      }).catch((err) => {
-        console.error(`Failed to mark topic ${body.topicId} published:`, err);
-      });
-    }
-    return c.json({
-      success: true,
-      message: "Successfully generated and scheduled 2 carousels to Buffer",
-      carousels: [carousel1, carousel2]
+  const settled = await Promise.allSettled([
+    createAndPublishCarousel({
+      topic,
+      angleInstruction: " (fokus: Panduan Praktis, Tips & Tutorial)",
+      dueAt: dueAt1,
+      userId: userId2,
+      modelId,
+      resolvedModel,
+      channels
+    }),
+    createAndPublishCarousel({
+      topic,
+      angleInstruction: " (fokus: Kesalahan Umum, Mitos, Studi Kasus & Konsep Mendalam)",
+      dueAt: dueAt2,
+      userId: userId2,
+      modelId,
+      resolvedModel,
+      channels
+    })
+  ]);
+  const scheduled = settled.flatMap((r) => r.status === "fulfilled" ? [r.value] : []);
+  const failures = settled.flatMap((r) => r.status === "rejected" ? [r.reason] : []);
+  for (const err of failures) console.error("Carousel generation failed:", err);
+  if (body.topicId) {
+    const closingStatus = scheduled.length > 0 ? "published" : "idea";
+    await updateTopic(body.topicId, userId2, {
+      status: closingStatus,
+      ...scheduled.length > 0 ? { carouselId: scheduled[0].id } : {}
+    }).catch((err) => {
+      console.error(`Failed to move topic ${body.topicId} to "${closingStatus}":`, err);
     });
-  } catch (err) {
-    console.error("Batch carousel generation failed:", err);
-    return c.json({ error: `Automation failed: ${err.message}` }, 500);
   }
+  if (scheduled.length === 0) {
+    const reason = failures[0] instanceof Error ? failures[0].message : String(failures[0]);
+    return c.json({ error: `Automation failed: ${reason}` }, 500);
+  }
+  return c.json({
+    success: true,
+    partial: scheduled.length < settled.length,
+    message: `Scheduled ${scheduled.length} of ${settled.length} carousels to Buffer`,
+    carousels: scheduled
+  });
 });
 app9.get("/topic/next", async (c) => {
   const userId2 = await resolveUserId().catch(() => null);

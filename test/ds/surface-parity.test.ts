@@ -44,6 +44,35 @@ describe("paper/ink surface parity", () => {
   });
 });
 
+/**
+ * The other direction.
+ *
+ * The guard above stops dark rules leaking onto cream. This one stops the reverse: a
+ * mockup styled only for cream, with no Ink counterpart, renders near-black text on a
+ * near-black slide. Both cases below shipped that way and nobody saw them, because
+ * neither mockup type was reachable from the category table in the plan prompt until
+ * the routing table was completed — so no plan could ever select one.
+ */
+describe("every light-surface text rule has an ink counterpart", () => {
+  const NEEDS_INK_VARIANT = [
+    [".diag-screenshot-badge", "screenshot placeholder badge"],
+    [".diag-screenshot-source", "screenshot placeholder target line"],
+    [".diag-screenshot-brief-item", "screenshot placeholder brief rows"],
+    [".lc-bar-wrap.highlight .lc-label", "latencycomp winning row label"],
+    [".lc-bar-wrap.highlight .lc-value", "latencycomp winning row value"],
+    [".dec-name", "decision option name"],
+    [".dec-when", "decision condition text"],
+    [".mf-fact .mf-text", "mythfact correction text"],
+    [".pf-text", "pitfalls row text"],
+  ] as const;
+
+  for (const [selector, what] of NEEDS_INK_VARIANT) {
+    it(`re-scopes ${what} for Ink`, () => {
+      expect(carouselExtraCss).toContain(`section:not(.paper) ${selector}`);
+    });
+  }
+});
+
 describe("surface tokens reach the places CSS cannot", () => {
   // An inline style or an SVG presentation attribute cannot be re-scoped per
   // surface, so a literal ink/paper hex there is permanently wrong on one of the

@@ -621,28 +621,167 @@ describe("custom mockup and cover css", () => {
   });
 
   it("applies point layouts correctly", () => {
-    const std = renderSlide({
-      role: "point", counter: "1/1", eyebrow: "E", headline: "H", body: "B",
-      layout: "standard",
-    });
-    expect(std).toContain("layout-standard");
+    const base = { role: "point" as const, counter: "1/1", eyebrow: "E", headline: "H", body: "B" };
+    // Narrow-safe AND note-bearing, so none of the four gets degraded away.
+    const mockup = { type: "checklist" as const, items: ["a", "b"], note: "N" };
 
-    const forward = renderSlide({
-      role: "point", counter: "1/1", eyebrow: "E", headline: "H", body: "B",
-      layout: "mockup-forward",
-    });
-    expect(forward).toContain("layout-mockup-forward");
+    for (const layout of ["standard", "mockup-forward", "split-content", "note-emphasis"] as const) {
+      expect(renderSlide({ ...base, layout, mockup })).toContain(`layout-${layout}`);
+    }
+  });
 
-    const split = renderSlide({
-      role: "point", counter: "1/1", eyebrow: "E", headline: "H", body: "B",
-      layout: "split-content",
-    });
-    expect(split).toContain("layout-split-content");
-
-    const noteEmp = renderSlide({
+  // note-emphasis only restyles an existing .catatan, so on a mockup with no note it is
+  // byte-identical to standard — while still spending one of the deck's "2-3 different
+  // layouts" slots and reporting variety that is not on the slide.
+  it("degrades note-emphasis to standard when the mockup has no note", () => {
+    const html = renderSlide({
       role: "point", counter: "1/1", eyebrow: "E", headline: "H", body: "B",
       layout: "note-emphasis",
+      mockup: { type: "checklist", items: ["a", "b"] },
     });
-    expect(noteEmp).toContain("layout-note-emphasis");
+    expect(html).toContain("layout-standard");
+    expect(html).not.toContain("layout-note-emphasis");
+  });
+
+  // split-content halves the content column to 435px; the wide diagrams are drawn for
+  // 920px and wrap onto two lines there, which reads as a broken diagram.
+  it("degrades split-content to standard for a full-width diagram", () => {
+    const html = renderSlide({
+      role: "point", counter: "1/1", eyebrow: "E", headline: "H", body: "B",
+      layout: "split-content",
+      mockup: { type: "flow", steps: [{ label: "A" }, { label: "B" }] },
+    });
+    expect(html).toContain("layout-standard");
+    expect(html).not.toContain("layout-split-content");
+  });
+
+  // The whole point of dropping the schema default: with no layout named, composition is
+  // the renderer's call and must not collapse to one template.
+  it("rotates composition by slide index when the plan names no layout", () => {
+    const html = (i: number) =>
+      renderSlide(
+        {
+          role: "point", counter: `${i}/9`, eyebrow: "E", headline: "H", body: "B",
+          mockup: { type: "checklist", items: ["a", "b"], note: "N" },
+        },
+        i
+      );
+
+    expect(html(1)).toContain("layout-mockup-forward");
+    expect(html(2)).toContain("layout-note-emphasis"); // even slot, and this mockup has a note
+    expect(html(3)).toContain("layout-mockup-forward");
+    expect(html(4)).toContain("layout-note-emphasis");
+  });
+
+  // A narrow-safe mockup with no note takes the other accent rather than falling flat.
+  it("gives a narrow-safe note-less mockup the split composition", () => {
+    const html = renderSlide(
+      {
+        role: "point", counter: "2/9", eyebrow: "E", headline: "H", body: "B",
+        mockup: { type: "quote", quote: "cache itu bukan sihir" },
+      },
+      2
+    );
+    expect(html).toContain("layout-split-content");
+  });
+
+  // The worst case the rotation has to survive: wide diagrams with no notes, where only
+  // two of the four templates are usable at all. It must still never repeat back to back.
+  it("never repeats a composition on consecutive slides, even for wide note-less mockups", () => {
+    const layoutOf = (i: number) =>
+      (renderSlide(
+        {
+          role: "point", counter: `${i}/9`, eyebrow: "E", headline: "H", body: "B",
+          mockup: { type: "flow", steps: [{ label: "A" }, { label: "B" }] },
+        },
+        i
+      ).match(/layout-[a-z-]+/) ?? [""])[0];
+
+    const deck = [1, 2, 3, 4, 5, 6, 7].map(layoutOf);
+    expect(new Set(deck).size).toBeGreaterThan(1);
+    for (let i = 1; i < deck.length; i++) {
+      expect(deck[i]).not.toBe(deck[i - 1]);
+    }
+  });
+});
+
+/**
+ * The three types added from the TASK 6 gap audit. Each replaces a mockup that was
+ * misrepresenting the content it kept being handed.
+ */
+describe("decision / mythfact / pitfalls render", () => {
+  const base = { role: "point" as const, counter: "1/1", eyebrow: "E", headline: "H", body: "B" };
+
+  it("renders every decision option, and no winner/loser tone", () => {
+    const html = renderSlide({
+      ...base, layout: "standard",
+      mockup: { type: "decision", question: "Pakai yang mana?", options: [
+        { name: "REST", when: "Client-nya banyak", tag: "Default" },
+        { name: "GraphQL", when: "Butuh banyak endpoint sekaligus" },
+        { name: "gRPC", when: "Antar service internal" },
+      ] },
+    });
+    expect(html).toContain("dec-grid");
+    for (const name of ["REST", "GraphQL", "gRPC"]) expect(html).toContain(name);
+    expect(html).toContain("Default");
+    // The whole point of the type: it must not borrow comparison's verdict styling.
+    expect(html).not.toContain("cmp-winner");
+    expect(html).not.toContain("cmp-loser");
+  });
+
+  it("puts the option name before its tag so the names share a baseline", () => {
+    const html = renderSlide({
+      ...base, layout: "standard",
+      mockup: { type: "decision", options: [
+        { name: "REST", when: "a", tag: "Default" },
+        { name: "GraphQL", when: "b" },
+      ] },
+    });
+    expect(html.indexOf("dec-name")).toBeLessThan(html.indexOf("dec-tag"));
+  });
+
+  it("falls back to a question when the plan omits one", () => {
+    const html = renderSlide({
+      ...base, layout: "standard",
+      mockup: { type: "decision", options: [{ name: "A", when: "x" }, { name: "B", when: "y" }] },
+    });
+    expect(html).toContain("Pakai yang mana?");
+  });
+
+  it("renders myth, fact and the optional reason", () => {
+    const html = renderSlide({
+      ...base, layout: "standard",
+      mockup: { type: "mythfact", myth: "JWT terenkripsi", fact: "JWT cuma base64url", because: "Bisa dibaca siapa pun." },
+    });
+    expect(html).toContain("mf-myth");
+    expect(html).toContain("mf-fact");
+    expect(html).toContain("mf-why");
+    expect(html).toContain("JWT cuma base64url");
+  });
+
+  it("omits the reason block when there is no reason", () => {
+    const html = renderSlide({
+      ...base, layout: "standard",
+      mockup: { type: "mythfact", myth: "a", fact: "b" },
+    });
+    expect(html).not.toContain("mf-why");
+  });
+
+  it("numbers pitfalls instead of ticking them, and carries severity", () => {
+    const html = renderSlide({
+      ...base, layout: "standard",
+      mockup: { type: "pitfalls", items: [
+        { text: "Query di dalam loop", level: "high" },
+        { text: "Nggak ada index" },
+        { text: "Error ditelan diam-diam", level: "low" },
+      ] },
+    });
+    expect(html).toContain("pf-high");
+    expect(html).toContain("pf-low");
+    expect(html).toContain("pf-mid"); // the ungraded row defaults to mid
+    expect(html).toContain("01");
+    expect(html).toContain("03");
+    // A tick against a mistake reads as "done" — that is why this is not a checklist.
+    expect(html).not.toContain("✓");
   });
 });

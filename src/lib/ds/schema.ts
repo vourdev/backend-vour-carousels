@@ -350,6 +350,63 @@ const mockupArchitecture = z.object({
   nodes: z.array(z.string().max(20)).min(2).max(3),
 });
 
+/**
+ * Decision guide — 2-3 options, each with the condition that selects it.
+ *
+ * `.optional()` on `question`, not `.default()`: a default makes the field REQUIRED on
+ * the inferred output type, which breaks every `Mockup` literal that omits it. The
+ * renderer supplies the fallback.
+ *
+ * The deliberate omission is any notion of a winner. The three existing comparison
+ * mockups all declare one — comparison paints loser/winner, datatable is jangan/lakukan,
+ * timeline is dulu/sekarang — and the "kapan pakai yang mana" deck has no winner to
+ * declare. Three options are allowed because the real decks need three ("/24, /29 dan
+ * /30"); nothing else in the catalogue can hold a third.
+ */
+const mockupDecision = z.object({
+  type: z.literal("decision"),
+  question: z.string().max(60).optional(),
+  options: z
+    .array(
+      z.object({
+        name: z.string().max(22),
+        when: z.string().max(80),
+        tag: z.string().max(14).optional(),
+      })
+    )
+    .min(2)
+    .max(3),
+  note: z.string().max(90).optional(),
+});
+
+/** Myth/fact — a misconception, its correction, and optionally why it matters. */
+const mockupMythFact = z.object({
+  type: z.literal("mythfact"),
+  myth: z.string().max(90),
+  fact: z.string().max(90),
+  because: z.string().max(110).optional(),
+});
+
+/**
+ * Pitfalls — 3-5 numbered mistakes or warning signs, optionally graded.
+ *
+ * Numbered rather than ticked: this is the "N Kesalahan" shape, and `checklist` marks
+ * every row with a ✓, which against a mistake reads as "done".
+ */
+const mockupPitfalls = z.object({
+  type: z.literal("pitfalls"),
+  items: z
+    .array(
+      z.object({
+        text: z.string().max(64),
+        level: z.enum(["low", "mid", "high"]).optional(),
+      })
+    )
+    .min(3)
+    .max(5),
+  note: z.string().max(90).optional(),
+});
+
 const mockupUnion = z.discriminatedUnion("type", [
   mockupCard,
   mockupTerminal,
@@ -380,6 +437,9 @@ const mockupUnion = z.discriminatedUnion("type", [
   mockupConfig,
   mockupStateMachine,
   mockupArchitecture,
+  mockupDecision,
+  mockupMythFact,
+  mockupPitfalls,
 ]);
 
 export const mockupSchema = z.preprocess(migrateLegacyIllustration, mockupUnion);
@@ -477,7 +537,15 @@ const pointSlide = z.object({
   body: z.string().max(160),
   /** Slide surface: "ink" (full dark) for deck rhythm; absent/"paper" = default cream */
   surface: z.enum(["paper", "ink"]).optional(),
-  layout: z.enum(["standard", "mockup-forward", "split-content", "note-emphasis"]).default("standard").optional(),
+  /**
+   * Composition template. Absent means "renderer's choice" — NOT "standard".
+   *
+   * This carried .default("standard"), which made the field impossible to leave unset:
+   * every plan came out of parsing with an explicit "standard" on every point slide, so
+   * the renderer could not tell a deliberate choice from an omission and the whole deck
+   * fell back to one composition. See resolveLayout in render-slide.ts.
+   */
+  layout: z.enum(["standard", "mockup-forward", "split-content", "note-emphasis"]).optional(),
   /** New: rich mockup component (preferred) */
   mockup: mockupSchema.optional(),
   /** Legacy: simple info card (backward compat — used when mockup is absent) */

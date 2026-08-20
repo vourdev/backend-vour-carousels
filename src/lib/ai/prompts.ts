@@ -333,13 +333,29 @@ plain card, which reads as generic).
 
 CATEGORY → allowed mockup types (choose by the slide's actual content):
 - STAT_HOOK  (big number / count as a hook)      → bigstat
-- COMPARISON (X vs Y, before/after, two options) → comparison · datatable · timeline
+- PERF       (latency, throughput, benchmark)    → latencycomp · bigstat
+- COMPARISON (X vs Y where one of them wins)     → comparison · datatable · timeline
+- DECISION   (kapan pakai yang mana, 2-3 pilihan, jawabannya tergantung situasi pembaca dan TIDAK ada yang menang) → decision
+- MYTH       (salah kaprah: "X itu bukan Y", "sering dikira", "ternyata nggak selalu") → mythfact
+- PITFALL    (daftar kesalahan / tanda bahaya: "5 kesalahan", "7 tanda", "3 alasan kenapa lambat") → pitfalls
 - PROCESS    (flow / step-by-step / how it works)→ flow · steps · concept · hub · foldertree · gitbranch
+- LIFECYCLE  (status that moves: order, payment, job, request) → statemachine · flow
+- EVENT_FLOW (queue, pub/sub, async messaging, webhook fan-out) → eventqueue · flow
+- API_CONTRACT (endpoint, HTTP verb, status code, request/response body) → apirequest
+- DATA_MODEL (schema, tables, relations, keys)   → database · datatable
+- INFRA      (deployment topology, load balancing, replicas, scaling) → architecture · hub
+- CONFIG     (env vars, config files, settings, connection strings) → config · terminal · foldertree
 - ERROR_FIX  (wrong→right, bug, anti-pattern)    → datatable · comparison · terminal (diff-style)
-- CODE_DEMO  (real code / command / config)      → terminal · commandlist · commandpalette · promptcard · database
-- EVIDENCE   (a real product / UI you built)     → browser
+- CODE_DEMO  (real code / command)               → terminal · commandlist · commandpalette · promptcard
+- EVIDENCE   (a real product / UI you built)     → browser · screenshot
+- RECAP      (ringkasan, takeaway, "yang perlu lo inget") → checklist · callout
+- WARNING    (one rule or caveat that must stick) → callout · quote
 - ABSTRACT   (concept / principle / analogy)     → illustration · concept · hub · quote · card · custom
 - BESPOKE    (a layout none of the above can draw)→ custom (hand-written HTML, structure only — no styling)
+
+Every mockup type in the catalogue below is reachable from exactly this table. If a slide's
+content fits a category, prefer a type listed for it over re-using a type you already used
+earlier in the deck.
 
 KRITERIA WAJIB mockup: "illustration" — cek berurutan, begitu SALAH SATU match WAJIB illustration:
 1. Slide TIDAK menampilkan kode/command/terminal output secara langsung, DAN
@@ -859,6 +875,15 @@ MOCKUP TYPES — every "point" slide MUST include a "mockup" object with one of 
 29. { type: "architecture", title?: "Network Topology", client: "User Browser", router: "Load Balancer", nodes: ["App Instance 1", "App Instance 2"] }
    → Architecture/Topology mockup. Use to display simple node deployment architectures, proxy routes, or load balancers distributing requests to multiple backend server instances.
 
+30. { type: "decision", question?: "Pakai yang mana?", options: [{ name: "REST", when: "Client-nya banyak dan butuh caching HTTP standar", tag?: "Default" }, { name: "GraphQL", when: "Satu layar butuh data dari banyak endpoint sekaligus" }], note?: "..." }
+   → Decision guide, 2-3 options, EACH with the condition that selects it. Use for "kapan pakai yang mana" content: REST vs GraphQL, on-prem vs cloud, /24 vs /29 vs /30, monolith vs microservices, Docker atau nggak. Pick this over "comparison" whenever the honest answer is "tergantung" — comparison paints a loser and a winner, and this one deliberately does not. It is also the ONLY mockup that can hold a third option.
+
+31. { type: "mythfact", myth: "JWT itu terenkripsi, jadi payload-nya aman", fact: "JWT cuma di-encode base64url, siapa pun bisa baca isinya", because?: "Naruh nomor kartu atau role admin di payload sama saja menaruhnya di public." }
+   → Myth/fact. Use whenever the slide corrects a misconception: "X itu bukan Y", "sering dikira aman", "ternyata nggak selalu bikin cepat". The myth renders recessive and the fact carries the accent, so the correction is readable before either line is read. Prefer this over "datatable" for myth-busting: datatable cells are terse and paired, and cannot hold a claim, its correction and the reason at once.
+
+32. { type: "pitfalls", items: [{ text: "Query di dalam loop, bukan sekali di luar", level: "high" }, { text: "Nggak ada index di kolom yang di-filter", level: "mid" }, { text: "Log error ditelan diam-diam", level: "low" }], note?: "..." }
+   → Numbered list of 3-5 mistakes or warning signs, optional level "low" | "mid" | "high" driving a severity stripe. Use for the "N Kesalahan / N Tanda / N Alasan" deck. Do NOT use "checklist" for mistakes: checklist ticks every row with a ✓, and a tick against a mistake reads as "done".
+
 ${MOCKUP_VARIETY_RULE}
 
 ICON RULES
@@ -870,14 +895,38 @@ VARIETY EXAMPLE (a good, non-monotone deck — mirror this diversity, not the co
 - cover (text-only, no hook): eyebrow "AI 101", headline "istilah AI yang wajib lo tau"
   (accentWord "tau"), lede "biar lo gak cuma nge-prompt doang tapi ngerti cara kerjanya.",
   stamp "Engineering Notes", ghostNumeral "01"
-- point → concept (parent + 2-3 children)
-- point → flow (3-4 steps, one focus)
-- point → hub (center + 3-4 tool icons)
-- point → terminal (only if a real code scene — max 1)
-- point → comparison (bad vs good)
-- point → checklist (recap)
+- point → concept (parent + 2-3 children), layout "standard"
+- point → flow (3-4 steps, one focus), layout "note-emphasis" (its note carries the point)
+- point → hub (center + 3-4 tool icons), layout "split-content"
+- point → terminal (only if a real code scene — max 1), layout "mockup-forward"
+- point → comparison (bad vs good), layout "standard"
+- point → checklist (recap), layout "standard"
 - outro → cta { strong: "Simpan & bagikan" }
-Use ≥ 3 distinct mockup types and rotate tone colors across slides.
+
+SECOND VARIETY EXAMPLE (a backend deck — same deck shape, a completely different type mix.
+Note that NONE of the types below appear in the first example: the catalogue is 29 types wide
+and both of these decks are equally correct):
+- cover (hook nocgrid): eyebrow "INCIDENT", headline "kenapa API lo tumbang jam 2 pagi"
+- point → apirequest (the 504 the client actually saw), layout "mockup-forward"
+- point → architecture (load balancer + 2 instances), layout "standard"
+- point → latencycomp (cache 0.2ms vs db 15ms vs api 120ms), layout "note-emphasis"
+- point → statemachine (request lifecycle: PENDING → PROCESSING → FAILED), layout "standard"
+- point → config (the pool setting that was wrong), layout "split-content"
+- point → eventqueue (retry queue that saved it), layout "standard"
+- outro → cta { strong: "Simpan buat jaga-jaga" }
+
+THIRD VARIETY EXAMPLE (a "kapan pakai yang mana" deck — the shape that keeps getting
+forced into comparison. Note there is no winner anywhere in it):
+- cover (text-only): eyebrow "PILIH STACK", headline "REST atau GraphQL, kapan pakai yang mana"
+- point → mythfact (mitos "GraphQL selalu lebih cepat" vs faktanya), layout "standard"
+- point → decision (REST / GraphQL, masing-masing dengan "pakai kalau"), layout "mockup-forward"
+- point → pitfalls (3 kesalahan waktu pindah ke GraphQL, level high/mid/low), layout "standard"
+- point → apirequest (satu contoh response yang over-fetch), layout "mockup-forward"
+- point → checklist (recap), layout "note-emphasis"
+- outro → cta { strong: "Simpan buat rapat stack berikutnya" }
+
+Use ≥ 5 distinct mockup types per deck, rotate tone colors, and do not let any example
+above narrow your choice — pick by the CATEGORY table, not by which types you have seen most.
 
 STRICT DESIGN & COPY BUDGET RULES
 1. Copy caps (accentWord MUST appear verbatim inside the headline):

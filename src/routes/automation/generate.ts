@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { defaultModel, resolveModel } from "../../lib/ai/registry";
-import { generateBrief, generateSlidePlan } from "../../lib/ai/generate";
+import { generateBrief, generateSlidePlan, stripUnfulfillableEvidence } from "../../lib/ai/generate";
 import { assembleCarousel } from "../../lib/ds/assemble";
 import { warmUpIllustrations } from "../../lib/ds/illustrations.server";
 import { captureQueue } from "../../services/capture-queue";
@@ -61,7 +61,9 @@ async function createAndPublishCarousel({
 
   // 2. Generate Slide Plan
   const underused = await getUnderusedMockupTypes(userId).catch(() => []);
-  const plan = await generateSlidePlan(brief, resolvedModel, underused);
+  // Nobody is watching this run, so a mockup that asks a human for a screenshot can
+  // never be satisfied — it would ship to Instagram as a placeholder card.
+  const plan = stripUnfulfillableEvidence(await generateSlidePlan(brief, resolvedModel, underused));
 
   // 3. Assemble Carousel HTML
   await warmUpIllustrations();
@@ -229,52 +231,70 @@ app.post("/generate", async (c) => {
   const dueAt2 = due2.toISOString();
 
   // 7. Generate and Publish 2 Carousels
-  try {
-    const [carousel1, carousel2] = await Promise.all([
-      createAndPublishCarousel({
-        topic,
-        angleInstruction: " (fokus: Panduan Praktis, Tips & Tutorial)",
-        dueAt: dueAt1,
-        userId,
-        modelId,
-        resolvedModel,
-        channels,
-      }),
-      createAndPublishCarousel({
-        topic,
-        angleInstruction: " (fokus: Kesalahan Umum, Mitos, Studi Kasus & Konsep Mendalam)",
-        dueAt: dueAt2,
-        userId,
-        modelId,
-        resolvedModel,
-        channels,
-      }),
-    ]);
+  //
+  // allSettled, not all: the two decks are scheduled to Buffer independently, so one can
+  // already be live when the other throws. Promise.all discards the winner's value in
+  // that case and the whole request 500s — while the post it just scheduled stays
+  // scheduled. n8n reads the 500, retries, and the topic goes out three times.
+  const settled = await Promise.allSettled([
+    createAndPublishCarousel({
+      topic,
+      angleInstruction: " (fokus: Panduan Praktis, Tips & Tutorial)",
+      dueAt: dueAt1,
+      userId,
+      modelId,
+      resolvedModel,
+      channels,
+    }),
+    createAndPublishCarousel({
+      topic,
+      angleInstruction: " (fokus: Kesalahan Umum, Mitos, Studi Kasus & Konsep Mendalam)",
+      dueAt: dueAt2,
+      userId,
+      modelId,
+      resolvedModel,
+      channels,
+    }),
+  ]);
 
-    // Close the loop on the bank row. /topic/next moves a topic to "queued" so
-    // a retrigger cannot hand out the same one twice, but nothing moved it on
-    // from there — every topic the cron consumed stayed queued forever, and the
-    // bank filled up with rows that were in fact already posted.
-    if (body.topicId) {
-      await updateTopic(body.topicId, userId, {
-        status: "published",
-        carouselId: carousel1.id,
-      }).catch((err) => {
-        // The posts are already scheduled; failing the request here would tell
-        // the caller the run failed and invite a duplicate retry.
-        console.error(`Failed to mark topic ${body.topicId} published:`, err);
-      });
-    }
+  const scheduled = settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
+  const failures = settled.flatMap((r) => (r.status === "rejected" ? [r.reason] : []));
+  for (const err of failures) console.error("Carousel generation failed:", err);
 
-    return c.json({
-      success: true,
-      message: "Successfully generated and scheduled 2 carousels to Buffer",
-      carousels: [carousel1, carousel2],
+  // Close the loop on the bank row. /topic/next moves a topic to "queued" so a retrigger
+  // cannot hand out the same one twice, but for a long time nothing moved it on from
+  // there — every topic the cron consumed stayed queued forever.
+  //
+  // Which way it moves depends on whether anything actually reached Buffer, and the two
+  // directions protect against opposite failures:
+  //  - something shipped -> "published". Retrying would post the same topic twice, and a
+  //    partial run is not worth a duplicate.
+  //  - nothing shipped   -> back to "idea", the only status /topic/next hands out. Left
+  //    at "queued" the row is invisible to every query and the bank silently drains by
+  //    one topic per failed run — which is what an outage upstream would do every night.
+  if (body.topicId) {
+    const closingStatus = scheduled.length > 0 ? ("published" as const) : ("idea" as const);
+    await updateTopic(body.topicId, userId, {
+      status: closingStatus,
+      ...(scheduled.length > 0 ? { carouselId: scheduled[0].id } : {}),
+    }).catch((err) => {
+      // Never fail the request on this: when posts are already scheduled, reporting a
+      // failure here is what invites the duplicate retry.
+      console.error(`Failed to move topic ${body.topicId} to "${closingStatus}":`, err);
     });
-  } catch (err: any) {
-    console.error("Batch carousel generation failed:", err);
-    return c.json({ error: `Automation failed: ${err.message}` }, 500);
   }
+
+  if (scheduled.length === 0) {
+    const reason = failures[0] instanceof Error ? failures[0].message : String(failures[0]);
+    return c.json({ error: `Automation failed: ${reason}` }, 500);
+  }
+
+  return c.json({
+    success: true,
+    partial: scheduled.length < settled.length,
+    message: `Scheduled ${scheduled.length} of ${settled.length} carousels to Buffer`,
+    carousels: scheduled,
+  });
 });
 
 // Hands the caller the next unstarted topic from the bank (status "idea"),

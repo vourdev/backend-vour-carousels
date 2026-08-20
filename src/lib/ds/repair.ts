@@ -52,6 +52,8 @@ const MOCKUP_ARRAY_MAX: Record<string, { key: string; max: number }> = {
   config: { key: "lines", max: 6 },
   statemachine: { key: "states", max: 4 },
   architecture: { key: "nodes", max: 3 },
+  decision: { key: "options", max: 3 },
+  pitfalls: { key: "items", max: 5 },
 };
 
 /** Recursively strip banned dashes from every string leaf (v1.0 voice rule). */
@@ -149,10 +151,16 @@ export function repairSlidePlan(raw: any): SlidePlan {
           if (fixed) s.mockup = fixed;
           else delete s.mockup; // fall back to auto-card in resolveMockup
         }
-        if (s.role === "point") {
-          if (!s.layout || !["standard", "mockup-forward", "split-content", "note-emphasis"].includes(s.layout)) {
-            s.layout = "standard";
-          }
+        // Drop an invented layout name rather than pinning it to "standard": an absent
+        // layout is a signal the renderer acts on (it rotates one in), whereas writing
+        // "standard" here is an instruction to stay flat. Coercing every miss to
+        // "standard" made the model's silence indistinguishable from a real choice.
+        if (
+          s.role === "point" &&
+          s.layout !== undefined &&
+          !["standard", "mockup-forward", "split-content", "note-emphasis"].includes(s.layout)
+        ) {
+          delete s.layout;
         }
         // Surface/mockup collision. The prompt asks the model to keep a dark
         // device off a dark slide, but asking is not enforcing: a terminal on an

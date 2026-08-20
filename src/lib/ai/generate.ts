@@ -159,6 +159,38 @@ function enforcePlanInvariants(plan: SlidePlan): SlidePlan {
   return enforceMockupForPointSlides(enforceIllustrationForAnalogySlides(plan));
 }
 
+/**
+ * Drop evidence mockups that nobody is going to fill in.
+ *
+ * A `screenshot` mockup with no captured image renders a "⚠️ BUTUH SCREENSHOT ASLI"
+ * placeholder card — a brief addressed to a human, telling them which screenshot to go
+ * and take. In the wizard that is exactly right: the human is sitting there. In the daily
+ * cron there is no human anywhere in the run, so the placeholder is captured, uploaded to
+ * Cloudinary and scheduled to Instagram and TikTok as if it were finished artwork.
+ *
+ * Applied only on the unattended path, and deliberately not inside enforcePlanInvariants:
+ * on the interactive path the placeholder is the feature.
+ */
+export function stripUnfulfillableEvidence(plan: SlidePlan): SlidePlan {
+  const slides = plan.slides.map((slide) => {
+    if (slide.role !== "point" || slide.mockup?.type !== "screenshot") return slide;
+    if (slide.mockup.evidenceStatus === "captured" && slide.mockup.screenshotImage?.dataUrl) {
+      return slide;
+    }
+    console.warn(
+      `[evidence-guard] Slide "${slide.eyebrow}" wants a screenshot nobody can upload on this path. Replacing with an illustration.`
+    );
+    return {
+      ...slide,
+      mockup: {
+        type: "illustration" as const,
+        illustrationSlugs: [normalizeIllustration(ILLUSTRATION_FALLBACK_SLUG)],
+      },
+    };
+  });
+  return { ...plan, slides };
+}
+
 export async function generateSlidePlan(brief: string, model: LanguageModel, underusedMockups?: string[]): Promise<SlidePlan> {
   const underusedInstruction = underusedMockups && underusedMockups.length > 0
     ? `\n\n═══════════════════════════════════════════════════════════════
