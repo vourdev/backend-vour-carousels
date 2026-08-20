@@ -9,8 +9,9 @@ import { scheduleBufferPost } from "../../lib/publish/buffer";
 import { buildPostText } from "../../lib/publish/caption";
 import { nextWibSlot, POST_HOUR_WIB } from "../../lib/publish/schedule";
 import { createCarousel, updateCarousel, getUnderusedMockupTypes } from "../../lib/history/repo";
-import { getTopics, updateTopic } from "../../lib/topics/bank";
+import { getTopics, updateTopic, createTopic } from "../../lib/topics/bank";
 import { generateAndSaveTopics, type GenerateTopicsInput } from "../../lib/topics/service";
+import { extractAndSaveTopicsFromNotes } from "../../lib/research/agent";
 import { dialect } from "../../lib/db";
 import { Kysely } from "kysely";
 
@@ -325,6 +326,96 @@ app.post("/topics/generate", async (c) => {
 
   const topics = await generateAndSaveTopics(uid, resolveModel(modelId), body);
   return c.json({ success: true, topics, count: topics.length });
+});
+
+/* ── TASK 3+5: Research Agent — extract topics from raw notes ────────── */
+
+app.post("/research-topics", async (c) => {
+  let body: { rawNotes?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON body" }, 400);
+  }
+
+  const rawNotes = body?.rawNotes;
+  if (!rawNotes || !rawNotes.trim()) {
+    return c.json({ error: "Missing or empty rawNotes in request body" }, 400);
+  }
+
+  const userId = await resolveUserId().catch(() => null);
+  if (!userId) {
+    return c.json({ error: "No user found in the database. Seed the database first." }, 500);
+  }
+
+  const modelId = defaultModel();
+  if (!modelId) {
+    return c.json({ error: "No AI model API keys configured in .env" }, 500);
+  }
+
+  try {
+    const saved = await extractAndSaveTopicsFromNotes(
+      userId,
+      resolveModel(modelId),
+      rawNotes,
+      { status: "pending_review", source: "research-agent-mvp" }
+    );
+
+    return c.json({
+      success: true,
+      message: `Extracted ${saved.length} topic candidates, saved as pending_review`,
+      topics: saved,
+      saved,
+    });
+  } catch (err: any) {
+    console.error("Research agent failed:", err);
+    return c.json({ error: `Research agent failed: ${err.message}` }, 500);
+  }
+});
+
+/* ── TASK 6: Approval endpoint ───────────────────────────────────────── */
+
+const ALLOWED_STATUS_TRANSITIONS: Record<string, string[]> = {
+  pending_review: ["idea", "approved", "rejected"],
+  approved: ["idea", "pending_review"],
+  rejected: ["pending_review"],
+};
+
+app.patch("/research-topics/:id/status", async (c) => {
+  let body: { status?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON body" }, 400);
+  }
+
+  const newStatus = body?.status;
+  if (!newStatus) {
+    return c.json({ error: "Missing status in request body" }, 400);
+  }
+
+  const validStatuses = ["idea", "approved", "rejected", "pending_review", "not_posted"];
+  if (!validStatuses.includes(newStatus)) {
+    return c.json(
+      { error: `Invalid status "${newStatus}" — use one of: ${validStatuses.join(", ")}` },
+      400
+    );
+  }
+
+  const userId = await resolveUserId().catch(() => null);
+  if (!userId) {
+    return c.json({ error: "No user found in the database" }, 500);
+  }
+
+  const topicId = c.req.param("id");
+
+  try {
+    await updateTopic(topicId, userId, { status: newStatus as any });
+    return c.json({ success: true, topicId, status: newStatus });
+  } catch (err: any) {
+    console.error(`Failed to update topic ${topicId}:`, err);
+    return c.json({ error: `Failed to update topic: ${err.message}` }, 500);
+  }
 });
 
 export default app;

@@ -11,6 +11,7 @@ import {
 } from "../../lib/topics/bank";
 import { expandTopicToBrief } from "../../lib/topics/generator";
 import { generateAndSaveTopics, type GenerateTopicsInput } from "../../lib/topics/service";
+import { extractAndSaveTopicsFromNotes } from "../../lib/research/agent";
 
 const app = new Hono<{ Variables: { session: any } }>();
 
@@ -54,6 +55,30 @@ app.delete("/:id", async (c) => {
 });
 
 /**
+ * Extract topic candidates from raw notes and save them to the topic bank.
+ */
+app.post("/generate-from-notes", async (c) => {
+  const body = (await c.req.json().catch(() => ({}))) as { rawNotes?: string; modelId?: ModelId };
+  if (!body?.rawNotes?.trim()) {
+    return c.json({ error: "Missing or empty rawNotes in request body" }, 400);
+  }
+
+  const modelId = body.modelId ?? defaultModel();
+  if (!modelId) {
+    return c.json({ error: "No AI model API keys configured in .env" }, 500);
+  }
+
+  const topics = await extractAndSaveTopicsFromNotes(
+    userId(c),
+    resolveModel(modelId),
+    body.rawNotes,
+    { status: "idea", source: "notes-extraction" }
+  );
+
+  return c.json({ topics, count: topics.length });
+});
+
+/**
  * Batch-generate topics into the bank. The model is resolved here rather than
  * taken from the request: the caller picks what to write about, not what writes it.
  */
@@ -71,6 +96,7 @@ app.post("/generate", async (c) => {
   const topics = await generateAndSaveTopics(userId(c), resolveModel(modelId), input);
   return c.json({ topics, count: topics.length });
 });
+
 
 /** Expand one banked topic into a full Markdown brief, ready for the plan stage. */
 app.post("/:id/brief", async (c) => {

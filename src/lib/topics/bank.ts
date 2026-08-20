@@ -22,9 +22,16 @@ export type TopicCategory =
   | "tutorial"
   | "common-mistakes"
   | "case-study"
-  | "deep-dive";
+  | "deep-dive"
+  // Research agent categories
+  | "evergreen"
+  | "trending"
+  | "personal"
+  | "product";
 
-export type TopicStatus = "idea" | "queued" | "generated" | "published" | "archived";
+export type TopicStatus = "idea" | "queued" | "generated" | "published" | "archived"
+  // Research agent statuses
+  | "pending_review" | "approved" | "rejected";
 
 export interface Topic {
   id: string;
@@ -40,6 +47,11 @@ export interface Topic {
   userId: string;
   createdAt: number;
   updatedAt: number;
+  // Research agent fields
+  source?: string;
+  relatedProductId?: string;
+  targetAudienceFit?: string;
+  suggestedAngle?: string;
 }
 
 const TOPICS_SCHEMA = `
@@ -62,9 +74,28 @@ CREATE TABLE IF NOT EXISTS topics (
 
 let schemaEnsured = false;
 
+/** Columns added by the research agent. ALTER TABLE ADD COLUMN is a no-op if the column already exists in SQLite. */
+const MIGRATION_COLUMNS = [
+  "source TEXT",
+  "related_product_id TEXT",
+  "target_audience_fit TEXT",
+  "suggested_angle TEXT",
+];
+
 async function ensureSchema() {
   if (schemaEnsured) return;
   await db().execute(TOPICS_SCHEMA);
+
+  // Add research-agent columns to existing tables (idempotent — errors on
+  // "duplicate column" are swallowed so this runs safely every boot).
+  for (const col of MIGRATION_COLUMNS) {
+    try {
+      await db().execute(`ALTER TABLE topics ADD COLUMN ${col}`);
+    } catch {
+      // column already exists — expected on every boot after the first migration
+    }
+  }
+
   schemaEnsured = true;
 }
 
@@ -75,7 +106,7 @@ function rowToTopic(row: any): Topic {
     title: row.title as string,
     category: row.category as TopicCategory,
     description: row.description as string | undefined,
-    keywords: JSON.parse(row.keywords as string),
+    keywords: JSON.parse((row.keywords as string) || "[]"),
     angle: row.angle as string | undefined,
     status: row.status as TopicStatus,
     priority: row.priority as number,
@@ -83,6 +114,11 @@ function rowToTopic(row: any): Topic {
     carouselId: row.carousel_id as string | undefined,
     createdAt: row.created_at as number,
     updatedAt: row.updated_at as number,
+    // Research agent fields
+    source: row.source as string | undefined,
+    relatedProductId: row.related_product_id as string | undefined,
+    targetAudienceFit: row.target_audience_fit as string | undefined,
+    suggestedAngle: row.suggested_angle as string | undefined,
   };
 }
 
@@ -95,14 +131,26 @@ export async function createTopic(data: {
   angle?: string;
   priority?: number;
   scheduledDate?: string;
+  /** Override the default "idea" status (e.g. "pending_review" for research agent topics). */
+  status?: TopicStatus;
+  source?: string;
+  relatedProductId?: string;
+  related_product_id?: string;
+  targetAudienceFit?: string;
+  target_audience_fit?: string;
+  suggestedAngle?: string;
+  suggested_angle?: string;
 }): Promise<Topic> {
   await ensureSchema();
   const now = Date.now();
   const id = `topic_${now}_${Math.random().toString(36).substring(2, 9)}`;
+  const relProdId = data.relatedProductId ?? data.related_product_id ?? null;
+  const audFit = data.targetAudienceFit ?? data.target_audience_fit ?? null;
+  const sugAngle = data.suggestedAngle ?? data.suggested_angle ?? null;
   
   await db().execute({
-    sql: `INSERT INTO topics (id, user_id, title, category, description, keywords, angle, status, priority, scheduled_date, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO topics (id, user_id, title, category, description, keywords, angle, status, priority, scheduled_date, source, related_product_id, target_audience_fit, suggested_angle, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       id,
       data.userId,
@@ -111,9 +159,13 @@ export async function createTopic(data: {
       data.description || null,
       JSON.stringify(data.keywords || []),
       data.angle || null,
-      "idea",
+      data.status || "idea",
       data.priority || 0,
       data.scheduledDate || null,
+      data.source || null,
+      relProdId,
+      audFit,
+      sugAngle,
       now,
       now,
     ],
@@ -141,6 +193,13 @@ export async function updateTopic(
     priority?: number;
     scheduledDate?: string;
     carouselId?: string;
+    source?: string;
+    relatedProductId?: string | null;
+    related_product_id?: string | null;
+    targetAudienceFit?: string | null;
+    target_audience_fit?: string | null;
+    suggestedAngle?: string | null;
+    suggested_angle?: string | null;
   }
 ): Promise<void> {
   await ensureSchema();
@@ -183,6 +242,22 @@ export async function updateTopic(
     updates.push("carousel_id = ?");
     args.push(data.carouselId);
   }
+  if (data.source !== undefined) {
+    updates.push("source = ?");
+    args.push(data.source);
+  }
+  if (data.relatedProductId !== undefined || data.related_product_id !== undefined) {
+    updates.push("related_product_id = ?");
+    args.push(data.relatedProductId ?? data.related_product_id ?? null);
+  }
+  if (data.targetAudienceFit !== undefined || data.target_audience_fit !== undefined) {
+    updates.push("target_audience_fit = ?");
+    args.push(data.targetAudienceFit ?? data.target_audience_fit ?? null);
+  }
+  if (data.suggestedAngle !== undefined || data.suggested_angle !== undefined) {
+    updates.push("suggested_angle = ?");
+    args.push(data.suggestedAngle ?? data.suggested_angle ?? null);
+  }
 
   updates.push("updated_at = ?");
   args.push(Date.now());
@@ -194,6 +269,7 @@ export async function updateTopic(
     args,
   });
 }
+
 
 export async function getTopics(
   userId: string,

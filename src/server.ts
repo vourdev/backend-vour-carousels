@@ -13,6 +13,7 @@ import assembleRoute from "./routes/user/assemble";
 import captureRoute from "./routes/user/capture";
 import publishRoute from "./routes/user/publish";
 import topicsRoute from "./routes/user/topics";
+import productsRoute from "./routes/user/products";
 import automationRoute from "./routes/automation/generate";
 
 // ==========================================
@@ -58,6 +59,7 @@ userApp.route("/api/assemble", assembleRoute);
 userApp.route("/api/capture", captureRoute);
 userApp.route("/api/publish", publishRoute);
 userApp.route("/api/topics", topicsRoute);
+userApp.route("/api/products", productsRoute);
 
 // Global Error Handler
 userApp.onError((err, c) => {

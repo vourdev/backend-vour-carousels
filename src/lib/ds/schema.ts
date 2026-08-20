@@ -477,7 +477,7 @@ const pointSlide = z.object({
   body: z.string().max(160),
   /** Slide surface: "ink" (full dark) for deck rhythm; absent/"paper" = default cream */
   surface: z.enum(["paper", "ink"]).optional(),
-  layout: z.enum(["standard", "mockup-forward", "split-content", "note-emphasis"]).default("standard"),
+  layout: z.enum(["standard", "mockup-forward", "split-content", "note-emphasis"]).default("standard").optional(),
   /** New: rich mockup component (preferred) */
   mockup: mockupSchema.optional(),
   /** Legacy: simple info card (backward compat — used when mockup is absent) */

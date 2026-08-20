@@ -13140,11 +13140,11 @@ var init_kysely = __esm({
       async execute(callback) {
         return this.#props.executor.provideConnection(async (connection) => {
           const executor = this.#props.executor.withConnectionProvider(new SingleConnectionProvider(connection));
-          const db5 = new Kysely({
+          const db6 = new Kysely({
             ...this.#props,
             executor
           });
-          return await callback(db5);
+          return await callback(db6);
         });
       }
     };
@@ -14923,8 +14923,8 @@ var init_sqlite_introspector = __esm({
     init_sql();
     SqliteIntrospector = class {
       #db;
-      constructor(db5) {
-        this.#db = db5;
+      constructor(db6) {
+        this.#db = db6;
       }
       async getSchemas() {
         return [];
@@ -15884,8 +15884,8 @@ var init_lib_esm = __esm({
         }
         return new LibsqlDriver(client4, closeClient);
       }
-      createIntrospector(db5) {
-        return new SqliteIntrospector(db5);
+      createIntrospector(db6) {
+        return new SqliteIntrospector(db6);
       }
       createQueryCompiler() {
         return new SqliteQueryCompiler();
@@ -20638,7 +20638,7 @@ var require_lodash = __commonJS({
         var defer = baseRest(function(func, args) {
           return baseDelay(func, 1, args);
         });
-        var delay3 = baseRest(function(func, wait, args) {
+        var delay4 = baseRest(function(func, wait, args) {
           return baseDelay(func, toNumber(wait) || 0, args);
         });
         function flip(func) {
@@ -21757,7 +21757,7 @@ var require_lodash = __commonJS({
         lodash.defaults = defaults;
         lodash.defaultsDeep = defaultsDeep;
         lodash.defer = defer;
-        lodash.delay = delay3;
+        lodash.delay = delay4;
         lodash.difference = difference;
         lodash.differenceBy = differenceBy;
         lodash.differenceWith = differenceWith;
@@ -31458,14 +31458,14 @@ var Hono = class _Hono {
    * app.route("/api", app2) // GET /api/user
    * ```
    */
-  route(path, app9) {
+  route(path, app10) {
     const subApp = this.basePath(path);
-    app9.routes.map((r) => {
+    app10.routes.map((r) => {
       let handler;
-      if (app9.errorHandler === errorHandler) {
+      if (app10.errorHandler === errorHandler) {
         handler = r.handler;
       } else {
-        handler = async (c, next) => (await compose([], app9.errorHandler)(c, () => r.handler(c, next))).res;
+        handler = async (c, next) => (await compose([], app10.errorHandler)(c, () => r.handler(c, next))).res;
         handler[COMPOSED_HANDLER] = r.handler;
       }
       subApp.#addRoute(r.method, r.path, handler, r.basePath);
@@ -72570,7 +72570,7 @@ var pointSlide = external_exports.object({
   body: external_exports.string().max(160),
   /** Slide surface: "ink" (full dark) for deck rhythm; absent/"paper" = default cream */
   surface: external_exports.enum(["paper", "ink"]).optional(),
-  layout: external_exports.enum(["standard", "mockup-forward", "split-content", "note-emphasis"]).default("standard"),
+  layout: external_exports.enum(["standard", "mockup-forward", "split-content", "note-emphasis"]).default("standard").optional(),
   /** New: rich mockup component (preferred) */
   mockup: mockupSchema.optional(),
   /** Legacy: simple info card (backward compat — used when mockup is absent) */
@@ -74722,7 +74722,7 @@ async function createCarousel(input) {
   await db2().execute({
     sql: `INSERT INTO carousels
       (id, user_id, source, title, caption, hashtags, slide_count, status, model, thumbnail, image_urls, slide_plan, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       id,
       input.userId,
@@ -75062,8 +75062,8 @@ async function warmUpIllustrations() {
   if (warmUpPromise) return warmUpPromise;
   warmUpPromise = (async () => {
     try {
-      const db5 = getDbClient();
-      const res = await db5.execute("SELECT slug, variant, svg FROM illustrations");
+      const db6 = getDbClient();
+      const res = await db6.execute("SELECT slug, variant, svg FROM illustrations");
       for (const row of res.rows) {
         const slug = String(row.slug);
         const variant = String(row.variant);
@@ -77917,9 +77917,21 @@ CREATE TABLE IF NOT EXISTS topics (
   FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
 )`;
 var schemaEnsured = false;
+var MIGRATION_COLUMNS = [
+  "source TEXT",
+  "related_product_id TEXT",
+  "target_audience_fit TEXT",
+  "suggested_angle TEXT"
+];
 async function ensureSchema3() {
   if (schemaEnsured) return;
   await db3().execute(TOPICS_SCHEMA);
+  for (const col of MIGRATION_COLUMNS) {
+    try {
+      await db3().execute(`ALTER TABLE topics ADD COLUMN ${col}`);
+    } catch {
+    }
+  }
   schemaEnsured = true;
 }
 function rowToTopic(row) {
@@ -77929,23 +77941,31 @@ function rowToTopic(row) {
     title: row.title,
     category: row.category,
     description: row.description,
-    keywords: JSON.parse(row.keywords),
+    keywords: JSON.parse(row.keywords || "[]"),
     angle: row.angle,
     status: row.status,
     priority: row.priority,
     scheduledDate: row.scheduled_date,
     carouselId: row.carousel_id,
     createdAt: row.created_at,
-    updatedAt: row.updated_at
+    updatedAt: row.updated_at,
+    // Research agent fields
+    source: row.source,
+    relatedProductId: row.related_product_id,
+    targetAudienceFit: row.target_audience_fit,
+    suggestedAngle: row.suggested_angle
   };
 }
 async function createTopic(data) {
   await ensureSchema3();
   const now2 = Date.now();
   const id = `topic_${now2}_${Math.random().toString(36).substring(2, 9)}`;
+  const relProdId = data.relatedProductId ?? data.related_product_id ?? null;
+  const audFit = data.targetAudienceFit ?? data.target_audience_fit ?? null;
+  const sugAngle = data.suggestedAngle ?? data.suggested_angle ?? null;
   await db3().execute({
-    sql: `INSERT INTO topics (id, user_id, title, category, description, keywords, angle, status, priority, scheduled_date, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO topics (id, user_id, title, category, description, keywords, angle, status, priority, scheduled_date, source, related_product_id, target_audience_fit, suggested_angle, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       id,
       data.userId,
@@ -77954,9 +77974,13 @@ async function createTopic(data) {
       data.description || null,
       JSON.stringify(data.keywords || []),
       data.angle || null,
-      "idea",
+      data.status || "idea",
       data.priority || 0,
       data.scheduledDate || null,
+      data.source || null,
+      relProdId,
+      audFit,
+      sugAngle,
       now2,
       now2
     ]
@@ -78007,6 +78031,22 @@ async function updateTopic(id, userId2, data) {
   if (data.carouselId !== void 0) {
     updates.push("carousel_id = ?");
     args.push(data.carouselId);
+  }
+  if (data.source !== void 0) {
+    updates.push("source = ?");
+    args.push(data.source);
+  }
+  if (data.relatedProductId !== void 0 || data.related_product_id !== void 0) {
+    updates.push("related_product_id = ?");
+    args.push(data.relatedProductId ?? data.related_product_id ?? null);
+  }
+  if (data.targetAudienceFit !== void 0 || data.target_audience_fit !== void 0) {
+    updates.push("target_audience_fit = ?");
+    args.push(data.targetAudienceFit ?? data.target_audience_fit ?? null);
+  }
+  if (data.suggestedAngle !== void 0 || data.suggested_angle !== void 0) {
+    updates.push("suggested_angle = ?");
+    args.push(data.suggestedAngle ?? data.suggested_angle ?? null);
   }
   updates.push("updated_at = ?");
   args.push(Date.now());
@@ -78063,7 +78103,12 @@ var TOPIC_CATEGORIES = [
   "tutorial",
   "common-mistakes",
   "case-study",
-  "deep-dive"
+  "deep-dive",
+  // Research agent categories
+  "evergreen",
+  "trending",
+  "personal",
+  "product"
 ];
 var categoryField = external_exports.string().transform((raw2) => {
   const slug = raw2.trim().toLowerCase();
@@ -78080,6 +78125,170 @@ var generatedTopicSchema = external_exports.object({
 var generatedTopicListSchema = external_exports.object({
   topics: external_exports.array(generatedTopicSchema).min(1)
 });
+
+// src/lib/products/repo.ts
+import { createClient as createClient6 } from "@libsql/client";
+var clientInstance2 = null;
+function db4() {
+  if (!clientInstance2) {
+    clientInstance2 = createClient6({
+      url: process.env.DATABASE_URL ?? "file:local-auth.db",
+      authToken: process.env.DATABASE_AUTH_TOKEN
+    });
+  }
+  return clientInstance2;
+}
+var PRODUCTS_SCHEMA = `
+CREATE TABLE IF NOT EXISTS products (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  price REAL NOT NULL,
+  key_benefit TEXT NOT NULL,
+  cta_text TEXT NOT NULL,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at INTEGER NOT NULL
+)`;
+var SEED_PRODUCT = {
+  id: "prod_3d_portfolio",
+  name: "3D Portfolio Template",
+  price: 149e3,
+  keyBenefit: "Template portfolio 3D interaktif untuk developer",
+  ctaText: "Beli sekarang"
+};
+var schemaEnsured2 = false;
+async function ensureSchema4() {
+  if (schemaEnsured2) return;
+  await db4().execute(PRODUCTS_SCHEMA);
+  const count = await db4().execute("SELECT COUNT(*) as cnt FROM products");
+  if (count.rows[0]?.cnt === 0) {
+    const now2 = Date.now();
+    await db4().execute({
+      sql: `INSERT INTO products (id, name, price, key_benefit, cta_text, active, created_at)
+            VALUES (?, ?, ?, ?, ?, 1, ?)`,
+      args: [
+        SEED_PRODUCT.id,
+        SEED_PRODUCT.name,
+        SEED_PRODUCT.price,
+        SEED_PRODUCT.keyBenefit,
+        SEED_PRODUCT.ctaText,
+        now2
+      ]
+    });
+    console.log(`[products] seeded default product: ${SEED_PRODUCT.name}`);
+  }
+  schemaEnsured2 = true;
+}
+function rowToProduct(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    price: row.price,
+    keyBenefit: row.key_benefit,
+    ctaText: row.cta_text,
+    active: Boolean(row.active),
+    createdAt: row.created_at
+  };
+}
+async function getActiveProducts() {
+  await ensureSchema4();
+  const res = await db4().execute("SELECT * FROM products WHERE active = 1");
+  return res.rows.map(rowToProduct);
+}
+async function getProduct(id) {
+  await ensureSchema4();
+  const res = await db4().execute({
+    sql: "SELECT * FROM products WHERE id = ?",
+    args: [id]
+  });
+  return res.rows[0] ? rowToProduct(res.rows[0]) : null;
+}
+
+// src/lib/topics/dedup.ts
+function normalizeText(text2) {
+  return text2.toLowerCase().replace(/[\u{1F600}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, "").replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim();
+}
+function levenshteinDistance(a, b) {
+  const an = a.length;
+  const bn = b.length;
+  if (an === 0) return bn;
+  if (bn === 0) return an;
+  const matrix = [];
+  for (let i = 0; i <= bn; ++i) matrix[i] = [i];
+  for (let i = 0; i <= an; ++i) matrix[0][i] = i;
+  for (let i = 1; i <= bn; ++i) {
+    for (let j = 1; j <= an; ++j) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          // substitution
+          matrix[i][j - 1] + 1,
+          // insertion
+          matrix[i - 1][j] + 1
+          // deletion
+        );
+      }
+    }
+  }
+  return matrix[bn][an];
+}
+function levenshteinSimilarity(a, b) {
+  const normA = normalizeText(a);
+  const normB = normalizeText(b);
+  if (normA === normB) return 1;
+  const maxLen = Math.max(normA.length, normB.length);
+  if (maxLen === 0) return 1;
+  const dist = levenshteinDistance(normA, normB);
+  return 1 - dist / maxLen;
+}
+function tokenOverlapSimilarity(a, b) {
+  const wordsA = new Set(normalizeText(a).split(/\s+/).filter((w) => w.length > 2));
+  const wordsB = new Set(normalizeText(b).split(/\s+/).filter((w) => w.length > 2));
+  if (wordsA.size === 0 || wordsB.size === 0) return 0;
+  let intersection2 = 0;
+  for (const w of wordsA) {
+    if (wordsB.has(w)) intersection2++;
+  }
+  return 2 * intersection2 / (wordsA.size + wordsB.size);
+}
+function computeTitleSimilarity(titleA, titleB) {
+  const lev = levenshteinSimilarity(titleA, titleB);
+  const token = tokenOverlapSimilarity(titleA, titleB);
+  return Math.max(lev, token);
+}
+function isDuplicateTopic(newTitle, existingTitles, threshold = 0.7) {
+  let highestSim = 0;
+  let closestMatch;
+  for (const existing of existingTitles) {
+    const sim = computeTitleSimilarity(newTitle, existing);
+    if (sim > highestSim) {
+      highestSim = sim;
+      closestMatch = existing;
+    }
+  }
+  return {
+    isDuplicate: highestSim >= threshold,
+    matchedWith: highestSim >= threshold ? closestMatch : void 0,
+    similarity: highestSim
+  };
+}
+function filterDuplicateTopics(candidates, existingTitles, threshold = 0.7) {
+  const accepted = [];
+  const allSeenTitles = [...existingTitles];
+  for (const candidate of candidates) {
+    const dup = isDuplicateTopic(candidate.title, allSeenTitles, threshold);
+    if (!dup.isDuplicate) {
+      accepted.push(candidate);
+      allSeenTitles.push(candidate.title);
+    } else {
+      console.warn(
+        `[dedup] Flagged duplicate topic: "${candidate.title}" (matches "${dup.matchedWith}" with similarity ${(dup.similarity * 100).toFixed(1)}%)`
+      );
+    }
+  }
+  return accepted;
+}
 
 // src/lib/topics/generator.ts
 var VOUR_CONTEXT = `
@@ -78105,7 +78314,7 @@ Your task: generate carousel content topics that are:
 4. Specific enough to fit an 8-slide carousel with clear learning outcomes
 5. Written in casual Indonesian tone
 
-Categories: ai-workflow, developer-tools, automation, nextjs, angular, productivity, tutorial, common-mistakes, case-study, deep-dive.
+Categories: evergreen, trending, personal, product, ai-workflow, developer-tools, automation, nextjs, angular, productivity, tutorial, common-mistakes, case-study, deep-dive.
 
 Good title examples:
 - "JWT Itu Bukan Enkripsi" (common misconception)
@@ -78123,6 +78332,63 @@ var WEEK_RHYTHM = `Daily rhythm for each week (repeat per week when generating m
 - Day 6: case study or comparison (analytical)
 - Day 7: myth-busting or concept explanation (educational)
 Never repeat the same category on consecutive days. Balance trending topics with evergreen content.`;
+var TARGET_RATIOS = {
+  evergreen: 0.4,
+  personal: 0.3,
+  trending: 0.2,
+  product: 0.1
+};
+function computeCategoryBalanceGuidance(existingTopics = [], categoryDistribution) {
+  const counts = {
+    evergreen: 0,
+    personal: 0,
+    trending: 0,
+    product: 0,
+    ...categoryDistribution
+  };
+  if (!categoryDistribution && existingTopics.length > 0) {
+    for (const t of existingTopics) {
+      if (t.category && TARGET_RATIOS[t.category] !== void 0) {
+        counts[t.category] = (counts[t.category] || 0) + 1;
+      }
+    }
+  }
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  if (total === 0) {
+    return "TARGET CATEGORY RATIO: 40% Evergreen, 30% Personal (pengalaman nyata/debug), 20% Trending, 10% Product.";
+  }
+  const actualRatios = {};
+  const underRepresented = [];
+  for (const [cat, target] of Object.entries(TARGET_RATIOS)) {
+    const actual = (counts[cat] || 0) / total;
+    actualRatios[cat] = actual;
+    if (actual < target) {
+      underRepresented.push(`${cat} (saat ini ${(actual * 100).toFixed(0)}%, target ${(target * 100).toFixed(0)}%)`);
+    }
+  }
+  const lines = [
+    `DISTRIBUSI KATEGORI TOPIK SAAT INI (Total: ${total} topik):`,
+    ...Object.entries(counts).map(([cat, cnt]) => `- ${cat}: ${cnt} (${(cnt / total * 100).toFixed(0)}%)`),
+    `TARGET RATIO: 40% Evergreen, 30% Personal, 20% Trending, 10% Product.`
+  ];
+  if (underRepresented.length > 0) {
+    lines.push(`PRIORITAS KATEGORI: Kategori berikut under-represented dibanding target, PRIORITASKAN untuk dibuat lebih banyak:
+${underRepresented.map((u) => `- ${u}`).join("\n")}`);
+  }
+  return lines.join("\n");
+}
+function extractAndParseJson2(rawText) {
+  let cleaned = rawText.trim();
+  if (cleaned.startsWith("```")) {
+    cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+  }
+  const firstBrace = cleaned.indexOf("{");
+  const lastBrace = cleaned.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+  }
+  return JSON.parse(cleaned);
+}
 async function researchCurrentTrends(focusArea) {
   const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
   if (!apiKey) return null;
@@ -78144,9 +78410,18 @@ async function generateTopicBatch(model, options) {
   const { mode, count } = options;
   const focusArea = options.focusArea || "trending developer topics and common learning gaps for junior/mid developers";
   const researchContext = options.research ? await researchCurrentTrends(focusArea) : null;
+  const balanceContext = computeCategoryBalanceGuidance(
+    options.existingTopics,
+    options.categoryDistribution
+  );
+  const existingTitles = (options.existingTopics || []).map((t) => t.title).filter(Boolean);
+  const existingTopicsPrompt = existingTitles.length > 0 ? `TOPIK YANG SUDAH ADA DI DATABASE (DILARANG KERAS MENGULANG TEMA, SUDUT PANDANG, ATAU JUDUL YANG MIRIP DENGAN DAFTAR INI):
+${existingTitles.slice(0, 60).map((t) => `- "${t}"`).join("\n")}` : "";
   const sections = [
     `Generate EXACTLY ${count} carousel content topics for Vour.`,
     options.category ? `Focus ONLY on category: ${options.category}` : "Mix categories based on Vour's content strategy (80% technical, 20% productivity/tools).",
+    balanceContext,
+    existingTopicsPrompt,
     `Focus Area: ${focusArea}`,
     mode !== "ideas" ? `These topics form a ${mode === "weekly" ? "1-week (7 days)" : "4-week (28 days)"} daily posting calendar, in day order.
 ${WEEK_RHYTHM}` : "These are backlog ideas \u2014 optimize for variety and evergreen value.",
@@ -78156,21 +78431,52 @@ ${researchContext}` : "",
 ${options.directives}` : "",
     `Every title must be catchy & clickable in Indonesian. No duplicate or near-duplicate topics.`
   ].filter(Boolean);
-  const { object: object3 } = await generateObject({
-    model,
-    schema: generatedTopicListSchema,
-    system: TOPIC_GENERATION_SYSTEM,
-    prompt: sections.join("\n\n")
-  });
-  return object3.topics.slice(0, count);
+  let topics = [];
+  try {
+    const { object: object3 } = await generateObject({
+      model,
+      schema: generatedTopicListSchema,
+      system: TOPIC_GENERATION_SYSTEM,
+      prompt: sections.join("\n\n")
+    });
+    topics = object3.topics;
+  } catch (err) {
+    console.warn("[generator] generateObject failed, trying generateText fallback:", err?.message || err);
+    const { text: text2 } = await generateText({
+      model,
+      system: TOPIC_GENERATION_SYSTEM + '\nIMPORTANT: Return ONLY valid JSON matching schema: { "topics": [ { "title": "...", "category": "...", "description": "...", "keywords": ["..."], "angle": "...", "priority": 5 } ] }',
+      prompt: sections.join("\n\n")
+    });
+    const parsed = extractAndParseJson2(text2);
+    const validated = generatedTopicListSchema.parse(parsed);
+    topics = validated.topics;
+  }
+  const deduped = filterDuplicateTopics(topics, existingTitles);
+  return deduped.slice(0, count);
 }
 async function expandTopicToBrief(topic, model) {
+  let productInfo = "";
+  if (topic.relatedProductId) {
+    const product = await getProduct(topic.relatedProductId).catch(() => null);
+    if (product) {
+      productInfo = [
+        `Tujuan Konten: soft-sell (edukatif dengan jembatan natural ke produk)`,
+        `Produk Terkait: ${product.name} \u2014 ${product.keyBenefit} (CTA: "${product.ctaText}")`,
+        topic.suggestedAngle ? `Suggested Angle: ${topic.suggestedAngle}` : "",
+        `
+PETUNJUK SOFT-SELL KHUSUS:`,
+        `- 80% slide tetap materi edukasi murni yang solutif dan bernilai tinggi bagi developer (jangan hard-selling/promosi agresif).`,
+        `- Slide penutup (Outro/Highlight) dan Caption secara natural memperkenalkan "${product.name}" (${product.keyBenefit}) sebagai solusi lanjut atau shortcut dengan ajakan bertindak: "${product.ctaText}".`
+      ].filter(Boolean).join("\n");
+    }
+  }
   const idea = [
     `Topik: ${topic.title}`,
     `Kategori: ${topic.category}`,
     topic.description ? `Deskripsi: ${topic.description}` : "",
     topic.angle ? `Angle: ${topic.angle}` : "",
-    topic.keywords?.length ? `Keywords: ${topic.keywords.join(", ")}` : ""
+    topic.keywords?.length ? `Keywords: ${topic.keywords.join(", ")}` : "",
+    productInfo
   ].filter(Boolean).join("\n");
   return generateBrief(idea, model);
 }
@@ -78196,13 +78502,23 @@ function scheduleDates(mode, start, count) {
 async function generateAndSaveTopics(userId2, model, input) {
   const mode = input.mode;
   const count = mode === "ideas" ? Math.min(Math.max(input.count ?? 7, 1), 31) : MODE_COUNTS[mode];
+  const existing = await getTopics(userId2, { limit: 100 }).catch(() => []);
+  const existingTopics = existing.map((t) => ({ title: t.title, category: t.category }));
+  const categoryDistribution = {};
+  for (const t of existing) {
+    if (t.category) {
+      categoryDistribution[t.category] = (categoryDistribution[t.category] || 0) + 1;
+    }
+  }
   const generated = await generateTopicBatch(model, {
     mode,
     count,
     category: input.category,
     focusArea: input.focusArea,
     directives: input.directives,
-    research: input.research
+    research: input.research,
+    existingTopics,
+    categoryDistribution
   });
   const start = input.startDate ? new Date(input.startDate) : /* @__PURE__ */ new Date();
   const dates = scheduleDates(mode, start, generated.length);
@@ -78221,6 +78537,136 @@ async function generateAndSaveTopics(userId2, model, input) {
         scheduledDate: dates[i]
       })
     );
+  }
+  return saved;
+}
+
+// src/lib/research/agent.ts
+var researchCandidateSchema = external_exports.object({
+  title: external_exports.string().min(4).max(120),
+  category: external_exports.enum(["evergreen", "trending", "personal", "product"]),
+  targetAudienceFit: external_exports.string().min(10).max(300),
+  relatedProductId: external_exports.string().optional(),
+  suggestedAngle: external_exports.string().max(300).optional()
+});
+var researchOutputSchema = external_exports.object({
+  candidates: external_exports.array(researchCandidateSchema)
+});
+function extractAndParseJson3(rawText) {
+  let cleaned = rawText.trim();
+  if (cleaned.startsWith("```")) {
+    cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+  }
+  const firstBrace = cleaned.indexOf("{");
+  const lastBrace = cleaned.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+  }
+  return JSON.parse(cleaned);
+}
+function buildSystemPrompt(products) {
+  const productList = products.map((p) => `- id: "${p.id}", name: "${p.name}", keyBenefit: "${p.keyBenefit}"`).join("\n");
+  return `Kamu adalah Topic Research Agent untuk akun konten edukasi teknologi
+(niche: web development, AI tools, developer productivity). Audience:
+developer junior-menengah, Indonesia, gaya bahasa santai (bukan
+formal/korporat).
+
+Dari catatan mentah yang diberikan, ekstrak KANDIDAT TOPIK carousel.
+Untuk tiap kandidat, tentukan:
+
+1. title: judul topik singkat, actionable, sesuai gaya konten existing
+   (bukan judul textbook/formal)
+
+2. category (pilih SATU, definisi sesuai ini):
+   - evergreen: selalu relevan, bukan tren sesaat (contoh: SSR vs CSR,
+     React Hooks, Docker basics)
+   - trending: update/rilis baru yang lagi ramai dibahas (contoh: versi
+     baru framework, fitur AI baru)
+   - personal: pengalaman/pelajaran dari proses kerja nyata (contoh:
+     dari catatan "hari ini stuck di error X" \u2192 topik "kesalahan umum
+     soal X")
+   - product: topik yang secara NATURAL bisa terhubung ke salah satu
+     produk aktif (daftar produk aktif akan diberikan terpisah) \u2014 HANYA
+     tandai ini kalau koneksinya genuinely masuk akal, JANGAN
+     dipaksakan cuma supaya ada kandidat kategori ini
+
+3. targetAudienceFit: 1 kalimat alasan kenapa topik ini relevan buat
+   audience (developer junior-menengah Indonesia) \u2014 kalau topiknya
+   terlalu niche/advanced/di luar target, JANGAN dimasukkan sebagai
+   kandidat sama sekali, skip
+
+4. Kalau category = "product": tentukan relatedProductId dari daftar
+   produk aktif yang paling relevan, dan tulis 1 kalimat suggestedAngle
+   \u2014 sudut edukasi yang bisa jadi jembatan natural ke produk itu (BUKAN
+   isi pitch-nya, cuma arah topiknya)
+
+Abaikan/skip catatan yang tidak menghasilkan topik yang cukup konkret
+untuk jadi 1 carousel utuh (misal cuma 1 kalimat tanpa substansi).
+
+DAFTAR PRODUK AKTIF (untuk referensi category="product"):
+${productList || "(tidak ada produk aktif)"}
+
+PENTING:
+- Output HARUS berupa JSON valid dengan format:
+  { "candidates": [ { "title": "...", "category": "...", "targetAudienceFit": "...", "relatedProductId": "..." (optional), "suggestedAngle": "..." (optional) } ] }
+- Kalau tidak ada kandidat yang layak, return: { "candidates": [] }
+- JANGAN tambahkan teks di luar JSON
+- JANGAN paksa topik masuk kalau di luar niche/audience target`;
+}
+var delay3 = (ms) => new Promise((resolve2) => setTimeout(resolve2, ms));
+async function extractTopics(rawNotes, products, model) {
+  const system = buildSystemPrompt(products);
+  const prompt = `Catatan mentah:
+
+${rawNotes}
+
+Ekstrak kandidat topik carousel dari catatan di atas. Return JSON saja.`;
+  let lastError = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const { text: text2 } = await generateText({ model, system, prompt });
+      const parsed = extractAndParseJson3(text2);
+      const validated = researchOutputSchema.parse(parsed);
+      const productIds = new Set(products.map((p) => p.id));
+      return validated.candidates.map((c) => {
+        if (c.category === "product" && c.relatedProductId && !productIds.has(c.relatedProductId)) {
+          console.warn(
+            `[research-agent] candidate "${c.title}" references unknown product "${c.relatedProductId}", clearing`
+          );
+          return { ...c, relatedProductId: void 0, suggestedAngle: void 0, category: "evergreen" };
+        }
+        return c;
+      });
+    } catch (err) {
+      console.error(`[research-agent] attempt ${attempt + 1} failed:`, err?.message || err);
+      lastError = err;
+      if (attempt < 2) await delay3((attempt + 1) * 2500);
+    }
+  }
+  throw new Error(
+    `Research agent failed after 3 attempts. Last error: ${lastError instanceof Error ? lastError.message : String(lastError)}`
+  );
+}
+async function extractAndSaveTopicsFromNotes(userId2, model, rawNotes, options) {
+  const products = await getActiveProducts();
+  const candidates = await extractTopics(rawNotes, products, model);
+  const status = options?.status ?? "idea";
+  const source = options?.source ?? "notes-extraction";
+  const saved = [];
+  for (const candidate of candidates) {
+    const topic = await createTopic({
+      userId: userId2,
+      title: candidate.title,
+      category: candidate.category,
+      description: candidate.targetAudienceFit,
+      keywords: [],
+      status,
+      source,
+      relatedProductId: candidate.relatedProductId,
+      targetAudienceFit: candidate.targetAudienceFit,
+      suggestedAngle: candidate.suggestedAngle
+    });
+    saved.push(topic);
   }
   return saved;
 }
@@ -78259,6 +78705,23 @@ app7.delete("/:id", async (c) => {
   await deleteTopic(c.req.param("id"), userId(c));
   return c.json({ success: true });
 });
+app7.post("/generate-from-notes", async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  if (!body?.rawNotes?.trim()) {
+    return c.json({ error: "Missing or empty rawNotes in request body" }, 400);
+  }
+  const modelId = body.modelId ?? defaultModel();
+  if (!modelId) {
+    return c.json({ error: "No AI model API keys configured in .env" }, 500);
+  }
+  const topics = await extractAndSaveTopicsFromNotes(
+    userId(c),
+    resolveModel(modelId),
+    body.rawNotes,
+    { status: "idea", source: "notes-extraction" }
+  );
+  return c.json({ topics, count: topics.length });
+});
 app7.post("/generate", async (c) => {
   const input = await c.req.json();
   if (!["ideas", "weekly", "monthly"].includes(input?.mode)) {
@@ -78287,6 +78750,14 @@ app7.post("/:id/brief", async (c) => {
 });
 var topics_default = app7;
 
+// src/routes/user/products.ts
+var app8 = new Hono2();
+app8.get("/", async (c) => {
+  const products = await getActiveProducts();
+  return c.json({ products });
+});
+var products_default = app8;
+
 // src/lib/publish/schedule.ts
 var WIB_OFFSET_MS = 7 * 60 * 60 * 1e3;
 var POST_HOUR_WIB = 12;
@@ -78299,10 +78770,10 @@ function nextWibSlot(now2, hour = POST_HOUR_WIB, minute = 0) {
 // src/routes/automation/generate.ts
 init_db();
 init_esm();
-var app8 = new Hono2();
-var db4 = new Kysely({ dialect });
+var app9 = new Hono2();
+var db5 = new Kysely({ dialect });
 async function resolveUserId() {
-  const user = await db4.selectFrom("user").select("id").limit(1).executeTakeFirst();
+  const user = await db5.selectFrom("user").select("id").limit(1).executeTakeFirst();
   return user?.id ?? null;
 }
 async function createAndPublishCarousel({
@@ -78413,7 +78884,7 @@ async function createAndPublishCarousel({
     ttPostId
   };
 }
-app8.post("/generate", async (c) => {
+app9.post("/generate", async (c) => {
   let body;
   try {
     body = await c.req.json();
@@ -78426,7 +78897,7 @@ app8.post("/generate", async (c) => {
   }
   let userId2 = null;
   try {
-    const user = await db4.selectFrom("user").select("id").limit(1).executeTakeFirst();
+    const user = await db5.selectFrom("user").select("id").limit(1).executeTakeFirst();
     userId2 = user?.id;
   } catch (err) {
     return c.json({ error: `Database user lookup failed: ${err.message}` }, 500);
@@ -78488,7 +78959,7 @@ app8.post("/generate", async (c) => {
     return c.json({ error: `Automation failed: ${err.message}` }, 500);
   }
 });
-app8.get("/topic/next", async (c) => {
+app9.get("/topic/next", async (c) => {
   const userId2 = await resolveUserId().catch(() => null);
   if (!userId2) {
     return c.json({ error: "No user found in the database. Seed the database first." }, 500);
@@ -78506,7 +78977,7 @@ app8.get("/topic/next", async (c) => {
     angle: topic.angle
   });
 });
-app8.post("/topics/generate", async (c) => {
+app9.post("/topics/generate", async (c) => {
   const body = await c.req.json().catch(() => ({}));
   if (!["ideas", "weekly", "monthly"].includes(body?.mode)) {
     return c.json({ error: `Invalid mode "${body?.mode}" \u2014 use ideas | weekly | monthly` }, 400);
@@ -78522,7 +78993,75 @@ app8.post("/topics/generate", async (c) => {
   const topics = await generateAndSaveTopics(uid, resolveModel(modelId), body);
   return c.json({ success: true, topics, count: topics.length });
 });
-var generate_default = app8;
+app9.post("/research-topics", async (c) => {
+  let body;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON body" }, 400);
+  }
+  const rawNotes = body?.rawNotes;
+  if (!rawNotes || !rawNotes.trim()) {
+    return c.json({ error: "Missing or empty rawNotes in request body" }, 400);
+  }
+  const userId2 = await resolveUserId().catch(() => null);
+  if (!userId2) {
+    return c.json({ error: "No user found in the database. Seed the database first." }, 500);
+  }
+  const modelId = defaultModel();
+  if (!modelId) {
+    return c.json({ error: "No AI model API keys configured in .env" }, 500);
+  }
+  try {
+    const saved = await extractAndSaveTopicsFromNotes(
+      userId2,
+      resolveModel(modelId),
+      rawNotes,
+      { status: "pending_review", source: "research-agent-mvp" }
+    );
+    return c.json({
+      success: true,
+      message: `Extracted ${saved.length} topic candidates, saved as pending_review`,
+      topics: saved,
+      saved
+    });
+  } catch (err) {
+    console.error("Research agent failed:", err);
+    return c.json({ error: `Research agent failed: ${err.message}` }, 500);
+  }
+});
+app9.patch("/research-topics/:id/status", async (c) => {
+  let body;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON body" }, 400);
+  }
+  const newStatus = body?.status;
+  if (!newStatus) {
+    return c.json({ error: "Missing status in request body" }, 400);
+  }
+  const validStatuses = ["idea", "approved", "rejected", "pending_review", "not_posted"];
+  if (!validStatuses.includes(newStatus)) {
+    return c.json(
+      { error: `Invalid status "${newStatus}" \u2014 use one of: ${validStatuses.join(", ")}` },
+      400
+    );
+  }
+  const userId2 = await resolveUserId().catch(() => null);
+  if (!userId2) {
+    return c.json({ error: "No user found in the database" }, 500);
+  }
+  const topicId = c.req.param("id");
+  try {
+    await updateTopic(topicId, userId2, { status: newStatus });
+    return c.json({ success: true, topicId, status: newStatus });
+  } catch (err) {
+    console.error(`Failed to update topic ${topicId}:`, err);
+    return c.json({ error: `Failed to update topic: ${err.message}` }, 500);
+  }
+});
+var generate_default = app9;
 
 // src/server.ts
 var userApp = new Hono2();
@@ -78558,6 +79097,7 @@ userApp.route("/api/assemble", assemble_default);
 userApp.route("/api/capture", capture_default);
 userApp.route("/api/publish", publish_default);
 userApp.route("/api/topics", topics_default);
+userApp.route("/api/products", products_default);
 userApp.onError((err, c) => {
   console.error("User Server Error:", err);
   return c.json({ error: err.message || "Internal Server Error" }, 500);

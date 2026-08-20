@@ -11,9 +11,18 @@ export const TOPIC_CATEGORIES = [
   "common-mistakes",
   "case-study",
   "deep-dive",
+  // Research agent categories
+  "evergreen",
+  "trending",
+  "personal",
+  "product",
 ] as const;
 
-export const TOPIC_STATUSES = ["idea", "queued", "generated", "published", "archived"] as const;
+export const TOPIC_STATUSES = [
+  "idea", "queued", "generated", "published", "archived",
+  // Research agent statuses
+  "pending_review", "approved", "rejected",
+] as const;
 
 // AI output can hallucinate a category — coerce to "tutorial" instead of failing the batch.
 const categoryField = z
