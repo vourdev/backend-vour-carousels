@@ -75051,7 +75051,45 @@ ${TITLE_CAPTION_RULE}
    invent an unrelated caption, and do not paste the brief's Markdown headings.
 7. ${HASHTAG_RULE}
 8. Rotate tone colors across slides: ${TONES}.
-9. VARY LAYOUT TEMPLATES: never reuse the exact same layout template on consecutive point slides (e.g. "standard" -> "standard" -> "standard" is strictly banned). You must use at least 2-3 different layout options per deck (mixing "standard", "mockup-forward", and "split-content", or "note-emphasis" when notes highlight key takeaways).
+9. LAYOUT DIVERSITY (MANDATORY \u2014 as important as mockup variety):
+   The "layout" field on each point slide controls the VISUAL COMPOSITION \u2014 where the
+   eyebrow, headline, body and mockup sit relative to each other. A deck where every slide
+   uses the same layout looks like a slideshow template, not editorial content.
+   Four options (all rendering is FIXED in CSS \u2014 you only pick the name):
+
+   "standard" (default) \u2014 eyebrow \u2192 headline \u2192 body \u2192 mockup at bottom.
+     WHEN: general-purpose, longer body text (>80 chars), or when no other layout fits better.
+     GOOD FOR: card, callout, bigstat, steps, comparison, illustration.
+
+   "mockup-forward" \u2014 mockup dominates the upper half, headline+body become a caption below.
+     WHEN: the mockup IS the point of the slide (code example, schema, file structure, architecture).
+     GOOD FOR: terminal, database, gitbranch, foldertree, commandpalette, browser, config.
+     SIGNAL: if the reader should look at the mockup FIRST and read the text second.
+
+   "split-content" \u2014 text column left, mockup column right (side-by-side).
+     WHEN: body text is short (<80 chars) and the mockup is a compact diagram.
+     GOOD FOR: flow, concept, hub, checklist, card, eventqueue, statemachine, latencycomp.
+     SIGNAL: the text and mockup are equal partners, neither dominates.
+
+   "note-emphasis" \u2014 the mockup's "note" field gets a large accent box treatment.
+     WHEN: the note contains the KEY INSIGHT or WARNING of the slide, not just a footnote.
+     GOOD FOR: any mockup with a "note" field (flow, hub, concept, checklist, comparison).
+     SIGNAL: the note is the most important sentence on the slide \u2014 without emphasis, readers skip it.
+
+   HARD RULES:
+   - Use \u2265 2 different layouts in any deck with \u2265 4 point slides.
+   - Use \u2265 3 different layouts in any deck with \u2265 6 point slides.
+   - NEVER 3 consecutive point slides with the same layout.
+   - Do NOT default everything to "standard" \u2014 that defeats the purpose.
+
+   LAYOUT VARIETY EXAMPLE (8-slide deck):
+   slide 2 (concept)     \u2192 layout: "standard"         // term breakdown, longer explanation
+   slide 3 (terminal)    \u2192 layout: "mockup-forward"    // code IS the point
+   slide 4 (flow)        \u2192 layout: "split-content"     // short body, compact pipeline
+   slide 5 (hub, +note)  \u2192 layout: "note-emphasis"     // note carries the key insight
+   slide 6 (comparison)  \u2192 layout: "standard"          // before/after needs full width
+   slide 7 (checklist)   \u2192 layout: "split-content"     // recap items beside text
+
 10. FINAL PASS (mandatory): re-read every eyebrow, headline, lede, body, mockup string, the
    outro cta, and the caption against the HUMAN VOICE EDITOR rules above. Rewrite anything
    that trips a banned pattern BEFORE returning the plan. Also run the ritme check: no 3+
@@ -75497,16 +75535,64 @@ function stripUnfulfillableEvidence(plan) {
   });
   return { ...plan, slides };
 }
-async function generateSlidePlan(brief, model, underusedMockups) {
-  const underusedInstruction = underusedMockups && underusedMockups.length > 0 ? `
+var MOCKUP_USE_CASE = {
+  card: "general info card for conceptual explanations",
+  terminal: "code snippets, CLI output, config files, JSON",
+  comparison: "before/after, bad vs good, two-option contrast",
+  steps: "2-4 numbered how-to steps, tutorial, solution walkthrough",
+  callout: "single punchy warning or key takeaway",
+  bigstat: "one impressive metric or standout number",
+  flow: "sequential pipeline: request \u2192 handler \u2192 DB",
+  hub: "center node wired to 3-4 tools/services/integrations",
+  concept: "parent term broken into 2-3 sub-concepts",
+  checklist: "3-6 ticked recap items, summary slide",
+  promptcard: "copy-paste AI/CLI prompt the reader can steal",
+  foldertree: "project directory structure, file layouts",
+  commandpalette: "Cmd+K menu, IDE action list, tool selection",
+  database: "2-table ERD/schema with relation glyph",
+  gitbranch: "branch/merge workflow, feature-branch story",
+  browser: "dashboard/product mockup with stat cards",
+  quote: "expert pull-quote, principle, engineering philosophy",
+  datatable: "\u2717/\u2713 two-column: jangan/lakukan, myth/reality",
+  commandlist: "CLI command list: cmd \u2192 description rows",
+  timeline: "dulu/sekarang, then/now evolution comparison",
+  screenshot: "real evidence screenshot for case studies",
+  custom: "bespoke HTML for layouts no typed mockup can draw",
+  illustration: "unDraw SVG for analogies, abstract concepts, metaphors",
+  apirequest: "HTTP API endpoint with method, URL, response body",
+  eventqueue: "pub-sub/event-driven: producer \u2192 topic \u2192 consumer",
+  latencycomp: "performance bar chart: compare response times/benchmarks",
+  config: "config file mockup: .env, yaml, properties key-value",
+  statemachine: "entity lifecycle: states + transitions (pending \u2192 active \u2192 done)",
+  architecture: "simple deployment topology: client \u2192 LB \u2192 nodes"
+};
+async function generateSlidePlan(brief, model, diversity) {
+  const ctx = Array.isArray(diversity) ? { underusedTypes: diversity } : diversity;
+  let underusedInstruction = "";
+  if (ctx && ctx.underusedTypes.length > 0) {
+    const lines = ctx.underusedTypes.map((m) => {
+      const desc = MOCKUP_USE_CASE[m] || "";
+      const statLine = ctx.stats ? (() => {
+        const s = ctx.stats.find((x) => x.type === m);
+        return s ? ` (used ${s.percentage}% in recent decks)` : "";
+      })() : "";
+      return `  \u2022 ${m}${statLine}${desc ? ` \u2014 ${desc}` : ""}`;
+    });
+    underusedInstruction = `
 
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
-HISTORICAL MOCKUP DIVERSITY CONTEXT (Underused Mockups)
+HISTORICAL MOCKUP DIVERSITY CONTEXT
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
 The following mockup types have been UNDERUSED in recent carousels.
-Prioritize using them in this deck IF they fit the content semantically (do not force them if irrelevant):
-${underusedMockups.map((m) => `- ${m}`).join("\n")}
-\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550` : "";
+They are listed from least-used to most-used. Consider them IF they
+fit the content semantically \u2014 do NOT force them if irrelevant, but
+actively prefer them over overused types when the fit is equal:
+${lines.join("\n")}
+
+OVERUSED types (use sparingly \u2014 the audience has seen too many of these):
+${ctx.stats?.filter((s) => s.percentage >= 12).map((s) => `  \u2717 ${s.type} (${s.percentage}%)`).join("\n") || "  (no data yet)"}
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550`;
+  }
   const systemPrompt = planSystem + underusedInstruction;
   return withRetry(async () => {
     try {
@@ -76197,13 +76283,57 @@ async function getGlobalMockupStats(userId2) {
     return { type, count, percentage };
   }).sort((a, b) => b.count - a.count);
 }
+async function getRecentMockupStatsWithPercentages(userId2, limit = 25) {
+  const counts = await getRecentMockupStats(userId2, limit);
+  const totalSlides = Object.values(counts).reduce((a, b) => a + b, 0);
+  return ALL_MOCKUP_TYPES.map((type) => {
+    const count = counts[type] || 0;
+    const percentage = totalSlides > 0 ? Math.round(count / totalSlides * 1e4) / 100 : 0;
+    return { type, count, percentage };
+  }).sort((a, b) => a.count - b.count);
+}
+var ALL_LAYOUT_VALUES = ["standard", "mockup-forward", "split-content", "note-emphasis"];
+async function getRecentLayoutStats(userId2, limit = 25) {
+  await ensureSchema2();
+  const res = await db2().execute({
+    sql: `SELECT slide_plan FROM carousels WHERE user_id = ? AND slide_plan IS NOT NULL ORDER BY created_at DESC LIMIT ?`,
+    args: [userId2, limit]
+  });
+  const counts = {};
+  let totalSlides = 0;
+  for (const row of res.rows) {
+    try {
+      const plan = JSON.parse(String(row.slide_plan));
+      if (plan && Array.isArray(plan.slides)) {
+        for (const slide of plan.slides) {
+          if (slide.role === "point") {
+            const layout = slide.layout || "standard";
+            counts[layout] = (counts[layout] || 0) + 1;
+            totalSlides++;
+          }
+        }
+      }
+    } catch (e) {
+    }
+  }
+  return ALL_LAYOUT_VALUES.map((layout) => {
+    const count = counts[layout] || 0;
+    const percentage = totalSlides > 0 ? Math.round(count / totalSlides * 1e4) / 100 : 0;
+    return { layout, count, percentage };
+  }).sort((a, b) => b.count - a.count);
+}
 
 // src/routes/user/plan.ts
 var app3 = new Hono2();
 app3.get("/mockup-stats", async (c) => {
   const session = c.get("session");
-  const stats = await getGlobalMockupStats(session.user.id);
-  return c.json({ stats });
+  const userId2 = session?.user?.id;
+  const [globalStats, recentStats, layoutStats] = await Promise.all([
+    getGlobalMockupStats(),
+    userId2 ? getRecentMockupStatsWithPercentages(userId2).catch(() => []) : Promise.resolve([]),
+    userId2 ? getRecentLayoutStats(userId2).catch(() => []) : Promise.resolve([])
+  ]);
+  return c.json({ global: globalStats, recent: recentStats, layouts: layoutStats });
 });
 app3.post("/", async (c) => {
   const session = c.get("session");
@@ -76212,8 +76342,13 @@ app3.post("/", async (c) => {
     return c.json({ error: "Missing brief" }, 400);
   }
   const model = resolveModel(modelId);
-  const underused = session?.user?.id ? await getUnderusedMockupTypes(session.user.id).catch(() => []) : [];
-  const plan = await generateSlidePlan(brief, model, underused);
+  const userId2 = session?.user?.id;
+  const [underused, stats] = await Promise.all([
+    userId2 ? getUnderusedMockupTypes(userId2).catch(() => []) : Promise.resolve([]),
+    userId2 ? getRecentMockupStatsWithPercentages(userId2).catch(() => []) : Promise.resolve([])
+  ]);
+  const diversity = { underusedTypes: underused, stats };
+  const plan = await generateSlidePlan(brief, model, diversity);
   return c.json({ plan });
 });
 app3.post("/revise", async (c) => {
@@ -79157,8 +79292,12 @@ async function createAndPublishCarousel({
 }) {
   const ideaWithAngle = `${topic}${angleInstruction}`;
   const brief = await generateBrief(ideaWithAngle, resolvedModel);
-  const underused = await getUnderusedMockupTypes(userId2).catch(() => []);
-  const plan = stripUnfulfillableEvidence(await generateSlidePlan(brief, resolvedModel, underused));
+  const [underused, stats] = await Promise.all([
+    getUnderusedMockupTypes(userId2).catch(() => []),
+    getRecentMockupStatsWithPercentages(userId2).catch(() => [])
+  ]);
+  const diversity = { underusedTypes: underused, stats };
+  const plan = stripUnfulfillableEvidence(await generateSlidePlan(brief, resolvedModel, diversity));
   await warmUpIllustrations();
   const html = assembleCarousel(plan);
   const imageBase64s = await captureQueue.capture(async (browser) => {
@@ -79450,6 +79589,22 @@ app9.patch("/research-topics/:id/status", async (c) => {
     console.error(`Failed to update topic ${topicId}:`, err);
     return c.json({ error: `Failed to update topic: ${err.message}` }, 500);
   }
+});
+app9.get("/mockup-stats", async (c) => {
+  const userId2 = await resolveUserId().catch(() => null);
+  if (!userId2) {
+    return c.json({ error: "No user found in the database" }, 500);
+  }
+  const [globalStats, recentStats, layoutStats] = await Promise.all([
+    getGlobalMockupStats(),
+    getRecentMockupStatsWithPercentages(userId2),
+    getRecentLayoutStats(userId2)
+  ]);
+  return c.json({
+    global: globalStats,
+    recent: recentStats,
+    layouts: layoutStats
+  });
 });
 var generate_default = app9;
 

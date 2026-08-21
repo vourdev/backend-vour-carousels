@@ -183,126 +183,79 @@ function enforceMockupForPointSlides(plan: SlidePlan): SlidePlan {
   return { ...plan, slides };
 }
 
-/** Mockup types that render best when the mockup dominates (mockup-forward layout). */
-const HERO_MOCKUP_TYPES = new Set(["terminal", "database", "gitbranch", "foldertree", "commandpalette", "browser"]);
-
-/** Mockup types whose "note" field is typically a key takeaway worth emphasizing. */
-const NOTE_BEARING_TYPES = new Set(["flow", "hub", "concept", "checklist", "comparison"]);
-
 /**
- * Post-processing pass: enforce layout diversity across point slides.
+ * No two consecutive point slides share a composition.
  *
- * The model is asked for layout variety via the prompt, but in practice often emits
- * "standard" for every slide. This enforcement assigns contextually appropriate layouts
- * based on mockup type and content, guaranteeing at least 2 different layouts in any
- * deck with ≥ 3 point slides, and no 3 consecutive slides with the same layout.
+ * The renderer already guarantees this for slides that name no layout — it alternates by
+ * index. It cannot guarantee it for slides that DO name one, because an explicit choice
+ * wins, and measuring 7 generated decks showed the model naming the same layout twice in a
+ * row in 5 of them despite the prompt forbidding it. Resolving the whole sequence here,
+ * with the renderer's own rules, is the only place the neighbour is visible.
  *
- * Generation only — not applied on revision (same reason as enforceMockupForPointSlides).
+ * Runs after enforceMockupForPointSlides, because every branch below assumes the slide has
+ * a mockup to compose around.
  */
-export function enforceLayoutDiversity(plan: SlidePlan): SlidePlan {
-  const pointSlides = plan.slides.filter((s) => s.role === "point");
-  if (pointSlides.length < 3) return plan; // too few to worry about
-
-  // Check: are all layouts identical?
-  const layouts = pointSlides.map((s) => s.layout || "standard");
-  const uniqueLayouts = new Set(layouts);
-
-  // Only intervene if diversity is insufficient (all same layout)
-  if (uniqueLayouts.size >= 2) {
-    // Still check for 3+ consecutive same layout and fix those
-    return enforceNoThreeConsecutiveLayouts(plan);
-  }
-
-  // All layouts are the same — assign contextually appropriate ones
-  console.warn(
-    `[layout-diversity] All ${pointSlides.length} point slides have layout="${layouts[0]}". Redistributing.`
-  );
-
-  let pointIndex = 0;
-  const slides = plan.slides.map((slide) => {
+function enforceLayoutVariety(plan: SlidePlan): SlidePlan {
+  let previous: string | undefined;
+  const slides = plan.slides.map((slide, i) => {
     if (slide.role !== "point") return slide;
 
-    const mockupType = slide.mockup?.type;
-    let newLayout: string = slide.layout || "standard";
-
-    // Rule 1: Hero mockup types → mockup-forward
-    if (mockupType && HERO_MOCKUP_TYPES.has(mockupType) && pointIndex % 3 === 1) {
-      newLayout = "mockup-forward";
+    let layout = resolveLayout(slide.layout, i, slide.mockup);
+    if (layout === previous) {
+      // Second chance: whatever the renderer would have picked on its own for this index.
+      const rotated = resolveLayout(undefined, i, slide.mockup);
+      layout =
+        rotated !== previous
+          ? rotated
+          : // Both collide, so take the one alternative that always applies once a
+            // mockup exists. standard and mockup-forward are never both unavailable.
+            previous === "mockup-forward"
+            ? "standard"
+            : "mockup-forward";
     }
-    // Rule 2: Mockups with note that carry key conclusions → note-emphasis
-    else if (
-      mockupType &&
-      NOTE_BEARING_TYPES.has(mockupType) &&
-      slide.mockup &&
-      "note" in slide.mockup &&
-      (slide.mockup as any).note &&
-      pointIndex % 4 === 2
-    ) {
-      newLayout = "note-emphasis";
-    }
-    // Rule 3: Short body text + non-hero mockup → split-content
-    else if (
-      slide.body &&
-      slide.body.length < 80 &&
-      mockupType &&
-      !HERO_MOCKUP_TYPES.has(mockupType) &&
-      pointIndex % 3 === 0 &&
-      pointIndex > 0
-    ) {
-      newLayout = "split-content";
-    }
-
-    pointIndex++;
-    if (newLayout === (slide.layout || "standard")) return slide;
-    return { ...slide, layout: newLayout as any };
+    previous = layout;
+    return { ...slide, layout };
   });
-
-  return enforceNoThreeConsecutiveLayouts({ ...plan, slides });
-}
-
-/**
- * Fixes any run of 3+ consecutive point slides with the same layout by cycling
- * through alternatives on the third slide in each run.
- */
-function enforceNoThreeConsecutiveLayouts(plan: SlidePlan): SlidePlan {
-  const alternatives = ["standard", "mockup-forward", "split-content", "note-emphasis"];
-  const slides = [...plan.slides];
-  let runLength = 1;
-  let lastLayout = "";
-
-  for (let i = 0; i < slides.length; i++) {
-    const slide = slides[i];
-    if (slide.role !== "point") {
-      runLength = 0;
-      lastLayout = "";
-      continue;
-    }
-
-    const layout = slide.layout || "standard";
-    if (layout === lastLayout) {
-      runLength++;
-    } else {
-      runLength = 1;
-      lastLayout = layout;
-    }
-
-    if (runLength >= 3) {
-      // Pick a different layout
-      const alt = alternatives.find((l) => l !== layout) || "mockup-forward";
-      slides[i] = { ...slide, layout: alt as any };
-      lastLayout = alt;
-      runLength = 1;
-    }
-  }
-
   return { ...plan, slides };
 }
 
-/** All code-level safety nets, in the order they must run. */
+/** Every code-level safety net, in the order they must run. */
 function enforcePlanInvariants(plan: SlidePlan): SlidePlan {
-  return enforceLayoutDiversity(
+  return enforceLayoutVariety(
     enforceMockupForPointSlides(enforceIllustrationForAnalogySlides(plan))
   );
+}
+
+/**
+ * Drop evidence mockups that nobody is going to fill in.
+ *
+ * A `screenshot` mockup with no captured image renders a "⚠️ BUTUH SCREENSHOT ASLI"
+ * placeholder card — a brief addressed to a human, telling them which screenshot to go
+ * and take. In the wizard that is exactly right: the human is sitting there. In the daily
+ * cron there is no human anywhere in the run, so the placeholder is captured, uploaded to
+ * Cloudinary and scheduled to Instagram and TikTok as if it were finished artwork.
+ *
+ * Applied only on the unattended path, and deliberately not inside enforcePlanInvariants:
+ * on the interactive path the placeholder is the feature.
+ */
+export function stripUnfulfillableEvidence(plan: SlidePlan): SlidePlan {
+  const slides = plan.slides.map((slide) => {
+    if (slide.role !== "point" || slide.mockup?.type !== "screenshot") return slide;
+    if (slide.mockup.evidenceStatus === "captured" && slide.mockup.screenshotImage?.dataUrl) {
+      return slide;
+    }
+    console.warn(
+      `[evidence-guard] Slide "${slide.eyebrow}" wants a screenshot nobody can upload on this path. Replacing with an illustration.`
+    );
+    return {
+      ...slide,
+      mockup: {
+        type: "illustration" as const,
+        illustrationSlugs: [normalizeIllustration(ILLUSTRATION_FALLBACK_SLUG)],
+      },
+    };
+  });
+  return { ...plan, slides };
 }
 
 /**
