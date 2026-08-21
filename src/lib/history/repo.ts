@@ -281,3 +281,63 @@ export async function getGlobalMockupStats(): Promise<{ type: string; count: num
     return { type, count, percentage };
   }).sort((a, b) => b.count - a.count);
 }
+
+/**
+ * Returns mockup type usage with percentages from the last N carousels for a user.
+ * Designed for prompt injection: the LLM sees not just "which types are underused"
+ * but HOW underused they are (0% vs 2% vs 18%), making the nudge more persuasive.
+ */
+export async function getRecentMockupStatsWithPercentages(
+  userId: string,
+  limit = 25
+): Promise<{ type: string; count: number; percentage: number }[]> {
+  const counts = await getRecentMockupStats(userId, limit);
+  const totalSlides = Object.values(counts).reduce((a, b) => a + b, 0);
+
+  return ALL_MOCKUP_TYPES.map(type => {
+    const count = counts[type] || 0;
+    const percentage = totalSlides > 0 ? Math.round((count / totalSlides) * 10000) / 100 : 0;
+    return { type, count, percentage };
+  }).sort((a, b) => a.count - b.count); // least-used first
+}
+
+export const ALL_LAYOUT_VALUES = ["standard", "mockup-forward", "split-content", "note-emphasis"] as const;
+
+/**
+ * Returns layout distribution from recent N carousels — counts how often each
+ * layout value appears across point slides. Used for diversity auditing.
+ */
+export async function getRecentLayoutStats(
+  userId: string,
+  limit = 25
+): Promise<{ layout: string; count: number; percentage: number }[]> {
+  await ensureSchema();
+  const res = await db().execute({
+    sql: `SELECT slide_plan FROM carousels WHERE user_id = ? AND slide_plan IS NOT NULL ORDER BY created_at DESC LIMIT ?`,
+    args: [userId, limit],
+  });
+  const counts: Record<string, number> = {};
+  let totalSlides = 0;
+  for (const row of res.rows) {
+    try {
+      const plan = JSON.parse(String(row.slide_plan)) as SlidePlan;
+      if (plan && Array.isArray(plan.slides)) {
+        for (const slide of plan.slides) {
+          if (slide.role === "point") {
+            const layout = (slide as any).layout || "standard";
+            counts[layout] = (counts[layout] || 0) + 1;
+            totalSlides++;
+          }
+        }
+      }
+    } catch (e) {
+      // Ignored
+    }
+  }
+
+  return ALL_LAYOUT_VALUES.map(layout => {
+    const count = counts[layout] || 0;
+    const percentage = totalSlides > 0 ? Math.round((count / totalSlides) * 10000) / 100 : 0;
+    return { layout, count, percentage };
+  }).sort((a, b) => b.count - a.count);
+}

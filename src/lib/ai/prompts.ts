@@ -909,7 +909,45 @@ ${TITLE_CAPTION_RULE}
    invent an unrelated caption, and do not paste the brief's Markdown headings.
 7. ${HASHTAG_RULE}
 8. Rotate tone colors across slides: ${TONES}.
-9. VARY LAYOUT TEMPLATES: never reuse the exact same layout template on consecutive point slides (e.g. "standard" -> "standard" -> "standard" is strictly banned). You must use at least 2-3 different layout options per deck (mixing "standard", "mockup-forward", and "split-content", or "note-emphasis" when notes highlight key takeaways).
+9. LAYOUT DIVERSITY (MANDATORY — as important as mockup variety):
+   The \"layout\" field on each point slide controls the VISUAL COMPOSITION — where the
+   eyebrow, headline, body and mockup sit relative to each other. A deck where every slide
+   uses the same layout looks like a slideshow template, not editorial content.
+   Four options (all rendering is FIXED in CSS — you only pick the name):
+
+   \"standard\" (default) — eyebrow → headline → body → mockup at bottom.
+     WHEN: general-purpose, longer body text (>80 chars), or when no other layout fits better.
+     GOOD FOR: card, callout, bigstat, steps, comparison, illustration.
+
+   \"mockup-forward\" — mockup dominates the upper half, headline+body become a caption below.
+     WHEN: the mockup IS the point of the slide (code example, schema, file structure, architecture).
+     GOOD FOR: terminal, database, gitbranch, foldertree, commandpalette, browser, config.
+     SIGNAL: if the reader should look at the mockup FIRST and read the text second.
+
+   \"split-content\" — text column left, mockup column right (side-by-side).
+     WHEN: body text is short (<80 chars) and the mockup is a compact diagram.
+     GOOD FOR: flow, concept, hub, checklist, card, eventqueue, statemachine, latencycomp.
+     SIGNAL: the text and mockup are equal partners, neither dominates.
+
+   \"note-emphasis\" — the mockup's \"note\" field gets a large accent box treatment.
+     WHEN: the note contains the KEY INSIGHT or WARNING of the slide, not just a footnote.
+     GOOD FOR: any mockup with a \"note\" field (flow, hub, concept, checklist, comparison).
+     SIGNAL: the note is the most important sentence on the slide — without emphasis, readers skip it.
+
+   HARD RULES:
+   - Use ≥ 2 different layouts in any deck with ≥ 4 point slides.
+   - Use ≥ 3 different layouts in any deck with ≥ 6 point slides.
+   - NEVER 3 consecutive point slides with the same layout.
+   - Do NOT default everything to \"standard\" — that defeats the purpose.
+
+   LAYOUT VARIETY EXAMPLE (8-slide deck):
+   slide 2 (concept)     → layout: \"standard\"         // term breakdown, longer explanation
+   slide 3 (terminal)    → layout: \"mockup-forward\"    // code IS the point
+   slide 4 (flow)        → layout: \"split-content\"     // short body, compact pipeline
+   slide 5 (hub, +note)  → layout: \"note-emphasis\"     // note carries the key insight
+   slide 6 (comparison)  → layout: \"standard\"          // before/after needs full width
+   slide 7 (checklist)   → layout: \"split-content\"     // recap items beside text
+
 10. FINAL PASS (mandatory): re-read every eyebrow, headline, lede, body, mockup string, the
    outro cta, and the caption against the HUMAN VOICE EDITOR rules above. Rewrite anything
    that trips a banned pattern BEFORE returning the plan. Also run the ritme check: no 3+

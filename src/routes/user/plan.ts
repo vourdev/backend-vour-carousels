@@ -1,17 +1,25 @@
 import { Hono } from "hono";
 import { resolveModel, type ModelId } from "../../lib/ai/registry";
-import { generateSlidePlan, reviseSlidePlanScoped } from "../../lib/ai/generate";
+import { generateSlidePlan, reviseSlidePlanScoped, type MockupDiversityContext } from "../../lib/ai/generate";
 import { describeScope, RevisionScopeViolation } from "../../lib/ai/revision-scope";
 import { appendRevision, listRevisions } from "../../lib/memory/repo";
 import { summarizePlanDiff } from "../../lib/memory/diff";
 import type { SlidePlan } from "../../lib/ds/schema";
-import { getUnderusedMockupTypes, getGlobalMockupStats } from "../../lib/history/repo";
+import { getUnderusedMockupTypes, getRecentMockupStatsWithPercentages, getGlobalMockupStats, getRecentLayoutStats } from "../../lib/history/repo";
 
 const app = new Hono<{ Variables: { session: any } }>();
 
 app.get("/mockup-stats", async (c) => {
-  const stats = await getGlobalMockupStats();
-  return c.json({ stats });
+  const session = c.get("session") as { user: { id: string } };
+  const userId = session?.user?.id;
+
+  const [globalStats, recentStats, layoutStats] = await Promise.all([
+    getGlobalMockupStats(),
+    userId ? getRecentMockupStatsWithPercentages(userId).catch(() => []) : Promise.resolve([]),
+    userId ? getRecentLayoutStats(userId).catch(() => []) : Promise.resolve([]),
+  ]);
+
+  return c.json({ global: globalStats, recent: recentStats, layouts: layoutStats });
 });
 
 app.post("/", async (c) => {
@@ -21,8 +29,13 @@ app.post("/", async (c) => {
     return c.json({ error: "Missing brief" }, 400);
   }
   const model = resolveModel(modelId);
-  const underused = session?.user?.id ? await getUnderusedMockupTypes(session.user.id).catch(() => []) : [];
-  const plan = await generateSlidePlan(brief, model, underused);
+  const userId = session?.user?.id;
+  const [underused, stats] = await Promise.all([
+    userId ? getUnderusedMockupTypes(userId).catch(() => []) : Promise.resolve([]),
+    userId ? getRecentMockupStatsWithPercentages(userId).catch(() => []) : Promise.resolve([]),
+  ]);
+  const diversity: MockupDiversityContext = { underusedTypes: underused, stats };
+  const plan = await generateSlidePlan(brief, model, diversity);
   return c.json({ plan });
 });
 

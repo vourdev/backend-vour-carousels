@@ -154,21 +154,209 @@ function enforceMockupForPointSlides(plan: SlidePlan): SlidePlan {
   return { ...plan, slides };
 }
 
-/** Both code-level safety nets, in the order they must run. */
-function enforcePlanInvariants(plan: SlidePlan): SlidePlan {
-  return enforceMockupForPointSlides(enforceIllustrationForAnalogySlides(plan));
+/** Mockup types that render best when the mockup dominates (mockup-forward layout). */
+const HERO_MOCKUP_TYPES = new Set(["terminal", "database", "gitbranch", "foldertree", "commandpalette", "browser"]);
+
+/** Mockup types whose "note" field is typically a key takeaway worth emphasizing. */
+const NOTE_BEARING_TYPES = new Set(["flow", "hub", "concept", "checklist", "comparison"]);
+
+/**
+ * Post-processing pass: enforce layout diversity across point slides.
+ *
+ * The model is asked for layout variety via the prompt, but in practice often emits
+ * "standard" for every slide. This enforcement assigns contextually appropriate layouts
+ * based on mockup type and content, guaranteeing at least 2 different layouts in any
+ * deck with ≥ 3 point slides, and no 3 consecutive slides with the same layout.
+ *
+ * Generation only — not applied on revision (same reason as enforceMockupForPointSlides).
+ */
+export function enforceLayoutDiversity(plan: SlidePlan): SlidePlan {
+  const pointSlides = plan.slides.filter((s) => s.role === "point");
+  if (pointSlides.length < 3) return plan; // too few to worry about
+
+  // Check: are all layouts identical?
+  const layouts = pointSlides.map((s) => s.layout || "standard");
+  const uniqueLayouts = new Set(layouts);
+
+  // Only intervene if diversity is insufficient (all same layout)
+  if (uniqueLayouts.size >= 2) {
+    // Still check for 3+ consecutive same layout and fix those
+    return enforceNoThreeConsecutiveLayouts(plan);
+  }
+
+  // All layouts are the same — assign contextually appropriate ones
+  console.warn(
+    `[layout-diversity] All ${pointSlides.length} point slides have layout="${layouts[0]}". Redistributing.`
+  );
+
+  let pointIndex = 0;
+  const slides = plan.slides.map((slide) => {
+    if (slide.role !== "point") return slide;
+
+    const mockupType = slide.mockup?.type;
+    let newLayout: string = slide.layout || "standard";
+
+    // Rule 1: Hero mockup types → mockup-forward
+    if (mockupType && HERO_MOCKUP_TYPES.has(mockupType) && pointIndex % 3 === 1) {
+      newLayout = "mockup-forward";
+    }
+    // Rule 2: Mockups with note that carry key conclusions → note-emphasis
+    else if (
+      mockupType &&
+      NOTE_BEARING_TYPES.has(mockupType) &&
+      slide.mockup &&
+      "note" in slide.mockup &&
+      (slide.mockup as any).note &&
+      pointIndex % 4 === 2
+    ) {
+      newLayout = "note-emphasis";
+    }
+    // Rule 3: Short body text + non-hero mockup → split-content
+    else if (
+      slide.body &&
+      slide.body.length < 80 &&
+      mockupType &&
+      !HERO_MOCKUP_TYPES.has(mockupType) &&
+      pointIndex % 3 === 0 &&
+      pointIndex > 0
+    ) {
+      newLayout = "split-content";
+    }
+
+    pointIndex++;
+    if (newLayout === (slide.layout || "standard")) return slide;
+    return { ...slide, layout: newLayout as any };
+  });
+
+  return enforceNoThreeConsecutiveLayouts({ ...plan, slides });
 }
 
-export async function generateSlidePlan(brief: string, model: LanguageModel, underusedMockups?: string[]): Promise<SlidePlan> {
-  const underusedInstruction = underusedMockups && underusedMockups.length > 0
-    ? `\n\n═══════════════════════════════════════════════════════════════
-HISTORICAL MOCKUP DIVERSITY CONTEXT (Underused Mockups)
+/**
+ * Fixes any run of 3+ consecutive point slides with the same layout by cycling
+ * through alternatives on the third slide in each run.
+ */
+function enforceNoThreeConsecutiveLayouts(plan: SlidePlan): SlidePlan {
+  const alternatives = ["standard", "mockup-forward", "split-content", "note-emphasis"];
+  const slides = [...plan.slides];
+  let runLength = 1;
+  let lastLayout = "";
+
+  for (let i = 0; i < slides.length; i++) {
+    const slide = slides[i];
+    if (slide.role !== "point") {
+      runLength = 0;
+      lastLayout = "";
+      continue;
+    }
+
+    const layout = slide.layout || "standard";
+    if (layout === lastLayout) {
+      runLength++;
+    } else {
+      runLength = 1;
+      lastLayout = layout;
+    }
+
+    if (runLength >= 3) {
+      // Pick a different layout
+      const alt = alternatives.find((l) => l !== layout) || "mockup-forward";
+      slides[i] = { ...slide, layout: alt as any };
+      lastLayout = alt;
+      runLength = 1;
+    }
+  }
+
+  return { ...plan, slides };
+}
+
+/** All code-level safety nets, in the order they must run. */
+function enforcePlanInvariants(plan: SlidePlan): SlidePlan {
+  return enforceLayoutDiversity(
+    enforceMockupForPointSlides(enforceIllustrationForAnalogySlides(plan))
+  );
+}
+
+/**
+ * One-liner use-case descriptions for each mockup type — appended to the underused
+ * prompt injection so the LLM knows WHEN to use each type, not just its name.
+ * Without these, the model skips types it's unsure about.
+ */
+const MOCKUP_USE_CASE: Record<string, string> = {
+  card: "general info card for conceptual explanations",
+  terminal: "code snippets, CLI output, config files, JSON",
+  comparison: "before/after, bad vs good, two-option contrast",
+  steps: "2-4 numbered how-to steps, tutorial, solution walkthrough",
+  callout: "single punchy warning or key takeaway",
+  bigstat: "one impressive metric or standout number",
+  flow: "sequential pipeline: request → handler → DB",
+  hub: "center node wired to 3-4 tools/services/integrations",
+  concept: "parent term broken into 2-3 sub-concepts",
+  checklist: "3-6 ticked recap items, summary slide",
+  promptcard: "copy-paste AI/CLI prompt the reader can steal",
+  foldertree: "project directory structure, file layouts",
+  commandpalette: "Cmd+K menu, IDE action list, tool selection",
+  database: "2-table ERD/schema with relation glyph",
+  gitbranch: "branch/merge workflow, feature-branch story",
+  browser: "dashboard/product mockup with stat cards",
+  quote: "expert pull-quote, principle, engineering philosophy",
+  datatable: "✗/✓ two-column: jangan/lakukan, myth/reality",
+  commandlist: "CLI command list: cmd → description rows",
+  timeline: "dulu/sekarang, then/now evolution comparison",
+  screenshot: "real evidence screenshot for case studies",
+  custom: "bespoke HTML for layouts no typed mockup can draw",
+  illustration: "unDraw SVG for analogies, abstract concepts, metaphors",
+  apirequest: "HTTP API endpoint with method, URL, response body",
+  eventqueue: "pub-sub/event-driven: producer → topic → consumer",
+  latencycomp: "performance bar chart: compare response times/benchmarks",
+  config: "config file mockup: .env, yaml, properties key-value",
+  statemachine: "entity lifecycle: states + transitions (pending → active → done)",
+  architecture: "simple deployment topology: client → LB → nodes",
+};
+
+export interface MockupDiversityContext {
+  underusedTypes: string[];
+  stats?: { type: string; count: number; percentage: number }[];
+}
+
+export async function generateSlidePlan(
+  brief: string,
+  model: LanguageModel,
+  diversity?: MockupDiversityContext | string[]
+): Promise<SlidePlan> {
+  // Backward compat: accept bare string[] (old call sites pass underusedMockups)
+  const ctx: MockupDiversityContext | undefined = Array.isArray(diversity)
+    ? { underusedTypes: diversity }
+    : diversity;
+
+  let underusedInstruction = "";
+  if (ctx && ctx.underusedTypes.length > 0) {
+    const lines = ctx.underusedTypes.map((m) => {
+      const desc = MOCKUP_USE_CASE[m] || "";
+      const statLine = ctx.stats
+        ? (() => {
+            const s = ctx.stats.find((x) => x.type === m);
+            return s ? ` (used ${s.percentage}% in recent decks)` : "";
+          })()
+        : "";
+      return `  • ${m}${statLine}${desc ? ` — ${desc}` : ""}`;
+    });
+
+    underusedInstruction = `\n\n═══════════════════════════════════════════════════════════════
+HISTORICAL MOCKUP DIVERSITY CONTEXT
 ═══════════════════════════════════════════════════════════════
 The following mockup types have been UNDERUSED in recent carousels.
-Prioritize using them in this deck IF they fit the content semantically (do not force them if irrelevant):
-${underusedMockups.map(m => `- ${m}`).join("\n")}
-═══════════════════════════════════════════════════════════════`
-    : "";
+They are listed from least-used to most-used. Consider them IF they
+fit the content semantically — do NOT force them if irrelevant, but
+actively prefer them over overused types when the fit is equal:
+${lines.join("\n")}
+
+OVERUSED types (use sparingly — the audience has seen too many of these):
+${ctx.stats
+  ?.filter((s) => s.percentage >= 12)
+  .map((s) => `  ✗ ${s.type} (${s.percentage}%)`)
+  .join("\n") || "  (no data yet)"}
+═══════════════════════════════════════════════════════════════`;
+  }
 
   const systemPrompt = planSystem + underusedInstruction;
 

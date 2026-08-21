@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { defaultModel, resolveModel } from "../../lib/ai/registry";
-import { generateBrief, generateSlidePlan } from "../../lib/ai/generate";
+import { generateBrief, generateSlidePlan, type MockupDiversityContext } from "../../lib/ai/generate";
 import { assembleCarousel } from "../../lib/ds/assemble";
 import { warmUpIllustrations } from "../../lib/ds/illustrations.server";
 import { captureQueue } from "../../services/capture-queue";
@@ -8,7 +8,7 @@ import { uploadImage } from "../../lib/publish/cloudinary";
 import { scheduleBufferPost } from "../../lib/publish/buffer";
 import { buildPostText } from "../../lib/publish/caption";
 import { nextWibSlot, POST_HOUR_WIB } from "../../lib/publish/schedule";
-import { createCarousel, updateCarousel, getUnderusedMockupTypes } from "../../lib/history/repo";
+import { createCarousel, updateCarousel, getUnderusedMockupTypes, getRecentMockupStatsWithPercentages, getGlobalMockupStats, getRecentLayoutStats } from "../../lib/history/repo";
 import { getTopics, updateTopic, createTopic } from "../../lib/topics/bank";
 import { generateAndSaveTopics, type GenerateTopicsInput } from "../../lib/topics/service";
 import { extractAndSaveTopicsFromNotes } from "../../lib/research/agent";
@@ -59,9 +59,13 @@ async function createAndPublishCarousel({
   // 1. Generate Brief Outline
   const brief = await generateBrief(ideaWithAngle, resolvedModel);
 
-  // 2. Generate Slide Plan
-  const underused = await getUnderusedMockupTypes(userId).catch(() => []);
-  const plan = await generateSlidePlan(brief, resolvedModel, underused);
+  // 2. Generate Slide Plan (with usage-history-aware diversity context)
+  const [underused, stats] = await Promise.all([
+    getUnderusedMockupTypes(userId).catch(() => []),
+    getRecentMockupStatsWithPercentages(userId).catch(() => []),
+  ]);
+  const diversity: MockupDiversityContext = { underusedTypes: underused, stats };
+  const plan = await generateSlidePlan(brief, resolvedModel, diversity);
 
   // 3. Assemble Carousel HTML
   await warmUpIllustrations();
@@ -416,6 +420,27 @@ app.patch("/research-topics/:id/status", async (c) => {
     console.error(`Failed to update topic ${topicId}:`, err);
     return c.json({ error: `Failed to update topic: ${err.message}` }, 500);
   }
+});
+
+/* ── TASK 4: Mockup/Layout diversity stats endpoint ─────────────────── */
+
+app.get("/mockup-stats", async (c) => {
+  const userId = await resolveUserId().catch(() => null);
+  if (!userId) {
+    return c.json({ error: "No user found in the database" }, 500);
+  }
+
+  const [globalStats, recentStats, layoutStats] = await Promise.all([
+    getGlobalMockupStats(),
+    getRecentMockupStatsWithPercentages(userId),
+    getRecentLayoutStats(userId),
+  ]);
+
+  return c.json({
+    global: globalStats,
+    recent: recentStats,
+    layouts: layoutStats,
+  });
 });
 
 export default app;

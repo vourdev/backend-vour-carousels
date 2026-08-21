@@ -9,6 +9,10 @@ import {
   getCarousel,
   deleteCarousel,
   getUnderusedMockupTypes,
+  getRecentMockupStatsWithPercentages,
+  getRecentLayoutStats,
+  ALL_MOCKUP_TYPES,
+  ALL_LAYOUT_VALUES,
 } from "@/lib/history/repo";
 import { samplePlan } from "@/lib/ds/sample";
 
@@ -101,5 +105,45 @@ describe("carousel history repo", () => {
       samplePlan.slides.flatMap((s) => (s.role === "point" && s.mockup ? [s.mockup.type] : []))
     );
     for (const type of underused) expect(used.has(type)).toBe(false);
+  });
+
+  it("returns stats with percentages covering all known types", async () => {
+    const user = `u-${crypto.randomUUID()}`;
+    await createCarousel({
+      userId: user,
+      source: "ai",
+      title: "Percentages",
+      slidePlan: samplePlan,
+    });
+
+    const stats = await getRecentMockupStatsWithPercentages(user);
+    // Every known type should be represented (even if count=0)
+    expect(stats).toHaveLength(ALL_MOCKUP_TYPES.length);
+    // Percentages should sum to ~100 (only among non-zero entries)
+    const totalPct = stats.reduce((sum, s) => sum + s.percentage, 0);
+    expect(totalPct).toBeGreaterThanOrEqual(99);
+    expect(totalPct).toBeLessThanOrEqual(101);
+    // Should be sorted least-used first
+    for (let i = 1; i < stats.length; i++) {
+      expect(stats[i].count).toBeGreaterThanOrEqual(stats[i - 1].count);
+    }
+  });
+
+  it("returns layout distribution covering all known layout values", async () => {
+    const user = `u-${crypto.randomUUID()}`;
+    await createCarousel({
+      userId: user,
+      source: "ai",
+      title: "Layouts",
+      slidePlan: samplePlan,
+    });
+
+    const stats = await getRecentLayoutStats(user);
+    expect(stats).toHaveLength(ALL_LAYOUT_VALUES.length);
+    // samplePlan has no layout field set, so all should default to "standard"
+    const standardRow = stats.find((s) => s.layout === "standard");
+    expect(standardRow).toBeDefined();
+    expect(standardRow!.count).toBeGreaterThan(0);
+    expect(standardRow!.percentage).toBe(100);
   });
 });
