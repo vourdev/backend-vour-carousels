@@ -19,6 +19,7 @@ const ALL_MOCKUP_TYPES = [
   "commandpalette", "database", "gitbranch", "browser", "quote",
   "datatable", "commandlist", "timeline", "screenshot", "custom", "illustration",
   "apirequest", "eventqueue", "latencycomp", "config", "statemachine", "architecture",
+  "decision", "mythfact", "pitfalls",
 ];
 
 const ALL_LAYOUTS = ["standard", "mockup-forward", "split-content", "note-emphasis"];
