@@ -99,26 +99,36 @@ async function ensureSchema() {
   schemaEnsured = true;
 }
 
+/**
+ * `?? undefined` on every nullable column, because libsql hands back `null` and the
+ * Topic interface promises `string | undefined`.
+ *
+ * The casts hid that: a caller written against the type — `if (t.relatedProductId !==
+ * undefined)`, or JSON that is supposed to omit an absent key — saw `null` and took the
+ * wrong branch. Making the runtime match the declared contract is the fix; widening the
+ * type to `string | null | undefined` would only spread the check to every reader.
+ */
 function rowToTopic(row: any): Topic {
+  const str = (v: unknown): string | undefined => (v == null ? undefined : (v as string));
   return {
     id: row.id as string,
     userId: row.user_id as string,
     title: row.title as string,
     category: row.category as TopicCategory,
-    description: row.description as string | undefined,
+    description: str(row.description),
     keywords: JSON.parse((row.keywords as string) || "[]"),
-    angle: row.angle as string | undefined,
+    angle: str(row.angle),
     status: row.status as TopicStatus,
     priority: row.priority as number,
-    scheduledDate: row.scheduled_date as string | undefined,
-    carouselId: row.carousel_id as string | undefined,
+    scheduledDate: str(row.scheduled_date),
+    carouselId: str(row.carousel_id),
     createdAt: row.created_at as number,
     updatedAt: row.updated_at as number,
     // Research agent fields
-    source: row.source as string | undefined,
-    relatedProductId: row.related_product_id as string | undefined,
-    targetAudienceFit: row.target_audience_fit as string | undefined,
-    suggestedAngle: row.suggested_angle as string | undefined,
+    source: str(row.source),
+    relatedProductId: str(row.related_product_id),
+    targetAudienceFit: str(row.target_audience_fit),
+    suggestedAngle: str(row.suggested_angle),
   };
 }
 

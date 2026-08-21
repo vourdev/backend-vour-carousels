@@ -2,6 +2,7 @@ import { generateText, generateObject, type LanguageModel } from "ai";
 import { z } from "zod";
 import { slidePlanSchema, slideSchema, type SlidePlan } from "../ds/schema";
 import { repairSlidePlan } from "../ds/repair";
+import { resolveLayout } from "../ds/render-slide";
 import { normalizeIllustration } from "../ds/illustrations";
 import {
   assertScopePreserved,
@@ -87,10 +88,33 @@ export async function generateBrief(idea: string, model: LanguageModel): Promise
  * If a point slide's body contains any of these words but the model chose
  * a non-illustration mockup, we override it here — no re-generation needed.
  */
-const ANALOGY_KEYWORDS = ["kayak", "ibarat", "mirip", "bayangkan", "seperti"];
+const ANALOGY_PATTERN = /\b(kayak|ibarat|mirip|bayangkan|seperti)\b/i;
 
-/** Fallback slug used when the safety net overrides a mockup to illustration. */
-const ILLUSTRATION_FALLBACK_SLUG = "online-learning_tgmv";
+/**
+ * Mockups whose presence means the illustration rule does not apply to this slide.
+ *
+ * The prompt states two exclusions before it mandates an illustration: the slide must not
+ * be showing code/command/terminal output, and must not be explicitly comparing two or
+ * more things. The safety net enforces the rule, so it has to honour the same exclusions —
+ * without them a `comparison` whose body happened to contain "mirip" was replaced by a
+ * stock drawing, which is not the rule being enforced, it is the rule being exceeded.
+ */
+const NOT_AN_ANALOGY_SLIDE = new Set([
+  // shows code, a command, or program output
+  "terminal", "commandlist", "commandpalette", "promptcard", "config", "apirequest", "foldertree",
+  // explicitly weighs two or more things against each other
+  "comparison", "datatable", "timeline", "decision", "latencycomp",
+]);
+
+/**
+ * Slugs the safety net falls back on, alternating by slide index.
+ *
+ * There is no way to choose one semantically from here — that is the model's job, and the
+ * net only runs because the model did not do it. Alternating at least stops two overridden
+ * slides in the same deck from showing the identical stock drawing.
+ */
+const ILLUSTRATION_FALLBACK_SLUGS = ["online-learning_tgmv", "learning_qt7d", "knowledge_0ty5"];
+const ILLUSTRATION_FALLBACK_SLUG = ILLUSTRATION_FALLBACK_SLUGS[0];
 
 /**
  * Post-processing pass: enforce illustration mockup for any point slide
@@ -98,12 +122,13 @@ const ILLUSTRATION_FALLBACK_SLUG = "online-learning_tgmv";
  * else. This is a code-level safety net that does not rely on model compliance.
  */
 function enforceIllustrationForAnalogySlides(plan: SlidePlan): SlidePlan {
-  const slides = plan.slides.map((slide) => {
+  const slides = plan.slides.map((slide, i) => {
     if (slide.role !== "point") return slide;
-    const body = (slide.body ?? "").toLowerCase();
-    const hasAnalogy = ANALOGY_KEYWORDS.some((kw) => body.includes(kw));
-    if (!hasAnalogy) return slide;
+    // Word boundaries, not substring: "kayaknya" and "miripnya" are ordinary prose, and
+    // matching them as analogy markers overrode slides that were never analogies.
+    if (!ANALOGY_PATTERN.test(slide.body ?? "")) return slide;
     if (slide.mockup?.type === "illustration") return slide;
+    if (slide.mockup && NOT_AN_ANALOGY_SLIDE.has(slide.mockup.type)) return slide;
     // Override: the slide uses analogy language but got a technical mockup
     console.warn(
       `[illustration-safety-net] Slide "${slide.eyebrow}" has analogy keywords but mockup="${slide.mockup?.type ?? "none"}". Overriding to illustration.`
@@ -112,7 +137,11 @@ function enforceIllustrationForAnalogySlides(plan: SlidePlan): SlidePlan {
       ...slide,
       mockup: {
         type: "illustration" as const,
-        illustrationSlugs: [normalizeIllustration(ILLUSTRATION_FALLBACK_SLUG)],
+        illustrationSlugs: [
+          normalizeIllustration(
+            ILLUSTRATION_FALLBACK_SLUGS[i % ILLUSTRATION_FALLBACK_SLUGS.length]
+          ),
+        ],
       },
     };
   });

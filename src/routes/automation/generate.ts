@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { defaultModel, resolveModel } from "../../lib/ai/registry";
-import { generateBrief, generateSlidePlan, type MockupDiversityContext } from "../../lib/ai/generate";
+import { generateBrief, generateSlidePlan, stripUnfulfillableEvidence, type MockupDiversityContext } from "../../lib/ai/generate";
 import { assembleCarousel } from "../../lib/ds/assemble";
 import { warmUpIllustrations } from "../../lib/ds/illustrations.server";
 import { captureQueue } from "../../services/capture-queue";
@@ -9,7 +9,7 @@ import { scheduleBufferPost } from "../../lib/publish/buffer";
 import { buildPostText } from "../../lib/publish/caption";
 import { nextWibSlot, POST_HOUR_WIB } from "../../lib/publish/schedule";
 import { createCarousel, updateCarousel, getUnderusedMockupTypes, getRecentMockupStatsWithPercentages, getGlobalMockupStats, getRecentLayoutStats } from "../../lib/history/repo";
-import { getTopics, updateTopic, createTopic } from "../../lib/topics/bank";
+import { getTopic, getTopics, updateTopic, createTopic, type TopicStatus } from "../../lib/topics/bank";
 import { generateAndSaveTopics, type GenerateTopicsInput } from "../../lib/topics/service";
 import { extractAndSaveTopicsFromNotes } from "../../lib/research/agent";
 import { dialect } from "../../lib/db";
@@ -65,7 +65,9 @@ async function createAndPublishCarousel({
     getRecentMockupStatsWithPercentages(userId).catch(() => []),
   ]);
   const diversity: MockupDiversityContext = { underusedTypes: underused, stats };
-  const plan = await generateSlidePlan(brief, resolvedModel, diversity);
+  // Nobody is watching this run, so a mockup that asks a human for a screenshot can
+  // never be satisfied — it would ship to Instagram as a placeholder card.
+  const plan = stripUnfulfillableEvidence(await generateSlidePlan(brief, resolvedModel, diversity));
 
   // 3. Assemble Carousel HTML
   await warmUpIllustrations();
@@ -233,52 +235,70 @@ app.post("/generate", async (c) => {
   const dueAt2 = due2.toISOString();
 
   // 7. Generate and Publish 2 Carousels
-  try {
-    const [carousel1, carousel2] = await Promise.all([
-      createAndPublishCarousel({
-        topic,
-        angleInstruction: " (fokus: Panduan Praktis, Tips & Tutorial)",
-        dueAt: dueAt1,
-        userId,
-        modelId,
-        resolvedModel,
-        channels,
-      }),
-      createAndPublishCarousel({
-        topic,
-        angleInstruction: " (fokus: Kesalahan Umum, Mitos, Studi Kasus & Konsep Mendalam)",
-        dueAt: dueAt2,
-        userId,
-        modelId,
-        resolvedModel,
-        channels,
-      }),
-    ]);
+  //
+  // allSettled, not all: the two decks are scheduled to Buffer independently, so one can
+  // already be live when the other throws. Promise.all discards the winner's value in
+  // that case and the whole request 500s — while the post it just scheduled stays
+  // scheduled. n8n reads the 500, retries, and the topic goes out three times.
+  const settled = await Promise.allSettled([
+    createAndPublishCarousel({
+      topic,
+      angleInstruction: " (fokus: Panduan Praktis, Tips & Tutorial)",
+      dueAt: dueAt1,
+      userId,
+      modelId,
+      resolvedModel,
+      channels,
+    }),
+    createAndPublishCarousel({
+      topic,
+      angleInstruction: " (fokus: Kesalahan Umum, Mitos, Studi Kasus & Konsep Mendalam)",
+      dueAt: dueAt2,
+      userId,
+      modelId,
+      resolvedModel,
+      channels,
+    }),
+  ]);
 
-    // Close the loop on the bank row. /topic/next moves a topic to "queued" so
-    // a retrigger cannot hand out the same one twice, but nothing moved it on
-    // from there — every topic the cron consumed stayed queued forever, and the
-    // bank filled up with rows that were in fact already posted.
-    if (body.topicId) {
-      await updateTopic(body.topicId, userId, {
-        status: "published",
-        carouselId: carousel1.id,
-      }).catch((err) => {
-        // The posts are already scheduled; failing the request here would tell
-        // the caller the run failed and invite a duplicate retry.
-        console.error(`Failed to mark topic ${body.topicId} published:`, err);
-      });
-    }
+  const scheduled = settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
+  const failures = settled.flatMap((r) => (r.status === "rejected" ? [r.reason] : []));
+  for (const err of failures) console.error("Carousel generation failed:", err);
 
-    return c.json({
-      success: true,
-      message: "Successfully generated and scheduled 2 carousels to Buffer",
-      carousels: [carousel1, carousel2],
+  // Close the loop on the bank row. /topic/next moves a topic to "queued" so a retrigger
+  // cannot hand out the same one twice, but for a long time nothing moved it on from
+  // there — every topic the cron consumed stayed queued forever.
+  //
+  // Which way it moves depends on whether anything actually reached Buffer, and the two
+  // directions protect against opposite failures:
+  //  - something shipped -> "published". Retrying would post the same topic twice, and a
+  //    partial run is not worth a duplicate.
+  //  - nothing shipped   -> back to "idea", the only status /topic/next hands out. Left
+  //    at "queued" the row is invisible to every query and the bank silently drains by
+  //    one topic per failed run — which is what an outage upstream would do every night.
+  if (body.topicId) {
+    const closingStatus = scheduled.length > 0 ? ("published" as const) : ("idea" as const);
+    await updateTopic(body.topicId, userId, {
+      status: closingStatus,
+      ...(scheduled.length > 0 ? { carouselId: scheduled[0].id } : {}),
+    }).catch((err) => {
+      // Never fail the request on this: when posts are already scheduled, reporting a
+      // failure here is what invites the duplicate retry.
+      console.error(`Failed to move topic ${body.topicId} to "${closingStatus}":`, err);
     });
-  } catch (err: any) {
-    console.error("Batch carousel generation failed:", err);
-    return c.json({ error: `Automation failed: ${err.message}` }, 500);
   }
+
+  if (scheduled.length === 0) {
+    const reason = failures[0] instanceof Error ? failures[0].message : String(failures[0]);
+    return c.json({ error: `Automation failed: ${reason}` }, 500);
+  }
+
+  return c.json({
+    success: true,
+    partial: scheduled.length < settled.length,
+    message: `Scheduled ${scheduled.length} of ${settled.length} carousels to Buffer`,
+    carousels: scheduled,
+  });
 });
 
 // Hands the caller the next unstarted topic from the bank (status "idea"),
@@ -290,9 +310,17 @@ app.get("/topic/next", async (c) => {
     return c.json({ error: "No user found in the database. Seed the database first." }, 500);
   }
 
-  const [topic] = await getTopics(userId, { status: "idea", limit: 1 });
+  // "approved" first, then "idea".
+  //
+  // Both are pullable, and "approved" outranks "idea" because a human has already looked
+  // at it: research-agent candidates land as "pending_review" and only reach "approved" by
+  // an explicit decision. Before this, /topic/next queried "idea" alone, so approving a
+  // candidate moved it into a status nothing ever read — the approval endpoint worked and
+  // the topic then disappeared from the pipeline for good.
+  let [topic] = await getTopics(userId, { status: "approved", limit: 1 });
+  if (!topic) [topic] = await getTopics(userId, { status: "idea", limit: 1 });
   if (!topic) {
-    return c.json({ error: "No idea-status topics available in the bank" }, 404);
+    return c.json({ error: "No approved or idea topics available in the bank" }, 404);
   }
 
   await updateTopic(topic.id, userId, { status: "queued" });
@@ -358,7 +386,7 @@ app.post("/research-topics", async (c) => {
   }
 
   try {
-    const saved = await extractAndSaveTopicsFromNotes(
+    const { saved, skipped } = await extractAndSaveTopicsFromNotes(
       userId,
       resolveModel(modelId),
       rawNotes,
@@ -367,9 +395,10 @@ app.post("/research-topics", async (c) => {
 
     return c.json({
       success: true,
-      message: `Extracted ${saved.length} topic candidates, saved as pending_review`,
+      message: `Extracted ${saved.length} topic candidates, saved as pending_review${skipped.length ? `; skipped ${skipped.length} duplicate(s)` : ""}`,
       topics: saved,
       saved,
+      skipped,
     });
   } catch (err: any) {
     console.error("Research agent failed:", err);
@@ -379,10 +408,23 @@ app.post("/research-topics", async (c) => {
 
 /* ── TASK 6: Approval endpoint ───────────────────────────────────────── */
 
-const ALLOWED_STATUS_TRANSITIONS: Record<string, string[]> = {
-  pending_review: ["idea", "approved", "rejected"],
-  approved: ["idea", "pending_review"],
+/**
+ * Which status a topic may move to, from the one it currently holds.
+ *
+ * This table existed before but was never consulted — every value in a flat allow-list was
+ * accepted from any state, so a "rejected" candidate could jump straight into the posting
+ * queue. Transitions are checked against it now.
+ *
+ * "not_posted" is deliberately absent. It was accepted here and written through an `as any`,
+ * but it is not a member of TopicStatus, so the row it produced matched no query anywhere
+ * and the topic was simply lost. The status that means "reviewed, ready to post" is
+ * "approved", and /topic/next reads it.
+ */
+const ALLOWED_STATUS_TRANSITIONS: Record<string, TopicStatus[]> = {
+  pending_review: ["approved", "rejected"],
+  approved: ["pending_review", "rejected"],
   rejected: ["pending_review"],
+  idea: ["approved", "rejected", "archived"],
 };
 
 app.patch("/research-topics/:id/status", async (c) => {
@@ -398,14 +440,6 @@ app.patch("/research-topics/:id/status", async (c) => {
     return c.json({ error: "Missing status in request body" }, 400);
   }
 
-  const validStatuses = ["idea", "approved", "rejected", "pending_review", "not_posted"];
-  if (!validStatuses.includes(newStatus)) {
-    return c.json(
-      { error: `Invalid status "${newStatus}" — use one of: ${validStatuses.join(", ")}` },
-      400
-    );
-  }
-
   const userId = await resolveUserId().catch(() => null);
   if (!userId) {
     return c.json({ error: "No user found in the database" }, 500);
@@ -413,9 +447,29 @@ app.patch("/research-topics/:id/status", async (c) => {
 
   const topicId = c.req.param("id");
 
+  // Read the row first: the transition is only meaningful against the status it holds now,
+  // and this is also what turns a mistyped id into a 404 instead of a cheerful success —
+  // updateTopic matches on (id, user_id) and reports nothing when it matches no row.
+  const topic = await getTopic(topicId, userId).catch(() => null);
+  if (!topic) {
+    return c.json({ error: `Topic "${topicId}" not found` }, 404);
+  }
+
+  const allowed = ALLOWED_STATUS_TRANSITIONS[topic.status] ?? [];
+  if (!allowed.includes(newStatus as TopicStatus)) {
+    return c.json(
+      {
+        error: `Cannot move a "${topic.status}" topic to "${newStatus}".`,
+        from: topic.status,
+        allowed,
+      },
+      409
+    );
+  }
+
   try {
-    await updateTopic(topicId, userId, { status: newStatus as any });
-    return c.json({ success: true, topicId, status: newStatus });
+    await updateTopic(topicId, userId, { status: newStatus as TopicStatus });
+    return c.json({ success: true, topicId, from: topic.status, status: newStatus });
   } catch (err: any) {
     console.error(`Failed to update topic ${topicId}:`, err);
     return c.json({ error: `Failed to update topic: ${err.message}` }, 500);

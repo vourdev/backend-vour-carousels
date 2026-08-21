@@ -1,7 +1,8 @@
 import { generateText, type LanguageModel } from "ai";
 import { z } from "zod";
 import { getActiveProducts, type Product } from "../products/repo";
-import { createTopic, type Topic, type TopicStatus } from "../topics/bank";
+import { createTopic, getTopics, type Topic, type TopicStatus } from "../topics/bank";
+import { isDuplicateTopic } from "../topics/dedup";
 
 /* ── Zod schema for the AI output ────────────────────────────────────── */
 
@@ -131,6 +132,12 @@ export async function extractTopics(
   );
 }
 
+export interface ExtractionResult {
+  saved: Topic[];
+  /** Candidates dropped as near-duplicates, with what they collided against. */
+  skipped: { title: string; matchedWith?: string; similarity: number }[];
+}
+
 export async function extractAndSaveTopicsFromNotes(
   userId: string,
   model: LanguageModel,
@@ -139,15 +146,41 @@ export async function extractAndSaveTopicsFromNotes(
     status?: TopicStatus;
     source?: string;
   }
-): Promise<Topic[]> {
+): Promise<ExtractionResult> {
   const products = await getActiveProducts();
   const candidates = await extractTopics(rawNotes, products, model);
 
   const status = options?.status ?? "idea";
   const source = options?.source ?? "notes-extraction";
 
+  // Dedup against the bank, and within this batch.
+  //
+  // The batch generator has run candidates through this since it existed; this path never
+  // did, even though it is the one where duplicates are most likely — the input is a
+  // free-form paste of working notes, and the same observation tends to get pasted again
+  // the next time the file is opened. Titles already in the bank are the baseline, and
+  // each accepted candidate joins it so two near-identical candidates in one paste cannot
+  // both get through.
+  const existing = await getTopics(userId, { limit: 200 }).catch(() => []);
+  const seenTitles = existing.map((t) => t.title);
+
   const saved: Topic[] = [];
+  const skipped: ExtractionResult["skipped"] = [];
+
   for (const candidate of candidates) {
+    const dup = isDuplicateTopic(candidate.title, seenTitles);
+    if (dup.isDuplicate) {
+      console.warn(
+        `[research-agent] skipping "${candidate.title}" — ${(dup.similarity * 100).toFixed(1)}% match with "${dup.matchedWith}"`
+      );
+      skipped.push({
+        title: candidate.title,
+        matchedWith: dup.matchedWith,
+        similarity: dup.similarity,
+      });
+      continue;
+    }
+
     const topic = await createTopic({
       userId,
       title: candidate.title,
@@ -161,8 +194,9 @@ export async function extractAndSaveTopicsFromNotes(
       suggestedAngle: candidate.suggestedAngle,
     });
     saved.push(topic);
+    seenTitles.push(candidate.title);
   }
 
-  return saved;
+  return { saved, skipped };
 }
 

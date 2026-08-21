@@ -329,7 +329,11 @@ describe("new mockup schemas", () => {
 });
 
 describe("slide layout schema", () => {
-  it("populates layout as standard by default", () => {
+  // Absent must stay absent. This used to carry .default("standard"), which stamped an
+  // explicit "standard" onto every point slide at parse time — the renderer could then no
+  // longer tell a deliberate choice from an omission, so it rotated nothing and every deck
+  // came out in one composition. Absence is the signal resolveLayout acts on.
+  it("leaves layout unset when the plan does not name one", () => {
     const raw = {
       role: "point",
       counter: "02 / 05",
@@ -338,10 +342,8 @@ describe("slide layout schema", () => {
       body: "BODY",
     };
     const parsed = slideSchema.parse(raw);
-    expect(parsed).toMatchObject({
-      role: "point",
-      layout: "standard",
-    });
+    expect(parsed.role).toBe("point");
+    expect((parsed as { layout?: string }).layout).toBeUndefined();
   });
 
   it("accepts layout variations", () => {
@@ -357,5 +359,56 @@ describe("slide layout schema", () => {
       const parsed = slideSchema.parse(raw);
       expect(parsed).toMatchObject({ layout });
     }
+  });
+});
+
+/**
+ * The three types added from the TASK 6 gap audit. Each exists because a real,
+ * recurring deck shape was being forced into a mockup that misrepresents it.
+ */
+describe("decision / mythfact / pitfalls", () => {
+  it("accepts a three-option decision and leaves question unset", () => {
+    const parsed = mockupSchema.parse({
+      type: "decision",
+      options: [
+        { name: "/24", when: "Butuh banyak host di satu segmen" },
+        { name: "/29", when: "Cuma buat blok kecil antar-router", tag: "Hemat" },
+        { name: "/30", when: "Point to point antara dua perangkat" },
+      ],
+    });
+    expect(parsed).toMatchObject({ type: "decision" });
+    expect((parsed as { question?: string }).question).toBeUndefined();
+    expect((parsed as { options: unknown[] }).options).toHaveLength(3);
+  });
+
+  it("rejects a decision with only one option", () => {
+    expect(() =>
+      mockupSchema.parse({ type: "decision", options: [{ name: "REST", when: "selalu" }] })
+    ).toThrow();
+  });
+
+  it("keeps myth, fact and the optional reason", () => {
+    const parsed = mockupSchema.parse({
+      type: "mythfact",
+      myth: "JWT itu terenkripsi",
+      fact: "JWT cuma di-encode base64url",
+      because: "Payload-nya bisa dibaca siapa pun yang punya token.",
+    });
+    expect(parsed).toMatchObject({ type: "mythfact", myth: "JWT itu terenkripsi" });
+  });
+
+  it("accepts graded pitfalls and rejects fewer than three", () => {
+    const parsed = mockupSchema.parse({
+      type: "pitfalls",
+      items: [
+        { text: "Query di dalam loop", level: "high" },
+        { text: "Nggak ada index" },
+        { text: "Error ditelan diam-diam", level: "low" },
+      ],
+    });
+    expect((parsed as { items: unknown[] }).items).toHaveLength(3);
+    expect(() =>
+      mockupSchema.parse({ type: "pitfalls", items: [{ text: "cuma satu" }, { text: "dua" }] })
+    ).toThrow();
   });
 });

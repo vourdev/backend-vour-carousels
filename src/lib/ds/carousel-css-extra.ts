@@ -852,6 +852,16 @@ export const carouselExtraCss = String.raw`
   .diag-screenshot-source span { color: #B8380E; }
   .diag-screenshot-brief-item { font-size: 22px; line-height: 1.4; color: #7E6153; }
   .diag-screenshot-brief-item strong { color: #1C0A05; }
+  /* Ink counterparts. The whole placeholder was authored for cream and never given a
+     dark variant, so on an Ink slide the badge, the "Target:" line and every bold label
+     were near-black or deep ember on near-black — a brief addressed to a human that the
+     human cannot read. It went unnoticed because no plan could select a screenshot
+     mockup until the type became reachable from the category table. */
+  section:not(.paper) .diag-screenshot-badge { color: #FF7A45; }
+  section:not(.paper) .diag-screenshot-source { color: rgba(247,241,232,0.93); }
+  section:not(.paper) .diag-screenshot-source span { color: #FF7A45; }
+  section:not(.paper) .diag-screenshot-brief-item { color: rgba(247,241,232,0.62); }
+  section:not(.paper) .diag-screenshot-brief-item strong { color: rgba(247,241,232,0.93); }
 
   /* API Request mockup */
   .diag-api-request { width: 100%; background: #FFFFFF; border: 1.5px solid rgba(28,10,5,0.14); border-radius: 20px; overflow: hidden; box-shadow: 0 16px 40px rgba(28,10,5,0.06); }
@@ -921,6 +931,12 @@ export const carouselExtraCss = String.raw`
   section:not(.paper) .lc-bar-wrap:not(.highlight) .lc-value { color: rgba(247,241,232,0.80); }
   section:not(.paper) .lc-bar-container { background: rgba(247,241,232,0.10); }
   section:not(.paper) .lc-bar-wrap:not(.highlight) .lc-bar { background: rgba(247,241,232,0.40); }
+  /* The highlighted row was the one case the Ink block skipped: every rule above is
+     scoped :not(.highlight), so the winning bar kept its cream-surface label (#B8380E)
+     and value (#EE4B1A) on a dark panel — the row the mockup exists to emphasise was the
+     only one you could not read. Ember-bright is the token for accent on dark. */
+  section:not(.paper) .lc-bar-wrap.highlight .lc-label { color: #FF7A45; }
+  section:not(.paper) .lc-bar-wrap.highlight .lc-value { color: #FF7A45; }
 
   /* Point Slide Layout Variations */
   
@@ -932,6 +948,13 @@ export const carouselExtraCss = String.raw`
   .layout-mockup-forward .eyebrow { order: 3; margin-top: 40px !important; }
   .layout-mockup-forward h1.compact { order: 4; margin-top: 16px !important; }
   .layout-mockup-forward .body-text { order: 5; margin-top: 16px !important; margin-bottom: 40px !important; }
+  /* The note annotates the mockup, so it has to travel with it. Mockup templates emit
+     .catatan as a SIBLING of .diag-wrap (see flow.ts), and an unordered flex child
+     defaults to order:0 — which sorted it ahead of even the counter and parked the
+     conclusion at the top of the slide, 230px above the diagram it explains. Same order
+     as .diag-wrap keeps the pair together; equal order falls back to DOM order, and the
+     note already follows the mockup there. */
+  .layout-mockup-forward .catatan { order: 2; margin-top: 24px !important; }
 
   /* Split-Content layout: fits columns side-by-side using CSS Grid */
   section.layout-split-content {
@@ -988,7 +1011,7 @@ export const carouselExtraCss = String.raw`
   }
   section.layout-split-content .diag-wrap {
     grid-column: 2;
-    grid-row: 3 / span 2;
+    grid-row: 2 / 4;
     margin-top: 24px !important;
     align-self: start;
     justify-self: center;
@@ -999,11 +1022,20 @@ export const carouselExtraCss = String.raw`
   }
   section.layout-split-content .card {
     grid-column: 2;
-    grid-row: 3 / span 2;
+    grid-row: 2 / 4;
     margin-top: 24px !important;
     align-self: start;
     justify-self: center;
     width: 100%;
+  }
+  /* Explicit placement, because auto-placement put the note in the first free cell —
+     column 2 row 2, i.e. directly ABOVE the mockup it annotates. Row 4 is the tall 1fr
+     row, so the note sits under the diagram in the same column. */
+  section.layout-split-content .catatan {
+    grid-column: 2;
+    grid-row: 4;
+    margin-top: 24px !important;
+    align-self: start;
   }
 
   /* Note-Emphasis layout: highlights the bottom note */
@@ -1088,4 +1120,66 @@ export const carouselExtraCss = String.raw`
   section:not(.paper) .arch-split-arrows { color: #FF7A45; }
   section:not(.paper) .arch-status.active { background: rgba(134,201,127,0.15); color: #86C97F; border-color: rgba(134,201,127,0.25); }
   section:not(.paper) .arch-status.standby { background: rgba(176,164,154,0.12); color: #B0A49A; border-color: rgba(176,164,154,0.15); }
+
+  /* ── Decision guide ──────────────────────────────────────────────────────
+     Every option carries the same weight on purpose: this mockup exists for the
+     "kapan pakai yang mana" deck, where the answer is the reader's situation and
+     not one of the columns. No winner tone, no loser tone. */
+  .dec { width: 100%; display: flex; flex-direction: column; gap: 22px; }
+  .dec-q { font-family: 'JetBrains Mono'; font-weight: 700; font-size: 22px; letter-spacing: 0.1em; text-transform: uppercase; color: #B8380E; }
+  .dec-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 18px; }
+  .dec-opt { display: flex; flex-direction: column; gap: 10px; padding: 24px 22px; border: 1.5px solid rgba(28,10,5,0.14); border-radius: 18px; background: #FFFFFF; }
+  .dec-tag { align-self: flex-start; font-family: 'JetBrains Mono'; font-weight: 700; font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 10px; border-radius: 6px; color: #B8380E; background: #FBE9D9; }
+  .dec-name { font-family: 'Sora'; font-weight: 700; font-size: 30px; line-height: 1.15; color: #1C0A05; }
+  .dec-when-label { font-family: 'JetBrains Mono'; font-weight: 700; font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase; color: #7E6153; }
+  .dec-when { font-size: 22px; line-height: 1.4; color: #3D2419; }
+  section:not(.paper) .dec-q { color: #FF7A45; }
+  section:not(.paper) .dec-opt { border-color: #382E25; background: #2B241D; }
+  section:not(.paper) .dec-tag { color: #FF7A45; background: rgba(238,75,26,0.14); }
+  section:not(.paper) .dec-name { color: #FFFFFF; }
+  section:not(.paper) .dec-when-label { color: rgba(247,241,232,0.55); }
+  section:not(.paper) .dec-when { color: rgba(247,241,232,0.82); }
+
+  /* ── Myth / fact ─────────────────────────────────────────────────────────
+     The myth row is deliberately recessive and the fact row carries the accent:
+     the reader should be able to tell which half is the correction without
+     reading either. */
+  .mf { width: 100%; display: flex; flex-direction: column; gap: 16px; }
+  .mf-row { display: flex; gap: 18px; align-items: flex-start; padding: 22px 24px; border-radius: 16px; }
+  .mf-myth { background: rgba(28,10,5,0.05); border: 1.5px solid rgba(28,10,5,0.12); }
+  .mf-fact { background: #FBE9D9; border: 1.5px solid #EE4B1A; }
+  .mf-tag { flex: none; font-family: 'JetBrains Mono'; font-weight: 700; font-size: 15px; letter-spacing: 0.1em; text-transform: uppercase; padding: 6px 10px; border-radius: 6px; }
+  .mf-myth .mf-tag { background: rgba(28,10,5,0.10); color: #7E6153; }
+  .mf-fact .mf-tag { background: #EE4B1A; color: #FFFFFF; }
+  .mf-text { font-size: 25px; line-height: 1.35; font-weight: 500; }
+  .mf-myth .mf-text { color: #7E6153; }
+  .mf-fact .mf-text { color: #1C0A05; }
+  .mf-why { font-size: 21px; line-height: 1.45; color: #3D2419; padding-left: 4px; }
+  .mf-why-label { display: block; font-family: 'JetBrains Mono'; font-weight: 700; font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase; color: #B8380E; margin-bottom: 6px; }
+  section:not(.paper) .mf-myth { background: rgba(247,241,232,0.05); border-color: #382E25; }
+  section:not(.paper) .mf-fact { background: rgba(238,75,26,0.13); border-color: #EE4B1A; }
+  section:not(.paper) .mf-myth .mf-tag { background: rgba(247,241,232,0.10); color: rgba(247,241,232,0.62); }
+  section:not(.paper) .mf-fact .mf-tag { background: #EE4B1A; color: #1C0A05; }
+  section:not(.paper) .mf-myth .mf-text { color: rgba(247,241,232,0.62); }
+  section:not(.paper) .mf-fact .mf-text { color: #FFFFFF; }
+  section:not(.paper) .mf-why { color: rgba(247,241,232,0.78); }
+  section:not(.paper) .mf-why-label { color: #FF7A45; }
+
+  /* ── Pitfalls ────────────────────────────────────────────────────────────
+     Numbered, never ticked. Severity rides the left border only, so the rows stay
+     a list rather than becoming three differently coloured cards. Level rules come
+     after .pf-row so they win the border-left-color they share with it. */
+  .pf { width: 100%; display: flex; flex-direction: column; gap: 12px; }
+  .pf-row { display: flex; align-items: center; gap: 20px; padding: 18px 22px; border-radius: 14px; background: #FFFFFF; border: 1.5px solid rgba(28,10,5,0.14); border-left-width: 6px; }
+  .pf-num { flex: none; font-family: 'JetBrains Mono'; font-weight: 700; font-size: 24px; color: #B8380E; font-variant-numeric: tabular-nums; }
+  .pf-text { font-size: 24px; line-height: 1.35; font-weight: 500; color: #1C0A05; }
+  .pf-low { border-left-color: #7E6153; }
+  .pf-mid { border-left-color: #B8380E; }
+  .pf-high { border-left-color: #EE4B1A; }
+  section:not(.paper) .pf-row { background: #2B241D; border-color: #382E25; }
+  section:not(.paper) .pf-num { color: #FF7A45; }
+  section:not(.paper) .pf-text { color: #FFFFFF; }
+  section:not(.paper) .pf-low { border-left-color: rgba(247,241,232,0.30); }
+  section:not(.paper) .pf-mid { border-left-color: #EE4B1A; }
+  section:not(.paper) .pf-high { border-left-color: #FF7A45; }
 `;

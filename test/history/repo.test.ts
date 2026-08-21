@@ -100,7 +100,7 @@ describe("carousel history repo", () => {
     });
 
     const underused = await getUnderusedMockupTypes(user);
-    expect(underused).toHaveLength(10);
+    expect(underused).toHaveLength(8);
     const used = new Set(
       samplePlan.slides.flatMap((s) => (s.role === "point" && s.mockup ? [s.mockup.type] : []))
     );
@@ -145,5 +145,30 @@ describe("carousel history repo", () => {
     expect(standardRow).toBeDefined();
     expect(standardRow!.count).toBeGreaterThan(0);
     expect(standardRow!.percentage).toBe(100);
+  });
+
+  // These three sit at the bottom of any frequency ranking forever: screenshot needs a
+  // human to upload the image, custom and browser are capped at ~1 per deck by the
+  // prompt. Recommending them every run is how the cron ends up shipping a
+  // "BUTUH SCREENSHOT ASLI" placeholder to Instagram.
+  it("never recommends the types that are rare on purpose", async () => {
+    const user = `u-${crypto.randomUUID()}`;
+    await createCarousel({ userId: user, source: "ai", title: "Stats", slidePlan: samplePlan });
+
+    const underused = await getUnderusedMockupTypes(user);
+    for (const type of ["screenshot", "custom", "browser"]) {
+      expect(underused).not.toContain(type);
+    }
+  });
+
+  // Every carousel written before the INSERT fix stored a NULL slide_plan, so the stats
+  // came back empty, every type tied at zero, and the "least used" ranking degenerated to
+  // ALL_MOCKUP_TYPES in array order — whose first entries are the MOST used types in the
+  // deck. The prompt then presented those as "underused, prioritize these".
+  it("recommends nothing when no carousel has a stored slide plan", async () => {
+    const user = `u-${crypto.randomUUID()}`;
+    await createCarousel({ userId: user, source: "ai", title: "No plan stored" });
+
+    expect(await getUnderusedMockupTypes(user)).toEqual([]);
   });
 });

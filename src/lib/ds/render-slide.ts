@@ -36,6 +36,9 @@ import { latencyCompTemplate } from "../ds/templates/latencycomp";
 import { configTemplate } from "../ds/templates/config";
 import { stateMachineTemplate } from "../ds/templates/statemachine";
 import { architectureTemplate } from "../ds/templates/architecture";
+import { decisionTemplate } from "../ds/templates/decision";
+import { mythFactTemplate } from "../ds/templates/mythfact";
+import { pitfallsTemplate } from "../ds/templates/pitfalls";
 import { diagLines } from "../ds/hub-lines";
 import { deviceTemplate } from "../ds/templates/device";
 import { VOUR_MIST_MUTED, VOUR_POSITIVE_ON_DARK } from "../ds/tokens";
@@ -78,6 +81,84 @@ function paperClass(slide: Slide, slideIndex: number): string {
  */
 function eyebrowClass(slideIndex: number): string {
   return slideIndex % 2 === 0 ? "chip" : "";
+}
+
+type PointLayout = "standard" | "mockup-forward" | "split-content" | "note-emphasis";
+
+/** Mockups that actually emit a `.catatan` strip — the only thing note-emphasis restyles. */
+function mockupHasNote(m: Mockup | undefined): boolean {
+  if (!m) return false;
+  if ("note" in m && typeof m.note === "string" && m.note.trim() !== "") return true;
+  if (m.type === "comparison") return Boolean(m.winnerRationale?.trim());
+  if (m.type === "illustration") return Boolean(m.caption?.trim());
+  return false;
+}
+
+/**
+ * Mockups that still read once split-content halves the content column to 435px.
+ *
+ * The wide diagrams are drawn for the full 920px column: a 3-node flow chain wraps onto
+ * two lines at half width, which reads as a broken diagram rather than a deliberate one.
+ * Only mockups that are a single block of text or one drawing are listed here.
+ */
+const NARROW_SAFE_MOCKUPS = new Set<Mockup["type"]>([
+  "card",
+  "callout",
+  "quote",
+  "bigstat",
+  "checklist",
+  "illustration",
+  "promptcard",
+  "concept",
+]);
+
+/**
+ * The composition template this slide actually renders with.
+ *
+ * The plan's own choice wins when it can be honoured. Two of the four templates are
+ * conditional, and silently rendering them anyway produces a slide that merely looks like
+ * a bug: note-emphasis only restyles a note, so on the 20 of 29 mockup types that cannot
+ * emit one it is byte-identical to standard while still consuming one of the deck's
+ * "use 2-3 different layouts" slots; split-content squeezes a full-width diagram into half
+ * a column. Both degrade to standard instead.
+ *
+ * When the plan names nothing, composition is decided here — the same code-level approach
+ * paperClass and eyebrowClass already use for surface and eyebrow treatment, and for the
+ * same reason: variety that depends on model compliance is variety that quietly stops
+ * happening.
+ *
+ * Odd slides always take mockup-forward; even slides take the richest template their
+ * mockup can actually carry, falling back to standard. That alternation is what guarantees
+ * no two neighbouring point slides share a composition, which is why the richer templates
+ * are confined to one side of it.
+ *
+ * A four-entry cycle was the obvious shape and it does not work here: only two of the four
+ * templates apply to an arbitrary mockup, so a deck of wide note-less diagrams keeps
+ * landing on the entries it does not qualify for and degrading to "standard" — three and
+ * four identical compositions in a row, the exact monotony this exists to break. Gating
+ * the accent on the mockup instead of on the index also means a note-bearing mockup
+ * reaches note-emphasis whenever one turns up, rather than only when one happens to
+ * coincide with a fixed slot.
+ */
+export function resolveLayout(
+  layout: PointLayout | undefined,
+  slideIndex: number,
+  mockup: Mockup | undefined
+): PointLayout {
+  // Nothing to compose around — every alternative template is defined by where it puts
+  // the mockup, so without one they all collapse into a worse "standard".
+  if (!mockup) return "standard";
+
+  if (layout) {
+    if (layout === "note-emphasis" && !mockupHasNote(mockup)) return "standard";
+    if (layout === "split-content" && !NARROW_SAFE_MOCKUPS.has(mockup.type)) return "standard";
+    return layout;
+  }
+
+  if (slideIndex % 2 === 1) return "mockup-forward";
+  if (mockupHasNote(mockup)) return "note-emphasis";
+  if (NARROW_SAFE_MOCKUPS.has(mockup.type)) return "split-content";
+  return "standard";
 }
 
 /** Optional `.catatan` annotation strip shared by the diagram mockups. */
@@ -573,6 +654,53 @@ function renderIllustrationMockup(
   return `<div class="diag-wrap"><div class="diag-illustration"><div class="illustration-group ${sizeClass}">${items}</div>${caption}</div></div>`;
 }
 
+function renderDecisionMockup(m: Extract<Mockup, { type: "decision" }>): string {
+  const opts = m.options
+    .map(
+      // Name first, tag second. With the tag above the name, the one option that carries
+      // a tag pushed its name a row lower than the others and the three option names
+      // stopped sharing a baseline — the first thing the eye compares, misaligned.
+      (o) => `<div class="dec-opt">
+        <div class="dec-name">${escapeHtml(o.name)}</div>
+        ${o.tag ? `<span class="dec-tag">${escapeHtml(o.tag)}</span>` : ""}
+        <div class="dec-when-label">Pakai kalau</div>
+        <div class="dec-when">${escapeHtml(o.when)}</div>
+      </div>`
+    )
+    .join("");
+  return injectSentinels(decisionTemplate, {
+    DEC_Q_INJECT: escapeHtml(m.question ?? "Pakai yang mana?"),
+    DEC_OPTS_INJECT: opts,
+    NOTE_INJECT: renderNote(m.note),
+  });
+}
+
+function renderMythFactMockup(m: Extract<Mockup, { type: "mythfact" }>): string {
+  const why = m.because
+    ? `<div class="mf-why"><span class="mf-why-label">Kenapa penting</span>${escapeHtml(m.because)}</div>`
+    : "";
+  return injectSentinels(mythFactTemplate, {
+    MF_MYTH_INJECT: escapeHtml(m.myth),
+    MF_FACT_INJECT: escapeHtml(m.fact),
+    MF_WHY_INJECT: why,
+  });
+}
+
+function renderPitfallsMockup(m: Extract<Mockup, { type: "pitfalls" }>): string {
+  const rows = m.items
+    .map(
+      (it, i) => `<div class="pf-row pf-${it.level ?? "mid"}">
+        <span class="pf-num">${String(i + 1).padStart(2, "0")}</span>
+        <span class="pf-text">${escapeHtml(it.text)}</span>
+      </div>`
+    )
+    .join("");
+  return injectSentinels(pitfallsTemplate, {
+    PF_ROWS_INJECT: rows,
+    NOTE_INJECT: renderNote(m.note),
+  });
+}
+
 function renderScreenshotMockup(m: Extract<Mockup, { type: "screenshot" }>): string {
   if (m.evidenceStatus === "captured" && m.screenshotImage?.dataUrl) {
     return `<div class="diag-wrap"><div class="diag-screenshot"><img src="${escapeHtml(m.screenshotImage.dataUrl)}" alt="Evidence Screenshot" /></div></div>`;
@@ -643,6 +771,12 @@ function renderMockup(m: Mockup, scopeId: string, variant: IllustrationVariant):
       return renderStateMachineMockup(m);
     case "architecture":
       return renderArchitectureMockup(m);
+    case "decision":
+      return renderDecisionMockup(m);
+    case "mythfact":
+      return renderMythFactMockup(m);
+    case "pitfalls":
+      return renderPitfallsMockup(m);
     case "illustration":
       return renderIllustrationMockup(m, variant);
     case "screenshot":
@@ -756,7 +890,7 @@ export function renderSlide(slide: Slide, slideIndex = 0): string {
           cardBody: "",
           cardTone: "peach",
           mockupHtml: "",
-          layout: slide.layout || "standard",
+          layout: resolveLayout(slide.layout, slideIndex, mockup),
         });
       }
 
@@ -777,7 +911,7 @@ export function renderSlide(slide: Slide, slideIndex = 0): string {
           cardBody: mockup.body,
           cardTone: mockup.tone || "peach",
           mockupHtml: "",
-          layout: slide.layout || "standard",
+          layout: resolveLayout(slide.layout, slideIndex, mockup),
         });
         // Function replacer keeps raw SVG safe from $-sequence interpretation.
         return filled.replace("ICON_INJECT", () =>
@@ -800,7 +934,7 @@ export function renderSlide(slide: Slide, slideIndex = 0): string {
         cardBody: "",
         cardTone: "peach",
         mockupHtml: "1",  // truthy to activate the block
-        layout: slide.layout || "standard",
+        layout: resolveLayout(slide.layout, slideIndex, mockup),
       });
       // Replace the sentinel with raw (unescaped) mockup HTML
       // Function replacer: a bare string lets $-sequences in mockup content

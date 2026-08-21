@@ -15,10 +15,23 @@ it used to have a duplicate copy and the two drifted, which is why the split exi
 npm run dev      # tsx watch, both servers
 npm test         # vitest, ~300 tests
 npm run build    # esbuild bundle -> dist/server.js
+npm run seed     # create the one operator account (see below)
 ```
 
 Copy `.env.example` to `.env` first. The service will not start without `DATABASE_URL` +
 `DATABASE_AUTH_TOKEN` (Turso), and refuses to do anything useful without `OMNIROUTE_API_KEY`.
+
+**A fresh database needs `npm run seed` before anything works.** Public signup is off at
+runtime (`disableSignUp` in `lib/auth.ts`) and `/automation/generate` refuses to run without
+a user row, so a clean deploy answers "No user found in the database. Seed the database
+first." with nothing to run. `scripts/seed-user.ts` is that: it applies better-auth's own
+schema via `getMigrations` (better-auth does not create its tables, and the CLI is not a
+dependency here), flips `ALLOW_SIGNUP` on for its own process only, and creates one account.
+It refuses to touch a database that already has users, so re-running is safe.
+
+```bash
+npm run seed -- --email you@example.com --password 'at-least-8-chars'
+```
 
 ## Two servers, one process
 
@@ -51,13 +64,18 @@ POST /api/capture                 HTML -> base64 images (Playwright)
 POST /api/publish/upload          base64 -> Cloudinary URL
 POST /api/publish/schedule        explicit plan + urls -> Buffer
 POST /api/publish/carousel        saved carousel id -> Buffer (builds text server-side)
+GET  /api/plan/mockup-stats       mockup-type usage for the signed-in user
 GET/POST/PATCH/DELETE /api/topics
 POST /api/topics/generate · /api/topics/:id/brief
+POST /api/topics/generate-from-notes   raw notes -> topic candidates ("idea")
+GET  /api/products                active products, for the topic UI
 
 # port 3001 — X-API-Key
 GET  /automation/topic/next       claim one "idea" topic, flip to "queued"
 POST /automation/generate         full pipeline: 2 decks, captured, scheduled
 POST /automation/topics/generate  refill the bank
+POST /automation/research-topics  raw notes -> candidates, saved "pending_review"
+PATCH /automation/research-topics/:id/status   approve/reject a candidate
 ```
 
 ## The daily automation
@@ -120,6 +138,41 @@ at boot.
 **better-auth throws in production without `BETTER_AUTH_SECRET`.** In development it only
 warns, so this fails on deploy and nowhere else. `BETTER_AUTH_URL` is needed too.
 
+**A mockup type is reachable only from the CATEGORY table, not from the catalogue.**
+`MOCKUP_VARIETY_RULE` in `lib/ai/prompts.ts` tells the model to classify the slide and then
+pick from that category's list. A type documented in the numbered catalogue but absent from
+the table is one a compliant model can never choose. Nine of them sat that way — the six
+backend types added in `9901a26` among them — which is the real reason the decks looked
+monotone. Add a type in four places or not at all: `schema.ts`, the catalogue, the CATEGORY
+table, and `ALL_MOCKUP_TYPES` in `history/repo.ts` (that last one is what tracks it).
+
+**`getUnderusedMockupTypes` returns `[]` when it has no evidence, and that is deliberate.**
+Every carousel written before the INSERT fix in `da88b89` stored a NULL `slide_plan`, so the
+stats came back `{}`, every type tied at zero, the sort was a no-op, and the function returned
+the first ten entries of `ALL_MOCKUP_TYPES` in array order — which are the *most* used types.
+The prompt presents that list as "UNDERUSED, prioritize these". The diversity feature was
+driving the monoculture. `screenshot`/`custom`/`browser` are also excluded permanently: they
+are rare by design, so they sit at the bottom of any ranking forever.
+
+**Slide `layout` absent means "renderer decides", not "standard".** The field used to carry
+`.default("standard")`, which stamped an explicit value on every point slide at parse time —
+the renderer could no longer tell a real choice from an omission, so every deck came out in
+one composition. `resolveLayout` in `render-slide.ts` rotates one in, and degrades
+`note-emphasis` to `standard` on the 20 of 32 types that cannot emit a `.catatan`, and
+`split-content` for any mockup too wide for a 435px column. Do not reintroduce the default.
+
+**The cron path strips `screenshot` mockups.** With no image uploaded they render a
+"BUTUH SCREENSHOT ASLI" placeholder — a brief addressed to a human. In the wizard that is the
+feature; in the unattended cron it would be captured, uploaded and scheduled to Instagram as
+finished artwork. `stripUnfulfillableEvidence()` runs on the automation path only.
+
+**`/automation/generate` can answer `success: true, partial: true`.** The two decks reach
+Buffer independently, so one can be live when the other throws. It used `Promise.all`, which
+discarded the winner and returned 500 while its post stayed scheduled — n8n read the 500,
+retried, and the topic went out three times. It now closes the topic to `published` if
+anything shipped, and returns it to `idea` if nothing did; leaving it `queued` made the row
+invisible to every query and drained the bank by one topic per failed run.
+
 **`dist/` is committed but never shipped.** It is in `.dockerignore`, so the image builds from
 source (`npm ci` → `npm run build`) and a stale committed bundle can never reach production.
 Do not "fix" the Dockerfile by adding `COPY dist` — that reintroduces the bug this avoids. The
@@ -142,7 +195,7 @@ src/
       revision-scope.ts  works out what a revision targets, merges it back, proves
                          nothing else moved
       brief-sections.ts  same idea, for Markdown briefs
-    ds/                  the design system: schema, renderer, 29 mockup templates
+    ds/                  the design system: schema, renderer, 32 mockup templates
       schema.ts          zod contract for a slide plan — the source of truth
       repair.ts          salvages recoverable model slop (runs on every generation)
       assemble.ts        slide plan -> standalone HTML

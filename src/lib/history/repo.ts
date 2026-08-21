@@ -217,7 +217,8 @@ export const ALL_MOCKUP_TYPES = [
   "flow", "hub", "concept", "checklist", "promptcard", "foldertree",
   "commandpalette", "database", "gitbranch", "browser", "quote",
   "datatable", "commandlist", "timeline", "screenshot", "custom", "illustration",
-  "apirequest", "eventqueue", "latencycomp", "config", "statemachine", "architecture"
+  "apirequest", "eventqueue", "latencycomp", "config", "statemachine", "architecture",
+  "decision", "mythfact", "pitfalls"
 ];
 
 export async function getRecentMockupStats(userId: string, limit = 20): Promise<Record<string, number>> {
@@ -245,17 +246,56 @@ export async function getRecentMockupStats(userId: string, limit = 20): Promise<
   return counts;
 }
 
+/**
+ * Rare on purpose, so never promoted as "underused".
+ *
+ * `screenshot` renders a "BUTUH SCREENSHOT ASLI" placeholder until a human uploads the
+ * image, and the daily cron has no human in it. `custom` and `browser` are both capped at
+ * roughly one per deck by the prompt. All three sit permanently at the bottom of any
+ * frequency ranking, so a naive "least used" list recommends them on every single run.
+ */
+const NEVER_PROMOTE = new Set(["screenshot", "custom", "browser"]);
+
+/**
+ * Mockup types to nudge the model toward, or an empty list when we cannot tell.
+ *
+ * The empty case matters more than it looks. Every carousel written before the INSERT fix
+ * in da88b89 stored a NULL slide_plan, so `stats` came back `{}` — every type tied at zero,
+ * the sort was a no-op, and this returned the first ten entries of ALL_MOCKUP_TYPES in
+ * array order. Those happen to be the most-used types in the deck (card, terminal,
+ * comparison, steps, flow…), and the prompt presents this list as "UNDERUSED — prioritize
+ * these". The diversity feature was therefore reinforcing the exact monoculture it exists
+ * to break. With no evidence, say nothing.
+ */
 export async function getUnderusedMockupTypes(userId: string, limit = 25): Promise<string[]> {
   const stats = await getRecentMockupStats(userId, limit);
-  return ALL_MOCKUP_TYPES.map(type => ({ type, count: stats[type] || 0 }))
+  if (Object.keys(stats).length === 0) return [];
+  return ALL_MOCKUP_TYPES
+    .filter((type) => !NEVER_PROMOTE.has(type))
+    .map((type) => ({ type, count: stats[type] || 0 }))
     .sort((a, b) => a.count - b.count)
-    .slice(0, 10) // Pick the 10 least used
-    .map(x => x.type);
+    .slice(0, 8)
+    .map((x) => x.type);
 }
 
-export async function getGlobalMockupStats(): Promise<{ type: string; count: number; percentage: number }[]> {
+/**
+ * Mockup-type distribution, scoped to one user.
+ *
+ * `userId` was not a parameter at first, so the endpoint that serves this — a
+ * session-authenticated route — reported every account's decks to whoever asked. Harmless
+ * on a single-tenant install and wrong the moment there are two. Omitting it still reads
+ * the whole table, which is what the maintenance query wants; the route always passes one.
+ */
+export async function getGlobalMockupStats(
+  userId?: string
+): Promise<{ type: string; count: number; percentage: number }[]> {
   await ensureSchema();
-  const res = await db().execute(`SELECT slide_plan FROM carousels WHERE slide_plan IS NOT NULL`);
+  const res = userId
+    ? await db().execute({
+        sql: `SELECT slide_plan FROM carousels WHERE user_id = ? AND slide_plan IS NOT NULL`,
+        args: [userId],
+      })
+    : await db().execute(`SELECT slide_plan FROM carousels WHERE slide_plan IS NOT NULL`);
   const counts: Record<string, number> = {};
   let totalSlides = 0;
   for (const row of res.rows) {
