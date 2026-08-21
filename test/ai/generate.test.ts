@@ -105,3 +105,107 @@ describe("generateSlidePlan", () => {
     expect(s.mockup?.type).toBe("bigstat");
   });
 });
+
+/**
+ * The safety net enforces the prompt's illustration rule. The prompt states two
+ * exclusions before it mandates one, and for a long time the code ignored both.
+ */
+describe("illustration safety net scope", () => {
+  const plan = (body: string, mockup: unknown) => ({
+    title: "T",
+    caption: "c",
+    hashtags: ["fyp", "backend", "nodejs", "database", "vourdev"],
+    slides: [
+      { role: "cover", eyebrow: "E", headline: "H" },
+      { role: "point", counter: "02 / 02", eyebrow: "P", headline: "H", body, mockup },
+    ],
+  });
+
+  const mockupOf = async (body: string, mockup: unknown) => {
+    const model = new MockLanguageModelV4({
+      doGenerate: async () => result(JSON.stringify(plan(body, mockup))),
+    });
+    const out = await generateSlidePlan("brief", model);
+    const slide = out.slides[1];
+    return slide.role === "point" ? slide.mockup : undefined;
+  };
+
+  it("leaves a comparison alone even when the body says 'mirip'", async () => {
+    const m = await mockupOf("Alurnya mirip dengan versi sebelumnya, cuma lebih cepat.", {
+      type: "comparison",
+      loserLabel: "Sebelum", loserLine: "Lambat",
+      winnerLabel: "Sesudah", winnerLine: "Cepat",
+    });
+    expect(m?.type).toBe("comparison");
+  });
+
+  it("leaves a terminal alone even when the body says 'seperti'", async () => {
+    const m = await mockupOf("Outputnya seperti ini kalau konfigurasinya benar.", {
+      type: "terminal", filename: "app.ts", lines: [{ text: "ok", style: "plain" }],
+    });
+    expect(m?.type).toBe("terminal");
+  });
+
+  it("does not fire on 'kayaknya', which is ordinary prose", async () => {
+    const m = await mockupOf("Kayaknya banyak yang belum tau soal ini.", {
+      type: "flow", steps: [{ label: "A" }, { label: "B" }],
+    });
+    expect(m?.type).toBe("flow");
+  });
+
+  it("still overrides a real analogy on a non-excluded mockup", async () => {
+    const m = await mockupOf("Index itu kayak daftar isi di buku.", {
+      type: "hub", center: "Index", tools: [{ icon: "database", label: "DB" }, { icon: "search", label: "Cari" }],
+    });
+    expect(m?.type).toBe("illustration");
+  });
+});
+
+/**
+ * Measured on 7 generated decks: 5 of them named the same layout on two consecutive
+ * slides, despite the prompt forbidding it. The renderer's alternation only covers
+ * slides that name nothing, so the sequence has to be resolved at plan level too.
+ */
+describe("consecutive layout variety", () => {
+  const deckOf = (layouts: (string | undefined)[]) => ({
+    title: "T",
+    caption: "c",
+    hashtags: ["fyp", "backend", "nodejs", "database", "vourdev"],
+    slides: [
+      { role: "cover", eyebrow: "E", headline: "H" },
+      ...layouts.map((layout, n) => ({
+        role: "point",
+        counter: `0${n + 1} / 0${layouts.length}`,
+        eyebrow: `P${n}`,
+        headline: "H",
+        body: "Body copy without any analogy marker in it.",
+        ...(layout ? { layout } : {}),
+        mockup: { type: "flow", steps: [{ label: "A" }, { label: "B" }] },
+      })),
+    ],
+  });
+
+  const layoutsOf = async (layouts: (string | undefined)[]) => {
+    const model = new MockLanguageModelV4({
+      doGenerate: async () => result(JSON.stringify(deckOf(layouts))),
+    });
+    const out = await generateSlidePlan("brief", model);
+    return out.slides.flatMap((s) => (s.role === "point" ? [s.layout] : []));
+  };
+
+  it("breaks up a run the model asked for", async () => {
+    const got = await layoutsOf(["standard", "standard", "standard", "standard"]);
+    expect(got).toHaveLength(4);
+    for (let i = 1; i < got.length; i++) expect(got[i]).not.toBe(got[i - 1]);
+  });
+
+  it("leaves an already-varied sequence as the model wrote it", async () => {
+    const got = await layoutsOf(["standard", "mockup-forward", "standard"]);
+    expect(got).toEqual(["standard", "mockup-forward", "standard"]);
+  });
+
+  it("still varies when the model names nothing at all", async () => {
+    const got = await layoutsOf([undefined, undefined, undefined, undefined]);
+    for (let i = 1; i < got.length; i++) expect(got[i]).not.toBe(got[i - 1]);
+  });
+});

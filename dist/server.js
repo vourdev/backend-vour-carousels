@@ -72755,6 +72755,1239 @@ function repairSlidePlan(raw2) {
   return slidePlanSchema.parse(raw2);
 }
 
+// src/lib/ds/strip-emoji.ts
+var EMOJI = new RegExp(
+  "[\\u{1F000}-\\u{1FAFF}\\u{1F1E6}-\\u{1F1FF}\\u{2600}-\\u{27BF}\\u{2B00}-\\u{2BFF}\\u{FE0F}\\u{FE0E}\\u{1F3FB}-\\u{1F3FF}\\u{200D}]",
+  "gu"
+);
+var KEEP = /* @__PURE__ */ new Set(["\u2713", "\u2714", "\u2717", "\u2718", "\u2192", "\u2190", "\u2191", "\u2193", "\u2500", "\u227A", "\u2605", "\u2606"]);
+function stripEmoji(s) {
+  if (!s) return s;
+  const out = s.replace(EMOJI, (ch) => KEEP.has(ch) ? ch : "");
+  if (out === s) return s;
+  return out.replace(/[ \t]{2,}/g, " ").replace(/^[ \t]+|[ \t]+$/gm, "").trim();
+}
+
+// src/lib/ds/fill.ts
+function escapeHtml(s) {
+  return stripEmoji(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+function fillTemplate(template, vars) {
+  let out = template.replace(
+    /\{\{#(\w+)\}\}([\s\S]*?)\{\{\/\1\}\}/g,
+    (_m, key, inner) => vars[key] ? inner : ""
+  );
+  out = out.replace(
+    /\{\{(\w+)\}\}/g,
+    (_m, key) => vars[key] != null ? escapeHtml(vars[key]) : ""
+  );
+  return out;
+}
+
+// src/lib/ds/brand.ts
+var brandMarkDataUri = "data:image/png;base64,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";
+
+// src/lib/ds/templates/cover-editorial.ts
+var coverEditorialTemplate = String.raw`<section data-screen-label="01 · Cover" class="cover-editorial-ink {{coverSurface}}">
+  <div class="ce-top">
+    <div class="brand-row">
+      <div class="brand-disc">
+        <img src="{{brand}}" alt="@vourdev">
+      </div>
+      <span class="brand-handle">@vourdev</span>
+    </div>
+    {{#stamp}}<span class="series-stamp active">{{stamp}}</span>{{/stamp}}
+  </div>
+
+  <div class="ce-ghost" aria-hidden="true">GHOST_NUMERAL_INJECT</div>
+
+  <div class="ce-lead">
+    <div class="eyebrow">{{eyebrow}}</div>
+    <h1 class="hero mt-24">{{headlinePre}}<span class="a">{{accentWord}}</span>{{headlinePost}}</h1>
+    {{#lede}}
+    <p class="lede mt-32">
+      {{lede}}
+    </p>
+    {{/lede}}
+  </div>
+
+  <div class="geser">Geser →</div>
+</section>`;
+
+// src/lib/ds/templates/cover-compact.ts
+var coverCompactTemplate = String.raw`<section data-screen-label="01 · Cover" class="{{coverSurface}}">
+  <div class="ce-top">
+    <div class="brand-row">
+      <div class="brand-disc">
+        <img src="{{brand}}" alt="@vourdev">
+      </div>
+      <span class="brand-handle">@vourdev</span>
+    </div>
+    {{#stamp}}<span class="series-stamp active">{{stamp}}</span>{{/stamp}}
+  </div>
+
+  <div class="eyebrow mt-64">{{eyebrow}}</div>
+  <h1 class="compact mt-24">{{headlinePre}}<span class="a">{{accentWord}}</span>{{headlinePost}}</h1>
+  {{#lede}}
+  <p class="lede mt-24">
+    {{lede}}
+  </p>
+  {{/lede}}
+
+  HOOK_INJECT
+
+  <div class="geser">Geser →</div>
+</section>`;
+
+// src/lib/ds/templates/cover-badge.ts
+var coverBadgeTemplate = String.raw`<div class="anchor-wrap">
+  <div class="cover-badge">
+    <div class="hole"></div>
+    <div class="brow">BADGE_BROW_INJECT</div>
+    <div class="role">BADGE_ROLE_INJECT</div>
+    BADGE_SUB_INJECT
+    BADGE_STRIKE_INJECT
+  </div>
+</div>`;
+
+// src/lib/ds/templates/cover-nocgrid.ts
+var coverNocGridTemplate = String.raw`<div class="anchor-wrap">
+  <div class="cover-noc">
+    <div class="grid" style="grid-template-columns:repeat(GRID_COLS_INJECT,1fr)">NODES_INJECT</div>
+    <div class="banner">BANNER_INJECT</div>
+  </div>
+</div>`;
+
+// src/lib/ds/templates/cover-door.ts
+var coverDoorTemplate = String.raw`<div class="anchor-wrap">
+  <div class="cover-door">
+    <div class="label">LABEL_INJECT</div>
+    HANDLE_INJECT
+    <div class="hand">HAND_INJECT</div>
+  </div>
+</div>`;
+
+// src/lib/ds/sanitize.ts
+var CUSTOM_CLASS_WHITELIST = [
+  // layout
+  "flex-col",
+  "flex-grow",
+  "center",
+  "gap-16",
+  // vertical rhythm
+  "mt-8",
+  "mt-16",
+  "mt-24",
+  "mt-32",
+  "mt-40",
+  "mt-48",
+  "mt-64",
+  // typography / content roles
+  "eyebrow",
+  "lede",
+  "body-text",
+  "highlight",
+  "badge",
+  "counter",
+  // annotation strip
+  "catatan",
+  "catatan-label",
+  "catatan-body",
+  // generic diagram atoms
+  "node",
+  "chip"
+];
+var WHITELIST = new Set(CUSTOM_CLASS_WHITELIST);
+var PRESENTATION_ATTRS = /\s(?:style|width|height|bgcolor|color|align|valign|face|size|fill|stroke|opacity|transform|hspace|vspace|border|cellpadding|cellspacing)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi;
+function sanitizeHookHtml(html) {
+  return html.replace(/<\s*script\b[\s\S]*?<\s*\/\s*script\s*>/gi, "").replace(/<\s*\/?\s*script\b[^>]*>/gi, "").replace(/([\s"'/])on(?!ly\s*=|ce\s*=)[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "$1").replace(/(href|src)\s*=\s*("|')?\s*javascript:[^"'>\s]*/gi, "$1=$2#").replace(/(href|src)\s*=\s*("|')?\s*data:text\/html[^"'>\s]*/gi, "$1=$2#");
+}
+function sanitizeCustomHtml(html) {
+  let out = sanitizeHookHtml(html);
+  out = out.replace(/<\s*style\b[\s\S]*?<\s*\/\s*style\s*>/gi, "");
+  out = out.replace(/<\s*\/?\s*style\b[^>]*>/gi, "");
+  out = out.replace(/<\s*link\b[^>]*>/gi, "");
+  out = out.replace(PRESENTATION_ATTRS, "");
+  out = out.replace(
+    /\sclass\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi,
+    (_full, dq, sq, bare) => {
+      const raw2 = dq ?? sq ?? bare ?? "";
+      const kept = raw2.split(/\s+/).filter((c) => WHITELIST.has(c));
+      return kept.length ? ` class="${kept.join(" ")}"` : "";
+    }
+  );
+  const text2 = out.replace(/<[^>]*>/g, "").replace(/&nbsp;/gi, " ").trim();
+  const hasContentTag = /<(p|div|ul|ol|li|table|tr|td|th|h[1-6]|span|section|figure|img|svg)\b/i.test(out);
+  if (!text2 && !hasContentTag) return null;
+  return out.trim() || null;
+}
+
+// src/lib/ds/illustrations.server.ts
+import { readFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
+import { createClient as createClient2 } from "@libsql/client";
+var ASSETS_DIR = existsSync(join(process.cwd(), "src", "lib", "ds", "assets", "illustrations")) ? join(process.cwd(), "src", "lib", "ds", "assets", "illustrations") : join(process.cwd(), "dist", "lib", "ds", "assets", "illustrations");
+var cache = /* @__PURE__ */ new Map();
+var client = null;
+function getDbClient() {
+  if (!client) {
+    client = createClient2({
+      url: process.env.DATABASE_URL ?? "file:local-auth.db",
+      authToken: process.env.DATABASE_AUTH_TOKEN
+    });
+  }
+  return client;
+}
+var warmUpPromise = null;
+async function warmUpIllustrations() {
+  if (warmUpPromise) return warmUpPromise;
+  warmUpPromise = (async () => {
+    try {
+      const db6 = getDbClient();
+      const res = await db6.execute("SELECT slug, variant, svg FROM illustrations");
+      for (const row of res.rows) {
+        const slug = String(row.slug);
+        const variant = String(row.variant);
+        const svg = String(row.svg);
+        cache.set(`${slug}.${variant}`, svg);
+      }
+    } catch {
+    }
+  })();
+  return warmUpPromise;
+}
+function read(slug, variant) {
+  const key = `${slug}.${variant}`;
+  const hit = cache.get(key);
+  if (hit !== void 0) return hit;
+  try {
+    const filePath = join(ASSETS_DIR, `${key}.svg`);
+    if (existsSync(filePath)) {
+      const svg = readFileSync(filePath, "utf-8");
+      cache.set(key, svg);
+      return svg;
+    }
+  } catch {
+  }
+  return null;
+}
+function renderIllustration(raw2, variant) {
+  const slug = normalizeIllustration(raw2);
+  return read(slug, variant) ?? read(FALLBACK_ILLUSTRATION, variant) ?? "";
+}
+
+// src/lib/ds/templates/point.ts
+var pointTemplate = String.raw`<section class="{{surfaceClass}} layout-{{layout}}" data-screen-label="03 · Point">
+  <div class="counter">{{counter}}</div>
+
+  <div class="eyebrow {{eyebrowClass}} mt-64">{{eyebrow}}</div>
+  <h1 class="compact mt-24">{{headlinePre}}<span class="a">{{accentWord}}</span>{{headlinePost}}</h1>
+  <p class="body-text mt-32">
+    {{body}}
+  </p>
+
+  {{#card}}
+  <div class="card card-{{cardTone}} mt-40">
+    <div class="card-head">
+      <div class="card-ico">
+        ICON_INJECT
+      </div>
+      <div class="card-title">{{cardTitle}}</div>
+    </div>
+    <div class="card-body">
+      {{cardBody}}
+    </div>
+  </div>
+  {{/card}}
+  {{#mockupHtml}}
+  MOCKUP_INJECT
+  {{/mockupHtml}}
+</section>`;
+
+// src/lib/ds/templates/outro.ts
+var outroTemplate = String.raw`<section class="{{surfaceClass}}" data-screen-label="Outro">
+  {{#eyebrow}}
+  <div class="eyebrow mt-64">{{eyebrow}}</div>
+  {{/eyebrow}}
+  <h1 class="mt-24">{{headlinePre}}<span class="a">{{accentWord}}</span>{{headlinePost}}</h1>
+  {{#body}}
+  <p class="body-text mt-32">
+    {{body}}
+  </p>
+  {{/body}}
+
+  <div class="highlight mt-40">
+    <div class="strong">{{ctaStrong}}</div>
+    {{#ctaSub}}<div class="sub">{{ctaSub}}</div>{{/ctaSub}}
+  </div>
+
+  <div class="brand-row" style="margin-top:auto; padding-top:32px;">
+    <div class="brand-disc">
+      <img src="{{brand}}" alt="@vourdev">
+    </div>
+    <span class="brand-handle">@vourdev</span>
+  </div>
+</section>`;
+
+// src/lib/ds/templates/terminal.ts
+var terminalTemplate = String.raw`<div class="diag-wrap mt-40">
+    <div class="terminal">
+      <div class="terminal-bar">
+        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+        <span class="title">{{terminalFilename}}</span>
+      </div>
+<div class="terminal-body">TERMINAL_LINES_INJECT</div>
+    </div>
+  </div>`;
+
+// src/lib/ds/templates/comparison.ts
+var comparisonTemplate = String.raw`<div class="diag-wrap mt-40">
+  <div style="display:flex;flex-direction:column;gap:20px;width:100%">
+    <div class="diag-bars" style="width:100%">
+      <div class="panel loser">
+        <div class="h">{{compLoserLabel}}</div>
+        <div class="rows">
+          <div class="bar dim" style="width:60%"></div>
+          <div class="bar dim" style="width:72%"></div>
+          <div class="bar faded" style="width:48%"></div>
+        </div>
+        <div class="foot">{{compLoserLine}}</div>
+      </div>
+      <div class="panel">
+        <div class="h">{{compWinnerLabel}}</div>
+        <div class="rows">
+          <div class="bar" style="width:100%"></div>
+          <div class="bar" style="width:100%"></div>
+          <div class="bar" style="width:100%"></div>
+          <div class="bar" style="width:100%"></div>
+        </div>
+        <div class="foot">{{compWinnerLine}}</div>
+      </div>
+    </div>
+    {{#compRationale}}
+    <div class="catatan">
+      <div class="catatan-label chip">Catatan</div>
+      <div class="catatan-body">{{compRationale}}</div>
+    </div>
+    {{/compRationale}}
+  </div>
+</div>`;
+
+// src/lib/ds/templates/steps.ts
+var stepsTemplate = String.raw`<div class="diag-wrap mt-40">
+    <div style="display:flex;flex-direction:column;gap:16px;width:100%">STEPS_HTML_INJECT</div>
+  </div>`;
+var stepCardPartial = String.raw`<div class="card {{stepTone}}" style="padding:18px 22px;display:flex;align-items:flex-start;gap:16px">
+      <div class="badge" style="min-width:36px;width:36px;height:36px;font-size:18px">{{stepN}}</div>
+      <div>
+        <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:26px;color:#000000;line-height:1.2">{{stepTitle}}</div>
+        <div style="font-family:'Inter',sans-serif;font-weight:500;font-size:22px;color:#4A5C5C;margin-top:4px;line-height:1.3">{{stepBody}}</div>
+      </div>
+    </div>`;
+
+// src/lib/ds/templates/callout.ts
+var calloutTemplate = String.raw`<div class="diag-wrap mt-40">
+    <div style="background:var(--ms-invert-bg);border-radius:20px;padding:26px 30px;display:flex;align-items:flex-start;gap:20px;width:100%">
+      <div class="callout-ico" style="min-width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none">
+        ICON_INJECT
+      </div>
+      <div style="font-family:'Inter',sans-serif;font-weight:600;font-size:26px;color:var(--ms-invert-fg);line-height:1.4;word-break:break-word">{{calloutText}}</div>
+    </div>
+  </div>`;
+
+// src/lib/ds/templates/bigstat.ts
+var bigstatTemplate = String.raw`<div class="diag-wrap mt-40">
+    <div style="text-align:center;width:100%;padding:24px 0">
+      <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:96px;color:var(--ms-accent);line-height:1">{{bigstatNumber}}</div>
+      {{#bigstatUnit}}
+      <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:40px;color:var(--ms-fg);margin-top:8px;line-height:1.2">{{bigstatUnit}}</div>
+      {{/bigstatUnit}}
+      <div style="font-family:'Inter',sans-serif;font-weight:500;font-size:32px;color:var(--ms-fg-muted);margin-top:16px;line-height:1.3;max-width:800px;margin-left:auto;margin-right:auto">{{bigstatCaption}}</div>
+    </div>
+  </div>`;
+
+// src/lib/ds/templates/flow.ts
+var flowTemplate = String.raw`<div class="diag-wrap mt-40">
+    <div class="diag-flow">FLOW_NODES_INJECT</div>
+  </div>
+  NOTE_INJECT`;
+
+// src/lib/ds/templates/concept.ts
+var conceptTemplate = String.raw`<div class="diag-wrap mt-40">
+    <div class="diag-hub">
+      <div class="center"><div class="node filled big">CONCEPT_PARENT_INJECT</div></div>
+      CONCEPT_LINES_INJECT
+      <div class="children">CONCEPT_CHILDREN_INJECT</div>
+    </div>
+  </div>
+  NOTE_INJECT`;
+
+// src/lib/ds/templates/hub.ts
+var hubTemplate = String.raw`<div class="diag-wrap mt-40">
+    <div class="diag-icon-hub">
+      <div class="center"><div class="node filled big">HUB_CENTER_INJECT</div></div>
+      HUB_LINES_INJECT
+      <div class="tools">HUB_TOOLS_INJECT</div>
+    </div>
+  </div>
+  NOTE_INJECT`;
+
+// src/lib/ds/templates/checklist.ts
+var checklistTemplate = String.raw`<div class="diag-wrap mt-40">
+    <ul class="checklist">CHECKLIST_ITEMS_INJECT</ul>
+  </div>
+  NOTE_INJECT`;
+
+// src/lib/ds/templates/browser.ts
+var browserTemplate = String.raw`<div class="diag-wrap mt-40">
+    <div class="browser">
+      <div class="b-chrome">
+        <span class="b-dots"><i class="r"></i><i class="y"></i><i class="g"></i></span>
+        <span class="b-url">BROWSER_URL_INJECT</span>
+      </div>
+      <div class="b-main">BROWSER_CARDS_INJECT</div>
+    </div>
+  </div>
+  NOTE_INJECT`;
+
+// src/lib/ds/templates/quote.ts
+var quoteTemplate = String.raw`<div class="diag-wrap mt-40">
+    <div class="quote-inset">
+      <div class="qi-body">{{quote}}</div>
+      {{#author}}<div class="qi-author">{{author}}</div>{{/author}}
+    </div>
+  </div>`;
+
+// src/lib/ds/templates/datatable.ts
+var dataTableTemplate = String.raw`<div class="diag-wrap mt-40">
+    <div class="dtable">
+      <div class="dt-hr"><span class="no">✗ DT_NO_INJECT</span><span class="ok">✓ DT_OK_INJECT</span></div>
+      DT_ROWS_INJECT
+    </div>
+  </div>`;
+
+// src/lib/ds/templates/commandlist.ts
+var commandListTemplate = String.raw`<div class="diag-wrap mt-40">
+    <div class="clist">CLIST_ROWS_INJECT</div>
+  </div>
+  NOTE_INJECT`;
+
+// src/lib/ds/templates/timeline.ts
+var timelineTemplate = String.raw`<div class="diag-wrap mt-40">
+    <div class="timeline">
+      <div class="tl-card old"><div class="d">{{oldLabel}}</div><div class="h">{{oldTitle}}</div><div class="t">{{oldBody}}</div></div>
+      <div class="tl-card new"><div class="d">{{newLabel}}</div><div class="h">{{newTitle}}</div><div class="t">{{newBody}}</div></div>
+    </div>
+  </div>`;
+
+// src/lib/ds/templates/promptcard.ts
+var promptCardTemplate = String.raw`<div class="diag-wrap mt-40">
+    <div class="prompt"><span class="lbl">{{label}}</span>
+<pre>{{body}}</pre></div>
+  </div>`;
+
+// src/lib/ds/templates/foldertree.ts
+var folderTreeTemplate = String.raw`<div class="diag-wrap mt-40">
+    <div class="tree">TREE_LINES_INJECT</div>
+  </div>`;
+
+// src/lib/ds/templates/commandpalette.ts
+var commandPaletteTemplate = String.raw`<div class="diag-wrap mt-40">
+    <div class="cmdp">
+      <div class="search"><span class="car">❯</span><span class="q">CMDP_QUERY_INJECT</span></div>
+      CMDP_ROWS_INJECT
+    </div>
+  </div>`;
+
+// src/lib/ds/templates/database.ts
+var databaseTemplate = String.raw`<div class="diag-wrap mt-40">
+    <div class="db">DB_TABLES_INJECT</div>
+  </div>`;
+
+// src/lib/ds/templates/gitbranch.ts
+var gitBranchTemplate = String.raw`<div class="diag-wrap mt-40">
+    <div class="git">
+      <svg viewBox="0 0 920 300" fill="none">
+        <line class="g-main" x1="40" y1="90" x2="880" y2="90" stroke-width="3"/>
+        <path class="g-feat" d="M200 90 C 260 90 260 210 320 210 L 620 210 C 680 210 680 90 740 90" stroke-width="3" fill="none"/>
+        <circle class="g-dot" cx="120" cy="90" r="16"/>
+        <circle class="g-dot" cx="200" cy="90" r="16"/>
+        <circle class="g-fdot" cx="400" cy="210" r="16"/>
+        <circle class="g-fdot" cx="540" cy="210" r="16"/>
+        <circle class="g-fdot" cx="740" cy="90" r="20"/>
+        <circle class="g-dot" cx="840" cy="90" r="16"/>
+        <text class="g-label" x="120" y="60" font-family="JetBrains Mono" font-size="22" text-anchor="middle">main</text>
+        <text class="g-flabel" x="470" y="262" font-family="JetBrains Mono" font-size="22" text-anchor="middle">GIT_BRANCH_INJECT</text>
+        <text class="g-flabel" x="740" y="55" font-family="JetBrains Mono" font-size="22" text-anchor="middle">GIT_MERGE_INJECT</text>
+      </svg>
+    </div>
+  </div>`;
+
+// src/lib/ds/templates/apirequest.ts
+var apiRequestTemplate = String.raw`<div class="diag-wrap mt-40">
+  <div class="diag-api-request">
+    <div class="api-header">
+      <span class="api-method api-method-{{method}}">{{method}}</span>
+      <span class="api-url">{{url}}</span>
+      <span class="api-status">{{status}}</span>
+    </div>
+    {{#hasHeaders}}
+    <div class="api-headers">
+      HEADERS_INJECT
+    </div>
+    {{/hasHeaders}}
+    <div class="api-body">
+      <pre><code>RESPONSE_BODY_INJECT</code></pre>
+    </div>
+  </div>
+</div>`;
+
+// src/lib/ds/templates/eventqueue.ts
+var eventQueueTemplate = String.raw`<div class="diag-wrap mt-40">
+  <div class="diag-event-queue">
+    <div class="eq-node producer">
+      <div class="eq-node-title">{{producer}}</div>
+      <div class="eq-node-role">PRODUCER</div>
+    </div>
+    
+    <div class="eq-broker">
+      <div class="eq-broker-title">{{topicName}}</div>
+      <div class="eq-messages">
+        EVENTS_INJECT
+      </div>
+      <div class="eq-broker-role">TOPIC / QUEUE</div>
+    </div>
+    
+    <div class="eq-node consumer">
+      <div class="eq-node-title">{{consumer}}</div>
+      <div class="eq-node-role">CONSUMER</div>
+    </div>
+  </div>
+</div>`;
+
+// src/lib/ds/templates/latencycomp.ts
+var latencyCompTemplate = String.raw`<div class="diag-wrap mt-40">
+  <div class="diag-latency-comp">
+    BARS_INJECT
+  </div>
+</div>
+NOTE_INJECT`;
+
+// src/lib/ds/templates/config.ts
+var configTemplate = String.raw`<div class="diag-wrap mt-40">
+  <div class="diag-config">
+    <div class="terminal-bar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="title">{{filename}}</span>
+    </div>
+    <div class="config-body">
+      CONFIG_LINES_INJECT
+    </div>
+  </div>
+</div>`;
+
+// src/lib/ds/templates/statemachine.ts
+var stateMachineTemplate = String.raw`<div class="diag-wrap mt-40">
+  <div class="diag-state-machine">
+    STATES_INJECT
+  </div>
+</div>`;
+
+// src/lib/ds/templates/architecture.ts
+var architectureTemplate = String.raw`<div class="diag-wrap mt-40">
+  <div class="diag-architecture">
+    {{#title}}<div class="arch-title">{{title}}</div>{{/title}}
+    <div class="arch-row client-row">
+      CLIENT_NODE_INJECT
+    </div>
+    <div class="arch-arrow-down">ARROW_DOWN_INJECT</div>
+    <div class="arch-row router-row">
+      ROUTER_NODE_INJECT
+    </div>
+    <div class="arch-arrows-split">ARROW_SPLIT_INJECT</div>
+    <div class="arch-row nodes-row">
+      NODES_INJECT
+    </div>
+  </div>
+</div>`;
+
+// src/lib/ds/templates/decision.ts
+var decisionTemplate = String.raw`<div class="diag-wrap mt-40">
+    <div class="dec">
+      <div class="dec-q">DEC_Q_INJECT</div>
+      <div class="dec-grid">DEC_OPTS_INJECT</div>
+    </div>
+  </div>
+  NOTE_INJECT`;
+
+// src/lib/ds/templates/mythfact.ts
+var mythFactTemplate = String.raw`<div class="diag-wrap mt-40">
+    <div class="mf">
+      <div class="mf-row mf-myth">
+        <span class="mf-tag">MITOS</span>
+        <span class="mf-text">MF_MYTH_INJECT</span>
+      </div>
+      <div class="mf-row mf-fact">
+        <span class="mf-tag">FAKTANYA</span>
+        <span class="mf-text">MF_FACT_INJECT</span>
+      </div>
+      MF_WHY_INJECT
+    </div>
+  </div>`;
+
+// src/lib/ds/templates/pitfalls.ts
+var pitfallsTemplate = String.raw`<div class="diag-wrap mt-40">
+    <div class="pf">PF_ROWS_INJECT</div>
+  </div>
+  NOTE_INJECT`;
+
+// src/lib/ds/hub-lines.ts
+function diagLines(count, o) {
+  const n = count <= 2 ? 2 : count === 3 ? 3 : 4;
+  const xs = n === 2 ? [110, 810] : n === 3 ? [110, 460, 810] : [110, 343, 577, 810];
+  const headTop = o.endY - 4;
+  const headBot = o.endY + 8;
+  const strokeAttrs = `stroke="#EE4B1A" stroke-width="1.5" fill="none"${o.dashed ? ' stroke-dasharray="6 6"' : ""}`;
+  const paths = xs.map((x) => `<path ${strokeAttrs} d="M 460 96 Q 460 ${o.midY} ${x} ${o.endY}" />`).join("");
+  const heads = xs.map(
+    (x) => `<polygon fill="#EE4B1A" points="${x - 8},${headTop} ${x + 8},${headTop} ${x},${headBot}" />`
+  ).join("");
+  return `<svg class="lines" viewBox="0 0 920 ${o.viewH}" preserveAspectRatio="none">${paths}${heads}</svg>`;
+}
+
+// src/lib/ds/templates/device.ts
+var deviceTemplate = String.raw`<div class="diag-wrap mt-40">
+    <div class="terminal">
+      <div class="terminal-bar">
+        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+        BAR_LABEL_INJECT
+      </div>
+<div class="terminal-body">DEVICE_LINES_INJECT</div>
+    </div>
+  </div>`;
+
+// src/lib/ds/tokens.ts
+var VOUR_BLACK = "#1C0A05";
+var VOUR_CHARCOAL = "#2B241D";
+var VOUR_WHITE = "#FFFFFF";
+var VOUR_MIST = "#FBF6EF";
+var VOUR_PAPER = "#F7F1E6";
+var VOUR_ORANGE = "#EE4B1A";
+var VOUR_ORANGE_DEEP = "#B8380E";
+var VOUR_ORANGE_BRIGHT = "#FF7A45";
+var VOUR_ORANGE_WASH = "#FBE9D9";
+var VOUR_SLATE = "#3D2419";
+var VOUR_SLATE_FAINT = "#7E6153";
+var VOUR_LINE_LIGHT = "rgba(28, 10, 5, 0.14)";
+var VOUR_MIST_MUTED = "rgba(247, 241, 232, 0.72)";
+var VOUR_MIST_FAINT = "rgba(247, 241, 232, 0.52)";
+var VOUR_LINE_DARK = "rgba(247, 241, 232, 0.16)";
+var VOUR_NEGATIVE_ON_DARK = "#B0A49A";
+var VOUR_POSITIVE_ON_DARK = "#86C97F";
+
+// src/lib/ds/render-slide.ts
+function splitHeadline(headline, accentWord) {
+  if (!accentWord) return { headlinePre: headline, accentWord: "", headlinePost: "" };
+  const i = headline.indexOf(accentWord);
+  if (i < 0) return { headlinePre: headline, accentWord: "", headlinePost: "" };
+  return {
+    headlinePre: headline.slice(0, i),
+    accentWord,
+    headlinePost: headline.slice(i + accentWord.length)
+  };
+}
+function paperClass(slide, slideIndex) {
+  const surface = "surface" in slide ? slide.surface : void 0;
+  if (surface !== "paper") return "";
+  return slideIndex % 2 === 1 ? "paper warm" : "paper";
+}
+function eyebrowClass(slideIndex) {
+  return slideIndex % 2 === 0 ? "chip" : "";
+}
+function mockupHasNote(m) {
+  if (!m) return false;
+  if ("note" in m && typeof m.note === "string" && m.note.trim() !== "") return true;
+  if (m.type === "comparison") return Boolean(m.winnerRationale?.trim());
+  if (m.type === "illustration") return Boolean(m.caption?.trim());
+  return false;
+}
+var NARROW_SAFE_MOCKUPS = /* @__PURE__ */ new Set([
+  "card",
+  "callout",
+  "quote",
+  "bigstat",
+  "checklist",
+  "illustration",
+  "promptcard",
+  "concept"
+]);
+function resolveLayout(layout, slideIndex, mockup) {
+  if (!mockup) return "standard";
+  if (layout) {
+    if (layout === "note-emphasis" && !mockupHasNote(mockup)) return "standard";
+    if (layout === "split-content" && !NARROW_SAFE_MOCKUPS.has(mockup.type)) return "standard";
+    return layout;
+  }
+  if (slideIndex % 2 === 1) return "mockup-forward";
+  if (mockupHasNote(mockup)) return "note-emphasis";
+  if (NARROW_SAFE_MOCKUPS.has(mockup.type)) return "split-content";
+  return "standard";
+}
+function renderNote(note) {
+  if (!note) return "";
+  return `<div class="catatan mt-40"><div class="catatan-label chip">Catatan</div><div class="catatan-body">${escapeHtml(note)}</div></div>`;
+}
+function injectSentinels(template, map2) {
+  const tokens = Object.keys(map2).sort((a, b) => b.length - a.length);
+  return template.replace(new RegExp(tokens.join("|"), "g"), (t) => map2[t]);
+}
+function renderCustomFragment(html, scopeId, wrapper) {
+  const safe = sanitizeCustomHtml(html);
+  if (!safe) return null;
+  const cls = `cm-${scopeId}`;
+  return `<div class="${wrapper}"><div class="cm cm-base ${cls}">${safe}</div></div>`;
+}
+function renderTerminalMockup(m) {
+  const terminalLines = m.lines.map((l) => {
+    const escaped = escapeHtml(l.text);
+    if (l.style === "plain" || !l.style) return escaped;
+    return `<span class="${l.style}">${escaped}</span>`;
+  }).join("\n");
+  const base = fillTemplate(terminalTemplate, {
+    terminalFilename: m.filename
+  });
+  return base.replace("TERMINAL_LINES_INJECT", () => terminalLines);
+}
+function renderComparisonMockup(m) {
+  return fillTemplate(comparisonTemplate, {
+    compLoserLabel: m.loserLabel,
+    compLoserLine: m.loserLine,
+    compWinnerLabel: m.winnerLabel,
+    compWinnerLine: m.winnerLine,
+    compRationale: m.winnerRationale ?? ""
+  });
+}
+function renderStepsMockup(m) {
+  const stepsHtml = m.items.map((s, i) => {
+    return fillTemplate(stepCardPartial, {
+      stepN: String(i + 1),
+      stepTitle: s.title,
+      stepBody: s.body,
+      stepTone: i % 2 === 0 ? "card-peach" : "card-alt"
+    });
+  }).join("\n");
+  return stepsTemplate.replace("STEPS_HTML_INJECT", () => stepsHtml);
+}
+function renderCalloutMockup(m) {
+  const base = fillTemplate(calloutTemplate, {
+    calloutText: m.text
+  });
+  return base.replace("ICON_INJECT", () => renderIcon(m.icon, { size: 24, color: "#EE4B1A" }));
+}
+function renderBigstatMockup(m) {
+  return fillTemplate(bigstatTemplate, {
+    bigstatNumber: m.number,
+    bigstatUnit: m.unit ?? "",
+    bigstatCaption: m.caption
+  });
+}
+function renderFlowMockup(m) {
+  const nodes = m.steps.map((s, i) => {
+    const node = `<div class="node${s.focus ? " filled" : ""}">${escapeHtml(s.label)}</div>`;
+    return i === 0 ? node : `<div class="flow-step"><span class="arrow">\u2192</span>${node}</div>`;
+  }).join("");
+  return injectSentinels(flowTemplate, {
+    FLOW_NODES_INJECT: nodes,
+    NOTE_INJECT: renderNote(m.note)
+  });
+}
+var CONCEPT_MAX_CHILDREN = 3;
+function renderConceptMockup(m) {
+  const kids = m.children.slice(0, CONCEPT_MAX_CHILDREN);
+  const children = kids.map((c) => `<div class="node">${escapeHtml(c)}</div>`).join("");
+  const lines = diagLines(kids.length, { viewH: 380, midY: 200, endY: 300 });
+  return injectSentinels(conceptTemplate, {
+    CONCEPT_PARENT_INJECT: escapeHtml(m.parent),
+    CONCEPT_LINES_INJECT: lines,
+    CONCEPT_CHILDREN_INJECT: children,
+    NOTE_INJECT: renderNote(m.note)
+  });
+}
+function renderHubMockup(m) {
+  const tools = m.tools.map(
+    (t) => `<div class="tool"><div class="glyph">${renderIcon(t.icon)}</div><div class="label">${escapeHtml(t.label)}</div></div>`
+  ).join("");
+  const lines = diagLines(m.tools.length, { viewH: 400, midY: 220, endY: 320, dashed: true });
+  return injectSentinels(hubTemplate, {
+    HUB_CENTER_INJECT: escapeHtml(m.center),
+    HUB_LINES_INJECT: lines,
+    HUB_TOOLS_INJECT: tools,
+    NOTE_INJECT: renderNote(m.note)
+  });
+}
+function renderChecklistMockup(m) {
+  const items = m.items.map((i) => `<li><span class="tick">\u2713</span> ${escapeHtml(i)}</li>`).join("");
+  return injectSentinels(checklistTemplate, {
+    CHECKLIST_ITEMS_INJECT: items,
+    NOTE_INJECT: renderNote(m.note)
+  });
+}
+function renderBrowserMockup(m) {
+  const cards = m.cards.map(
+    (c) => `<div class="b-card"><div class="t">${escapeHtml(c.value)}</div><div class="s">${escapeHtml(c.label)}</div></div>`
+  ).join("");
+  return injectSentinels(browserTemplate, {
+    BROWSER_URL_INJECT: escapeHtml(m.url),
+    BROWSER_CARDS_INJECT: cards,
+    NOTE_INJECT: renderNote(m.note)
+  });
+}
+function renderQuoteMockup(m) {
+  return fillTemplate(quoteTemplate, { quote: m.quote, author: m.author ?? "" });
+}
+function renderDataTableMockup(m) {
+  const rows = m.rows.map(
+    (r) => `<div class="dt-row"><div class="c">${escapeHtml(r.no)}</div><div class="c b">${escapeHtml(r.ok)}</div></div>`
+  ).join("");
+  return injectSentinels(dataTableTemplate, {
+    DT_NO_INJECT: escapeHtml(m.noLabel),
+    DT_OK_INJECT: escapeHtml(m.okLabel),
+    DT_ROWS_INJECT: rows
+  });
+}
+function renderCommandListMockup(m) {
+  const rows = m.rows.map(
+    (r) => `<div class="row"><span class="cmd">${escapeHtml(r.cmd)}</span><span class="desc">${escapeHtml(r.desc)}</span></div>`
+  ).join("");
+  return injectSentinels(commandListTemplate, {
+    CLIST_ROWS_INJECT: rows,
+    NOTE_INJECT: renderNote(m.note)
+  });
+}
+function renderTimelineMockup(m) {
+  return fillTemplate(timelineTemplate, {
+    oldLabel: m.oldLabel,
+    oldTitle: m.oldTitle,
+    oldBody: m.oldBody,
+    newLabel: m.newLabel,
+    newTitle: m.newTitle,
+    newBody: m.newBody
+  });
+}
+function renderPromptcardMockup(m) {
+  return fillTemplate(promptCardTemplate, { label: m.label, body: m.body });
+}
+function renderFolderTreeMockup(m) {
+  const lines = m.lines.map((l) => {
+    const escaped = escapeHtml(l.text);
+    return l.active ? `<span class="on">${escaped}</span>` : escaped;
+  }).join("\n");
+  return folderTreeTemplate.replace("TREE_LINES_INJECT", () => lines);
+}
+function renderCommandPaletteMockup(m) {
+  const rows = m.rows.map((r) => {
+    const icon = renderIcon(r.icon, { size: 28, color: "#FF7A45" });
+    const key = r.active ? `<span class="k">\u21B5</span>` : "";
+    return `<div class="row${r.active ? " on" : ""}">${icon}${escapeHtml(r.label)}${key}</div>`;
+  }).join("");
+  return injectSentinels(commandPaletteTemplate, {
+    CMDP_QUERY_INJECT: escapeHtml(m.query),
+    CMDP_ROWS_INJECT: rows
+  });
+}
+function renderDatabaseMockup(m) {
+  const headIcon = renderIcon("database", { size: 26, color: "#FFFFFF" });
+  const renderTable = (t) => {
+    const rows = t.rows.map(
+      (r) => `<div class="tr"><span>${escapeHtml(r.col)}</span><span class="ty">${escapeHtml(r.type)}</span></div>`
+    ).join("");
+    return `<div class="table"><div class="th">${headIcon}${escapeHtml(t.name)}</div>${rows}</div>`;
+  };
+  const [a, b] = m.tables;
+  const tables = `${renderTable(a)}<span class="rel">${escapeHtml(m.relation)}</span>${renderTable(b)}`;
+  return databaseTemplate.replace("DB_TABLES_INJECT", () => tables);
+}
+function renderGitBranchMockup(m) {
+  return injectSentinels(gitBranchTemplate, {
+    GIT_BRANCH_INJECT: escapeHtml(m.branch.name),
+    GIT_MERGE_INJECT: escapeHtml(m.mergeLabel)
+  });
+}
+function renderApiRequestMockup(m) {
+  const headers = m.headers ?? [];
+  const headersHtml = headers.map(
+    (h) => `<div class="api-header-row"><span class="h-key">${escapeHtml(h.key)}:</span> <span class="h-val">${escapeHtml(h.value)}</span></div>`
+  ).join("\n");
+  const base = fillTemplate(apiRequestTemplate, {
+    method: m.method,
+    url: m.url,
+    status: m.status,
+    hasHeaders: headers.length > 0 ? "1" : ""
+  });
+  return base.replace("HEADERS_INJECT", () => headersHtml).replace("RESPONSE_BODY_INJECT", () => escapeHtml(m.responseBody));
+}
+function renderEventQueueMockup(m) {
+  const eventsHtml = m.events.map(
+    (e, idx) => `<div class="eq-msg-pill active-${idx === 0}"><span class="eq-msg-ico">${renderIcon("zap", { size: 16, color: "currentColor" })}</span>${escapeHtml(e)}</div>`
+  ).join("\n");
+  return fillTemplate(eventQueueTemplate, {
+    producer: m.producer,
+    topicName: m.topicName,
+    consumer: m.consumer
+  }).replace("EVENTS_INJECT", () => eventsHtml);
+}
+function renderLatencyCompMockup(m) {
+  const barsHtml = m.items.map((item) => {
+    const rawClass = item.highlight ? "lc-bar-wrap highlight" : "lc-bar-wrap";
+    const bgPercent = Math.min(100, Math.max(5, item.percentage));
+    return `<div class="${rawClass}">
+      <div class="lc-label-row">
+        <span class="lc-label">${escapeHtml(item.label)}</span>
+        <span class="lc-value">${escapeHtml(item.value)}</span>
+      </div>
+      <div class="lc-bar-container">
+        <div class="lc-bar" style="width: ${bgPercent}%;"></div>
+      </div>
+    </div>`;
+  }).join("\n");
+  return fillTemplate(latencyCompTemplate, {
+    note: m.note ?? ""
+  }).replace("BARS_INJECT", () => barsHtml).replace("NOTE_INJECT", () => renderNote(m.note));
+}
+function renderConfigMockup(m) {
+  const configLines = m.lines.map((l) => {
+    const keySpan = `<span class="c-key">${escapeHtml(l.key)}</span>`;
+    const valSpan = `<span class="c-val">${escapeHtml(l.val)}</span>`;
+    const commentSpan = l.comment ? `<span class="c-cmt"># ${escapeHtml(l.comment)}</span>` : "";
+    return `<div class="config-line">${keySpan}: ${valSpan} ${commentSpan}</div>`;
+  }).join("\n");
+  return fillTemplate(configTemplate, {
+    filename: m.filename
+  }).replace("CONFIG_LINES_INJECT", () => configLines);
+}
+function renderStateMachineMockup(m) {
+  const statesHtml = m.states.map((s, idx) => {
+    const isLast = idx === m.states.length - 1;
+    const arrowHtml = !isLast ? `<span class="sm-arrow">\u2500\u2500 ${escapeHtml(m.transitions[idx] || "next")} \u2500\u2500&gt;</span>` : "";
+    const activeClass = `sm-state active-${s.status}`;
+    const circleIcon = renderIcon("circle", { size: 16, color: "currentColor" });
+    return `<div class="sm-state-wrapper">
+      <div class="${activeClass}">${circleIcon}${escapeHtml(s.name)}</div>
+      ${arrowHtml}
+    </div>`;
+  }).join("\n");
+  return fillTemplate(stateMachineTemplate, {}).replace("STATES_INJECT", () => statesHtml);
+}
+function renderArchitectureMockup(m) {
+  const clientIcon = renderIcon("box", { size: 24, color: "currentColor" });
+  const routerIcon = renderIcon("network", { size: 24, color: "currentColor" });
+  const arrowDownIcon = renderIcon("arrow-right", { size: 24, color: "currentColor" });
+  const nodesHtml = m.nodes.map((n, idx) => {
+    const cls = idx === 0 ? "arch-node vm-node mint" : "arch-node vm-node stone";
+    const serverIcon = renderIcon("server", { size: 24, color: "currentColor" });
+    const statusLabel = idx === 0 ? `<span class="arch-status active">ACTIVE</span>` : `<span class="arch-status standby">STANDBY</span>`;
+    return `<div class="${cls}">
+      <div class="arch-node-content">
+        ${serverIcon}
+        <span class="node-text">${escapeHtml(n)}</span>
+        ${statusLabel}
+      </div>
+    </div>`;
+  }).join("\n");
+  const clientContent = `<div class="arch-node client-node"><div class="arch-node-content horizontal">${clientIcon}<span>${escapeHtml(m.client || "Client")}</span></div></div>`;
+  const routerContent = `<div class="arch-node router-node"><div class="arch-node-content horizontal">${routerIcon}<span>${escapeHtml(m.router || "Load Balancer")}</span></div></div>`;
+  let base = fillTemplate(architectureTemplate, {
+    title: m.title ?? ""
+  });
+  const arrowSvg = `<svg class="arch-split-arrows" viewBox="0 0 100 40" preserveAspectRatio="none"><path d="M 50 0 L 50 15 L 15 15 L 15 40 M 50 15 L 85 15 L 85 40" stroke="currentColor" stroke-width="2" fill="none"/></svg>`;
+  return base.replace("CLIENT_NODE_INJECT", () => clientContent).replace("ARROW_DOWN_INJECT", () => arrowDownIcon).replace("ROUTER_NODE_INJECT", () => routerContent).replace("ARROW_SPLIT_INJECT", () => arrowSvg).replace("NODES_INJECT", () => nodesHtml);
+}
+function renderDeviceHook(h) {
+  const bodyLines = h.lines.map((l) => {
+    const escaped = escapeHtml(l.text);
+    return l.style && l.style !== "plain" ? `<span class="${l.style}">${escaped}</span>` : escaped;
+  }).join("\n");
+  const labelHtml = h.label ? h.chrome === "browser" ? `<span class="urlbar">${escapeHtml(h.label)}</span>` : `<span class="title">${escapeHtml(h.label)}</span>` : "";
+  return deviceTemplate.replace("BAR_LABEL_INJECT", () => labelHtml).replace("DEVICE_LINES_INJECT", () => bodyLines);
+}
+function renderImageHook(h) {
+  const src = escapeHtml(h.src);
+  return `<div class="anchor-wrap"><img src="${src}" alt="" style="max-width:100%; max-height:100%; border-radius:20px;"></div>`;
+}
+function renderBadgeHook(h) {
+  const gitIcon = renderIcon("git-branch", { size: 24, color: "#FF7A45" });
+  const sub = h.sub ? `<div class="sub">${escapeHtml(h.sub)}</div>` : "";
+  const strike = h.struck ? `<div class="cover-strike"></div>` : "";
+  return coverBadgeTemplate.replace("BADGE_BROW_INJECT", () => `${gitIcon}${escapeHtml(h.eyebrowLine ?? "ID \xB7 2026")}`).replace("BADGE_ROLE_INJECT", () => escapeHtml(h.role)).replace("BADGE_SUB_INJECT", () => sub).replace("BADGE_STRIKE_INJECT", () => strike);
+}
+function renderNocGridHook(h) {
+  const cols = h.cols ?? 6;
+  const rows = h.rows ?? 3;
+  const down = (h.state ?? "down") === "down";
+  const banner = h.banner ?? "100% PACKET LOSS";
+  const stateColor = down ? VOUR_MIST_MUTED : VOUR_POSITIVE_ON_DARK;
+  const nodeIcon = renderIcon(down ? "x-circle" : "check-circle", { size: 62, color: stateColor });
+  const nodes = Array.from({ length: cols * rows }).map(() => `<span class="node ${down ? "down" : "up"}">${nodeIcon}</span>`).join("");
+  const bannerIcon = renderIcon(down ? "alert-triangle" : "check-circle", {
+    size: 40,
+    color: "currentColor"
+  });
+  return coverNocGridTemplate.replace("GRID_COLS_INJECT", () => String(cols)).replace("NODES_INJECT", () => nodes).replace("BANNER_INJECT", () => `${bannerIcon}${escapeHtml(banner)}`);
+}
+function renderDoorHook(h) {
+  const handIcon = renderIcon("arrow-right", { size: 96, color: "#FF7A45" });
+  const handle = h.pull === false ? "" : `<div class="handle"></div>`;
+  return coverDoorTemplate.replace("LABEL_INJECT", () => escapeHtml(h.label ?? "DORONG")).replace("HANDLE_INJECT", () => handle).replace("HAND_INJECT", () => handIcon);
+}
+function renderIllustrationMockup(m, variant) {
+  const caption = m.caption ? `<div class="catatan mt-20"><div class="catatan-body">${escapeHtml(m.caption)}</div></div>` : "";
+  const sizeClass = m.illustrationSlugs.length > 1 ? "is-pair" : "is-single";
+  const items = m.illustrationSlugs.map((slug) => `<div class="illus-item">${renderIllustration(slug, variant)}</div>`).join("");
+  return `<div class="diag-wrap"><div class="diag-illustration"><div class="illustration-group ${sizeClass}">${items}</div>${caption}</div></div>`;
+}
+function renderDecisionMockup(m) {
+  const opts = m.options.map(
+    // Name first, tag second. With the tag above the name, the one option that carries
+    // a tag pushed its name a row lower than the others and the three option names
+    // stopped sharing a baseline — the first thing the eye compares, misaligned.
+    (o) => `<div class="dec-opt">
+        <div class="dec-name">${escapeHtml(o.name)}</div>
+        ${o.tag ? `<span class="dec-tag">${escapeHtml(o.tag)}</span>` : ""}
+        <div class="dec-when-label">Pakai kalau</div>
+        <div class="dec-when">${escapeHtml(o.when)}</div>
+      </div>`
+  ).join("");
+  return injectSentinels(decisionTemplate, {
+    DEC_Q_INJECT: escapeHtml(m.question ?? "Pakai yang mana?"),
+    DEC_OPTS_INJECT: opts,
+    NOTE_INJECT: renderNote(m.note)
+  });
+}
+function renderMythFactMockup(m) {
+  const why = m.because ? `<div class="mf-why"><span class="mf-why-label">Kenapa penting</span>${escapeHtml(m.because)}</div>` : "";
+  return injectSentinels(mythFactTemplate, {
+    MF_MYTH_INJECT: escapeHtml(m.myth),
+    MF_FACT_INJECT: escapeHtml(m.fact),
+    MF_WHY_INJECT: why
+  });
+}
+function renderPitfallsMockup(m) {
+  const rows = m.items.map(
+    (it, i) => `<div class="pf-row pf-${it.level ?? "mid"}">
+        <span class="pf-num">${String(i + 1).padStart(2, "0")}</span>
+        <span class="pf-text">${escapeHtml(it.text)}</span>
+      </div>`
+  ).join("");
+  return injectSentinels(pitfallsTemplate, {
+    PF_ROWS_INJECT: rows,
+    NOTE_INJECT: renderNote(m.note)
+  });
+}
+function renderScreenshotMockup(m) {
+  if (m.evidenceStatus === "captured" && m.screenshotImage?.dataUrl) {
+    return `<div class="diag-wrap"><div class="diag-screenshot"><img src="${escapeHtml(m.screenshotImage.dataUrl)}" alt="Evidence Screenshot" /></div></div>`;
+  }
+  if (m.evidenceStatus === "fallback_used") {
+    const srcLabel = m.screenshotBrief?.source ? escapeHtml(m.screenshotBrief.source) : "Bukti Studi Kasus";
+    return `<div class="diag-wrap"><div class="catatan mt-20"><div class="catatan-body font-mono text-sm">\u{1F4CC} ${srcLabel} (Mode Referensi Teks)</div></div></div>`;
+  }
+  const sourceText = m.screenshotBrief?.source ? escapeHtml(m.screenshotBrief.source) : "screenshot bukti asli";
+  const mustShowText = m.screenshotBrief?.mustShow ? `<div class="diag-screenshot-brief-item"><strong>Harus terlihat:</strong> ${escapeHtml(m.screenshotBrief.mustShow)}</div>` : "";
+  const mustHideText = m.screenshotBrief?.mustHide ? `<div class="diag-screenshot-brief-item"><strong>Harus di-blur/crop:</strong> ${escapeHtml(m.screenshotBrief.mustHide)}</div>` : "";
+  return `<div class="diag-wrap"><div class="diag-screenshot-placeholder"><div class="diag-screenshot-badge">\u26A0\uFE0F BUTUH SCREENSHOT ASLI</div><div class="diag-screenshot-source">Target: <span>${sourceText}</span></div>${mustShowText}${mustHideText}</div></div>`;
+}
+function renderMockup(m, scopeId, variant) {
+  switch (m.type) {
+    case "terminal":
+      return renderTerminalMockup(m);
+    case "comparison":
+      return renderComparisonMockup(m);
+    case "steps":
+      return renderStepsMockup(m);
+    case "callout":
+      return renderCalloutMockup(m);
+    case "bigstat":
+      return renderBigstatMockup(m);
+    case "flow":
+      return renderFlowMockup(m);
+    case "concept":
+      return renderConceptMockup(m);
+    case "hub":
+      return renderHubMockup(m);
+    case "checklist":
+      return renderChecklistMockup(m);
+    case "browser":
+      return renderBrowserMockup(m);
+    case "quote":
+      return renderQuoteMockup(m);
+    case "datatable":
+      return renderDataTableMockup(m);
+    case "commandlist":
+      return renderCommandListMockup(m);
+    case "timeline":
+      return renderTimelineMockup(m);
+    case "promptcard":
+      return renderPromptcardMockup(m);
+    case "foldertree":
+      return renderFolderTreeMockup(m);
+    case "commandpalette":
+      return renderCommandPaletteMockup(m);
+    case "database":
+      return renderDatabaseMockup(m);
+    case "gitbranch":
+      return renderGitBranchMockup(m);
+    case "apirequest":
+      return renderApiRequestMockup(m);
+    case "eventqueue":
+      return renderEventQueueMockup(m);
+    case "latencycomp":
+      return renderLatencyCompMockup(m);
+    case "config":
+      return renderConfigMockup(m);
+    case "statemachine":
+      return renderStateMachineMockup(m);
+    case "architecture":
+      return renderArchitectureMockup(m);
+    case "decision":
+      return renderDecisionMockup(m);
+    case "mythfact":
+      return renderMythFactMockup(m);
+    case "pitfalls":
+      return renderPitfallsMockup(m);
+    case "illustration":
+      return renderIllustrationMockup(m, variant);
+    case "screenshot":
+      return renderScreenshotMockup(m);
+    case "custom":
+      return renderCustomFragment(m.html, scopeId, "diag-wrap") ?? "";
+    case "card":
+      return "";
+  }
+}
+function resolveMockup(slide) {
+  const customIsEmpty = slide.mockup?.type === "custom" && sanitizeCustomHtml(slide.mockup.html) === null;
+  if (slide.mockup && !customIsEmpty) return slide.mockup;
+  if (slide.card && (slide.card.title.trim() || slide.card.body.trim())) {
+    return { type: "card", ...slide.card };
+  }
+  return void 0;
+}
+function renderSlide(slide, slideIndex = 0) {
+  const brand = brandMarkDataUri;
+  const scopeId = String(slideIndex);
+  switch (slide.role) {
+    case "cover": {
+      const stamp = slide.stamp ?? "Engineering Notes";
+      if (!slide.hook) {
+        const base2 = fillTemplate(coverEditorialTemplate, {
+          brand,
+          coverSurface: "cover-ink",
+          eyebrow: slide.eyebrow,
+          stamp,
+          ...splitHeadline(slide.headline, slide.accentWord),
+          lede: slide.lede ?? ""
+        });
+        const numeral = escapeHtml(slide.ghostNumeral ?? "01");
+        return base2.replace("GHOST_NUMERAL_INJECT", () => numeral);
+      }
+      const h = slide.hook;
+      let fragment = "";
+      if (h.kind === "device") fragment = renderDeviceHook(h);
+      else if (h.kind === "custom")
+        fragment = renderCustomFragment(h.html, scopeId, "anchor-wrap") ?? "";
+      else if (h.kind === "image") fragment = renderImageHook(h);
+      else if (h.kind === "badge") fragment = renderBadgeHook(h);
+      else if (h.kind === "nocgrid") fragment = renderNocGridHook(h);
+      else if (h.kind === "door") fragment = renderDoorHook(h);
+      const base = fillTemplate(coverCompactTemplate, {
+        brand,
+        coverSurface: "ink cover-ink",
+        eyebrow: slide.eyebrow,
+        stamp,
+        ...splitHeadline(slide.headline, slide.accentWord),
+        lede: slide.lede ?? ""
+      });
+      return base.replace("HOOK_INJECT", () => fragment);
+    }
+    case "point": {
+      const mockup = resolveMockup(slide);
+      const surfaceClass = paperClass(slide, slideIndex);
+      const isPaper = surfaceClass.startsWith("paper");
+      const eyebrowCls = eyebrowClass(slideIndex);
+      if (!mockup) {
+        return fillTemplate(pointTemplate, {
+          brand,
+          surfaceClass,
+          counter: slide.counter,
+          eyebrow: slide.eyebrow,
+          eyebrowClass: eyebrowCls,
+          ...splitHeadline(slide.headline, slide.accentWord),
+          body: slide.body,
+          card: "",
+          cardTitle: "",
+          cardBody: "",
+          cardTone: "peach",
+          mockupHtml: "",
+          layout: resolveLayout(slide.layout, slideIndex, mockup)
+        });
+      }
+      if (mockup.type === "card") {
+        const filled = fillTemplate(pointTemplate, {
+          brand,
+          surfaceClass,
+          counter: slide.counter,
+          eyebrow: slide.eyebrow,
+          eyebrowClass: eyebrowCls,
+          ...splitHeadline(slide.headline, slide.accentWord),
+          body: slide.body,
+          card: "1",
+          cardTitle: mockup.title,
+          cardBody: mockup.body,
+          cardTone: mockup.tone || "peach",
+          mockupHtml: "",
+          layout: resolveLayout(slide.layout, slideIndex, mockup)
+        });
+        return filled.replace(
+          "ICON_INJECT",
+          () => renderIcon(mockup.icon, { size: 24, color: "#EE4B1A" })
+        );
+      }
+      const mockupHtml = renderMockup(mockup, scopeId, isPaper ? "onLight" : "onDark");
+      const base = fillTemplate(pointTemplate, {
+        brand,
+        surfaceClass,
+        counter: slide.counter,
+        eyebrow: slide.eyebrow,
+        eyebrowClass: eyebrowCls,
+        ...splitHeadline(slide.headline, slide.accentWord),
+        body: slide.body,
+        card: "",
+        // hide the card block
+        cardTitle: "",
+        cardBody: "",
+        cardTone: "peach",
+        mockupHtml: "1",
+        // truthy to activate the block
+        layout: resolveLayout(slide.layout, slideIndex, mockup)
+      });
+      return base.replace("MOCKUP_INJECT", () => mockupHtml);
+    }
+    case "outro": {
+      const cta = slide.cta ?? { strong: "" };
+      const surfaceClass = paperClass(slide, slideIndex);
+      return fillTemplate(outroTemplate, {
+        brand,
+        surfaceClass,
+        eyebrow: slide.eyebrow ?? "",
+        ...splitHeadline(slide.headline, slide.accentWord),
+        body: slide.body ?? "",
+        ctaStrong: cta.strong,
+        ctaSub: cta.sub ?? ""
+      });
+    }
+  }
+}
+
 // src/lib/ai/revision-scope.ts
 var UNSCOPED = { slides: [], globals: [], resolved: false, source: "unscoped" };
 var RE_SLIDE_NUMBER = /\b(?:slide|halaman|page)\s*(?:ke-?\s*|nomor\s*|no\.?\s*|#\s*)?(\d{1,2})\b/gi;
@@ -72890,61 +74123,6 @@ function scopedChangeSummary(before, after, scope) {
     if (!semanticEq(before[g], after[g])) changed.push(g);
   }
   return changed;
-}
-
-// src/lib/ds/sanitize.ts
-var CUSTOM_CLASS_WHITELIST = [
-  // layout
-  "flex-col",
-  "flex-grow",
-  "center",
-  "gap-16",
-  // vertical rhythm
-  "mt-8",
-  "mt-16",
-  "mt-24",
-  "mt-32",
-  "mt-40",
-  "mt-48",
-  "mt-64",
-  // typography / content roles
-  "eyebrow",
-  "lede",
-  "body-text",
-  "highlight",
-  "badge",
-  "counter",
-  // annotation strip
-  "catatan",
-  "catatan-label",
-  "catatan-body",
-  // generic diagram atoms
-  "node",
-  "chip"
-];
-var WHITELIST = new Set(CUSTOM_CLASS_WHITELIST);
-var PRESENTATION_ATTRS = /\s(?:style|width|height|bgcolor|color|align|valign|face|size|fill|stroke|opacity|transform|hspace|vspace|border|cellpadding|cellspacing)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi;
-function sanitizeHookHtml(html) {
-  return html.replace(/<\s*script\b[\s\S]*?<\s*\/\s*script\s*>/gi, "").replace(/<\s*\/?\s*script\b[^>]*>/gi, "").replace(/([\s"'/])on(?!ly\s*=|ce\s*=)[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "$1").replace(/(href|src)\s*=\s*("|')?\s*javascript:[^"'>\s]*/gi, "$1=$2#").replace(/(href|src)\s*=\s*("|')?\s*data:text\/html[^"'>\s]*/gi, "$1=$2#");
-}
-function sanitizeCustomHtml(html) {
-  let out = sanitizeHookHtml(html);
-  out = out.replace(/<\s*style\b[\s\S]*?<\s*\/\s*style\s*>/gi, "");
-  out = out.replace(/<\s*\/?\s*style\b[^>]*>/gi, "");
-  out = out.replace(/<\s*link\b[^>]*>/gi, "");
-  out = out.replace(PRESENTATION_ATTRS, "");
-  out = out.replace(
-    /\sclass\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi,
-    (_full, dq, sq, bare) => {
-      const raw2 = dq ?? sq ?? bare ?? "";
-      const kept = raw2.split(/\s+/).filter((c) => WHITELIST.has(c));
-      return kept.length ? ` class="${kept.join(" ")}"` : "";
-    }
-  );
-  const text2 = out.replace(/<[^>]*>/g, "").replace(/&nbsp;/gi, " ").trim();
-  const hasContentTag = /<(p|div|ul|ol|li|table|tr|td|th|h[1-6]|span|section|figure|img|svg)\b/i.test(out);
-  if (!text2 && !hasContentTag) return null;
-  return out.trim() || null;
 }
 
 // src/lib/ai/prompts.ts
@@ -74219,15 +75397,31 @@ async function generateBrief(idea, model) {
     return text2;
   });
 }
-var ANALOGY_KEYWORDS = ["kayak", "ibarat", "mirip", "bayangkan", "seperti"];
-var ILLUSTRATION_FALLBACK_SLUG = "online-learning_tgmv";
+var ANALOGY_PATTERN = /\b(kayak|ibarat|mirip|bayangkan|seperti)\b/i;
+var NOT_AN_ANALOGY_SLIDE = /* @__PURE__ */ new Set([
+  // shows code, a command, or program output
+  "terminal",
+  "commandlist",
+  "commandpalette",
+  "promptcard",
+  "config",
+  "apirequest",
+  "foldertree",
+  // explicitly weighs two or more things against each other
+  "comparison",
+  "datatable",
+  "timeline",
+  "decision",
+  "latencycomp"
+]);
+var ILLUSTRATION_FALLBACK_SLUGS = ["online-learning_tgmv", "learning_qt7d", "knowledge_0ty5"];
+var ILLUSTRATION_FALLBACK_SLUG = ILLUSTRATION_FALLBACK_SLUGS[0];
 function enforceIllustrationForAnalogySlides(plan) {
-  const slides = plan.slides.map((slide) => {
+  const slides = plan.slides.map((slide, i) => {
     if (slide.role !== "point") return slide;
-    const body = (slide.body ?? "").toLowerCase();
-    const hasAnalogy = ANALOGY_KEYWORDS.some((kw) => body.includes(kw));
-    if (!hasAnalogy) return slide;
+    if (!ANALOGY_PATTERN.test(slide.body ?? "")) return slide;
     if (slide.mockup?.type === "illustration") return slide;
+    if (slide.mockup && NOT_AN_ANALOGY_SLIDE.has(slide.mockup.type)) return slide;
     console.warn(
       `[illustration-safety-net] Slide "${slide.eyebrow}" has analogy keywords but mockup="${slide.mockup?.type ?? "none"}". Overriding to illustration.`
     );
@@ -74235,7 +75429,11 @@ function enforceIllustrationForAnalogySlides(plan) {
       ...slide,
       mockup: {
         type: "illustration",
-        illustrationSlugs: [normalizeIllustration(ILLUSTRATION_FALLBACK_SLUG)]
+        illustrationSlugs: [
+          normalizeIllustration(
+            ILLUSTRATION_FALLBACK_SLUGS[i % ILLUSTRATION_FALLBACK_SLUGS.length]
+          )
+        ]
       }
     };
   });
@@ -74257,8 +75455,28 @@ function enforceMockupForPointSlides(plan) {
   });
   return { ...plan, slides };
 }
+function enforceLayoutVariety(plan) {
+  let previous;
+  const slides = plan.slides.map((slide, i) => {
+    if (slide.role !== "point") return slide;
+    let layout = resolveLayout(slide.layout, i, slide.mockup);
+    if (layout === previous) {
+      const rotated = resolveLayout(void 0, i, slide.mockup);
+      layout = rotated !== previous ? rotated : (
+        // Both collide, so take the one alternative that always applies once a
+        // mockup exists. standard and mockup-forward are never both unavailable.
+        previous === "mockup-forward" ? "standard" : "mockup-forward"
+      );
+    }
+    previous = layout;
+    return { ...slide, layout };
+  });
+  return { ...plan, slides };
+}
 function enforcePlanInvariants(plan) {
-  return enforceMockupForPointSlides(enforceIllustrationForAnalogySlides(plan));
+  return enforceLayoutVariety(
+    enforceMockupForPointSlides(enforceIllustrationForAnalogySlides(plan))
+  );
 }
 function stripUnfulfillableEvidence(plan) {
   const slides = plan.slides.map((slide) => {
@@ -74535,17 +75753,17 @@ function briefScopeViolations(before, afterBrief, targetIndices) {
 }
 
 // src/lib/memory/repo.ts
-import { createClient as createClient2 } from "@libsql/client";
-var client = null;
+import { createClient as createClient3 } from "@libsql/client";
+var client2 = null;
 var schemaReady = null;
 function db() {
-  if (!client) {
-    client = createClient2({
+  if (!client2) {
+    client2 = createClient3({
       url: process.env.DATABASE_URL ?? "file:local-auth.db",
       authToken: process.env.DATABASE_AUTH_TOKEN
     });
   }
-  return client;
+  return client2;
 }
 function ensureSchema() {
   if (!schemaReady) {
@@ -74752,17 +75970,17 @@ function summarizePlanDiff(before, after) {
 }
 
 // src/lib/history/repo.ts
-import { createClient as createClient3 } from "@libsql/client";
-var client2 = null;
+import { createClient as createClient4 } from "@libsql/client";
+var client3 = null;
 var schemaReady2 = null;
 function db2() {
-  if (!client2) {
-    client2 = createClient3({
+  if (!client3) {
+    client3 = createClient4({
       url: process.env.DATABASE_URL ?? "file:local-auth.db",
       authToken: process.env.DATABASE_AUTH_TOKEN
     });
   }
-  return client2;
+  return client3;
 }
 function ensureSchema2() {
   if (!schemaReady2) {
@@ -74950,9 +76168,12 @@ async function getUnderusedMockupTypes(userId2, limit = 25) {
   if (Object.keys(stats).length === 0) return [];
   return ALL_MOCKUP_TYPES.filter((type) => !NEVER_PROMOTE.has(type)).map((type) => ({ type, count: stats[type] || 0 })).sort((a, b) => a.count - b.count).slice(0, 8).map((x) => x.type);
 }
-async function getGlobalMockupStats() {
+async function getGlobalMockupStats(userId2) {
   await ensureSchema2();
-  const res = await db2().execute(`SELECT slide_plan FROM carousels WHERE slide_plan IS NOT NULL`);
+  const res = userId2 ? await db2().execute({
+    sql: `SELECT slide_plan FROM carousels WHERE user_id = ? AND slide_plan IS NOT NULL`,
+    args: [userId2]
+  }) : await db2().execute(`SELECT slide_plan FROM carousels WHERE slide_plan IS NOT NULL`);
   const counts = {};
   let totalSlides = 0;
   for (const row of res.rows) {
@@ -74980,7 +76201,8 @@ async function getGlobalMockupStats() {
 // src/routes/user/plan.ts
 var app3 = new Hono2();
 app3.get("/mockup-stats", async (c) => {
-  const stats = await getGlobalMockupStats();
+  const session = c.get("session");
+  const stats = await getGlobalMockupStats(session.user.id);
   return c.json({ stats });
 });
 app3.post("/", async (c) => {
@@ -75040,1184 +76262,6 @@ app3.post("/revise", async (c) => {
   return c.json({ plan: revised, scope: describeScope(scope), changed });
 });
 var plan_default = app3;
-
-// src/lib/ds/strip-emoji.ts
-var EMOJI = new RegExp(
-  "[\\u{1F000}-\\u{1FAFF}\\u{1F1E6}-\\u{1F1FF}\\u{2600}-\\u{27BF}\\u{2B00}-\\u{2BFF}\\u{FE0F}\\u{FE0E}\\u{1F3FB}-\\u{1F3FF}\\u{200D}]",
-  "gu"
-);
-var KEEP = /* @__PURE__ */ new Set(["\u2713", "\u2714", "\u2717", "\u2718", "\u2192", "\u2190", "\u2191", "\u2193", "\u2500", "\u227A", "\u2605", "\u2606"]);
-function stripEmoji(s) {
-  if (!s) return s;
-  const out = s.replace(EMOJI, (ch) => KEEP.has(ch) ? ch : "");
-  if (out === s) return s;
-  return out.replace(/[ \t]{2,}/g, " ").replace(/^[ \t]+|[ \t]+$/gm, "").trim();
-}
-
-// src/lib/ds/fill.ts
-function escapeHtml(s) {
-  return stripEmoji(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-}
-function fillTemplate(template, vars) {
-  let out = template.replace(
-    /\{\{#(\w+)\}\}([\s\S]*?)\{\{\/\1\}\}/g,
-    (_m, key, inner) => vars[key] ? inner : ""
-  );
-  out = out.replace(
-    /\{\{(\w+)\}\}/g,
-    (_m, key) => vars[key] != null ? escapeHtml(vars[key]) : ""
-  );
-  return out;
-}
-
-// src/lib/ds/brand.ts
-var brandMarkDataUri = "data:image/png;base64,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";
-
-// src/lib/ds/templates/cover-editorial.ts
-var coverEditorialTemplate = String.raw`<section data-screen-label="01 · Cover" class="cover-editorial-ink {{coverSurface}}">
-  <div class="ce-top">
-    <div class="brand-row">
-      <div class="brand-disc">
-        <img src="{{brand}}" alt="@vourdev">
-      </div>
-      <span class="brand-handle">@vourdev</span>
-    </div>
-    {{#stamp}}<span class="series-stamp active">{{stamp}}</span>{{/stamp}}
-  </div>
-
-  <div class="ce-ghost" aria-hidden="true">GHOST_NUMERAL_INJECT</div>
-
-  <div class="ce-lead">
-    <div class="eyebrow">{{eyebrow}}</div>
-    <h1 class="hero mt-24">{{headlinePre}}<span class="a">{{accentWord}}</span>{{headlinePost}}</h1>
-    {{#lede}}
-    <p class="lede mt-32">
-      {{lede}}
-    </p>
-    {{/lede}}
-  </div>
-
-  <div class="geser">Geser →</div>
-</section>`;
-
-// src/lib/ds/templates/cover-compact.ts
-var coverCompactTemplate = String.raw`<section data-screen-label="01 · Cover" class="{{coverSurface}}">
-  <div class="ce-top">
-    <div class="brand-row">
-      <div class="brand-disc">
-        <img src="{{brand}}" alt="@vourdev">
-      </div>
-      <span class="brand-handle">@vourdev</span>
-    </div>
-    {{#stamp}}<span class="series-stamp active">{{stamp}}</span>{{/stamp}}
-  </div>
-
-  <div class="eyebrow mt-64">{{eyebrow}}</div>
-  <h1 class="compact mt-24">{{headlinePre}}<span class="a">{{accentWord}}</span>{{headlinePost}}</h1>
-  {{#lede}}
-  <p class="lede mt-24">
-    {{lede}}
-  </p>
-  {{/lede}}
-
-  HOOK_INJECT
-
-  <div class="geser">Geser →</div>
-</section>`;
-
-// src/lib/ds/templates/cover-badge.ts
-var coverBadgeTemplate = String.raw`<div class="anchor-wrap">
-  <div class="cover-badge">
-    <div class="hole"></div>
-    <div class="brow">BADGE_BROW_INJECT</div>
-    <div class="role">BADGE_ROLE_INJECT</div>
-    BADGE_SUB_INJECT
-    BADGE_STRIKE_INJECT
-  </div>
-</div>`;
-
-// src/lib/ds/templates/cover-nocgrid.ts
-var coverNocGridTemplate = String.raw`<div class="anchor-wrap">
-  <div class="cover-noc">
-    <div class="grid" style="grid-template-columns:repeat(GRID_COLS_INJECT,1fr)">NODES_INJECT</div>
-    <div class="banner">BANNER_INJECT</div>
-  </div>
-</div>`;
-
-// src/lib/ds/templates/cover-door.ts
-var coverDoorTemplate = String.raw`<div class="anchor-wrap">
-  <div class="cover-door">
-    <div class="label">LABEL_INJECT</div>
-    HANDLE_INJECT
-    <div class="hand">HAND_INJECT</div>
-  </div>
-</div>`;
-
-// src/lib/ds/illustrations.server.ts
-import { readFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
-import { createClient as createClient4 } from "@libsql/client";
-var ASSETS_DIR = existsSync(join(process.cwd(), "src", "lib", "ds", "assets", "illustrations")) ? join(process.cwd(), "src", "lib", "ds", "assets", "illustrations") : join(process.cwd(), "dist", "lib", "ds", "assets", "illustrations");
-var cache = /* @__PURE__ */ new Map();
-var client3 = null;
-function getDbClient() {
-  if (!client3) {
-    client3 = createClient4({
-      url: process.env.DATABASE_URL ?? "file:local-auth.db",
-      authToken: process.env.DATABASE_AUTH_TOKEN
-    });
-  }
-  return client3;
-}
-var warmUpPromise = null;
-async function warmUpIllustrations() {
-  if (warmUpPromise) return warmUpPromise;
-  warmUpPromise = (async () => {
-    try {
-      const db6 = getDbClient();
-      const res = await db6.execute("SELECT slug, variant, svg FROM illustrations");
-      for (const row of res.rows) {
-        const slug = String(row.slug);
-        const variant = String(row.variant);
-        const svg = String(row.svg);
-        cache.set(`${slug}.${variant}`, svg);
-      }
-    } catch {
-    }
-  })();
-  return warmUpPromise;
-}
-function read(slug, variant) {
-  const key = `${slug}.${variant}`;
-  const hit = cache.get(key);
-  if (hit !== void 0) return hit;
-  try {
-    const filePath = join(ASSETS_DIR, `${key}.svg`);
-    if (existsSync(filePath)) {
-      const svg = readFileSync(filePath, "utf-8");
-      cache.set(key, svg);
-      return svg;
-    }
-  } catch {
-  }
-  return null;
-}
-function renderIllustration(raw2, variant) {
-  const slug = normalizeIllustration(raw2);
-  return read(slug, variant) ?? read(FALLBACK_ILLUSTRATION, variant) ?? "";
-}
-
-// src/lib/ds/templates/point.ts
-var pointTemplate = String.raw`<section class="{{surfaceClass}} layout-{{layout}}" data-screen-label="03 · Point">
-  <div class="counter">{{counter}}</div>
-
-  <div class="eyebrow {{eyebrowClass}} mt-64">{{eyebrow}}</div>
-  <h1 class="compact mt-24">{{headlinePre}}<span class="a">{{accentWord}}</span>{{headlinePost}}</h1>
-  <p class="body-text mt-32">
-    {{body}}
-  </p>
-
-  {{#card}}
-  <div class="card card-{{cardTone}} mt-40">
-    <div class="card-head">
-      <div class="card-ico">
-        ICON_INJECT
-      </div>
-      <div class="card-title">{{cardTitle}}</div>
-    </div>
-    <div class="card-body">
-      {{cardBody}}
-    </div>
-  </div>
-  {{/card}}
-  {{#mockupHtml}}
-  MOCKUP_INJECT
-  {{/mockupHtml}}
-</section>`;
-
-// src/lib/ds/templates/outro.ts
-var outroTemplate = String.raw`<section class="{{surfaceClass}}" data-screen-label="Outro">
-  {{#eyebrow}}
-  <div class="eyebrow mt-64">{{eyebrow}}</div>
-  {{/eyebrow}}
-  <h1 class="mt-24">{{headlinePre}}<span class="a">{{accentWord}}</span>{{headlinePost}}</h1>
-  {{#body}}
-  <p class="body-text mt-32">
-    {{body}}
-  </p>
-  {{/body}}
-
-  <div class="highlight mt-40">
-    <div class="strong">{{ctaStrong}}</div>
-    {{#ctaSub}}<div class="sub">{{ctaSub}}</div>{{/ctaSub}}
-  </div>
-
-  <div class="brand-row" style="margin-top:auto; padding-top:32px;">
-    <div class="brand-disc">
-      <img src="{{brand}}" alt="@vourdev">
-    </div>
-    <span class="brand-handle">@vourdev</span>
-  </div>
-</section>`;
-
-// src/lib/ds/templates/terminal.ts
-var terminalTemplate = String.raw`<div class="diag-wrap mt-40">
-    <div class="terminal">
-      <div class="terminal-bar">
-        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
-        <span class="title">{{terminalFilename}}</span>
-      </div>
-<div class="terminal-body">TERMINAL_LINES_INJECT</div>
-    </div>
-  </div>`;
-
-// src/lib/ds/templates/comparison.ts
-var comparisonTemplate = String.raw`<div class="diag-wrap mt-40">
-  <div style="display:flex;flex-direction:column;gap:20px;width:100%">
-    <div class="diag-bars" style="width:100%">
-      <div class="panel loser">
-        <div class="h">{{compLoserLabel}}</div>
-        <div class="rows">
-          <div class="bar dim" style="width:60%"></div>
-          <div class="bar dim" style="width:72%"></div>
-          <div class="bar faded" style="width:48%"></div>
-        </div>
-        <div class="foot">{{compLoserLine}}</div>
-      </div>
-      <div class="panel">
-        <div class="h">{{compWinnerLabel}}</div>
-        <div class="rows">
-          <div class="bar" style="width:100%"></div>
-          <div class="bar" style="width:100%"></div>
-          <div class="bar" style="width:100%"></div>
-          <div class="bar" style="width:100%"></div>
-        </div>
-        <div class="foot">{{compWinnerLine}}</div>
-      </div>
-    </div>
-    {{#compRationale}}
-    <div class="catatan">
-      <div class="catatan-label chip">Catatan</div>
-      <div class="catatan-body">{{compRationale}}</div>
-    </div>
-    {{/compRationale}}
-  </div>
-</div>`;
-
-// src/lib/ds/templates/steps.ts
-var stepsTemplate = String.raw`<div class="diag-wrap mt-40">
-    <div style="display:flex;flex-direction:column;gap:16px;width:100%">STEPS_HTML_INJECT</div>
-  </div>`;
-var stepCardPartial = String.raw`<div class="card {{stepTone}}" style="padding:18px 22px;display:flex;align-items:flex-start;gap:16px">
-      <div class="badge" style="min-width:36px;width:36px;height:36px;font-size:18px">{{stepN}}</div>
-      <div>
-        <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:26px;color:#000000;line-height:1.2">{{stepTitle}}</div>
-        <div style="font-family:'Inter',sans-serif;font-weight:500;font-size:22px;color:#4A5C5C;margin-top:4px;line-height:1.3">{{stepBody}}</div>
-      </div>
-    </div>`;
-
-// src/lib/ds/templates/callout.ts
-var calloutTemplate = String.raw`<div class="diag-wrap mt-40">
-    <div style="background:var(--ms-invert-bg);border-radius:20px;padding:26px 30px;display:flex;align-items:flex-start;gap:20px;width:100%">
-      <div class="callout-ico" style="min-width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none">
-        ICON_INJECT
-      </div>
-      <div style="font-family:'Inter',sans-serif;font-weight:600;font-size:26px;color:var(--ms-invert-fg);line-height:1.4;word-break:break-word">{{calloutText}}</div>
-    </div>
-  </div>`;
-
-// src/lib/ds/templates/bigstat.ts
-var bigstatTemplate = String.raw`<div class="diag-wrap mt-40">
-    <div style="text-align:center;width:100%;padding:24px 0">
-      <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:96px;color:var(--ms-accent);line-height:1">{{bigstatNumber}}</div>
-      {{#bigstatUnit}}
-      <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:40px;color:var(--ms-fg);margin-top:8px;line-height:1.2">{{bigstatUnit}}</div>
-      {{/bigstatUnit}}
-      <div style="font-family:'Inter',sans-serif;font-weight:500;font-size:32px;color:var(--ms-fg-muted);margin-top:16px;line-height:1.3;max-width:800px;margin-left:auto;margin-right:auto">{{bigstatCaption}}</div>
-    </div>
-  </div>`;
-
-// src/lib/ds/templates/flow.ts
-var flowTemplate = String.raw`<div class="diag-wrap mt-40">
-    <div class="diag-flow">FLOW_NODES_INJECT</div>
-  </div>
-  NOTE_INJECT`;
-
-// src/lib/ds/templates/concept.ts
-var conceptTemplate = String.raw`<div class="diag-wrap mt-40">
-    <div class="diag-hub">
-      <div class="center"><div class="node filled big">CONCEPT_PARENT_INJECT</div></div>
-      CONCEPT_LINES_INJECT
-      <div class="children">CONCEPT_CHILDREN_INJECT</div>
-    </div>
-  </div>
-  NOTE_INJECT`;
-
-// src/lib/ds/templates/hub.ts
-var hubTemplate = String.raw`<div class="diag-wrap mt-40">
-    <div class="diag-icon-hub">
-      <div class="center"><div class="node filled big">HUB_CENTER_INJECT</div></div>
-      HUB_LINES_INJECT
-      <div class="tools">HUB_TOOLS_INJECT</div>
-    </div>
-  </div>
-  NOTE_INJECT`;
-
-// src/lib/ds/templates/checklist.ts
-var checklistTemplate = String.raw`<div class="diag-wrap mt-40">
-    <ul class="checklist">CHECKLIST_ITEMS_INJECT</ul>
-  </div>
-  NOTE_INJECT`;
-
-// src/lib/ds/templates/browser.ts
-var browserTemplate = String.raw`<div class="diag-wrap mt-40">
-    <div class="browser">
-      <div class="b-chrome">
-        <span class="b-dots"><i class="r"></i><i class="y"></i><i class="g"></i></span>
-        <span class="b-url">BROWSER_URL_INJECT</span>
-      </div>
-      <div class="b-main">BROWSER_CARDS_INJECT</div>
-    </div>
-  </div>
-  NOTE_INJECT`;
-
-// src/lib/ds/templates/quote.ts
-var quoteTemplate = String.raw`<div class="diag-wrap mt-40">
-    <div class="quote-inset">
-      <div class="qi-body">{{quote}}</div>
-      {{#author}}<div class="qi-author">{{author}}</div>{{/author}}
-    </div>
-  </div>`;
-
-// src/lib/ds/templates/datatable.ts
-var dataTableTemplate = String.raw`<div class="diag-wrap mt-40">
-    <div class="dtable">
-      <div class="dt-hr"><span class="no">✗ DT_NO_INJECT</span><span class="ok">✓ DT_OK_INJECT</span></div>
-      DT_ROWS_INJECT
-    </div>
-  </div>`;
-
-// src/lib/ds/templates/commandlist.ts
-var commandListTemplate = String.raw`<div class="diag-wrap mt-40">
-    <div class="clist">CLIST_ROWS_INJECT</div>
-  </div>
-  NOTE_INJECT`;
-
-// src/lib/ds/templates/timeline.ts
-var timelineTemplate = String.raw`<div class="diag-wrap mt-40">
-    <div class="timeline">
-      <div class="tl-card old"><div class="d">{{oldLabel}}</div><div class="h">{{oldTitle}}</div><div class="t">{{oldBody}}</div></div>
-      <div class="tl-card new"><div class="d">{{newLabel}}</div><div class="h">{{newTitle}}</div><div class="t">{{newBody}}</div></div>
-    </div>
-  </div>`;
-
-// src/lib/ds/templates/promptcard.ts
-var promptCardTemplate = String.raw`<div class="diag-wrap mt-40">
-    <div class="prompt"><span class="lbl">{{label}}</span>
-<pre>{{body}}</pre></div>
-  </div>`;
-
-// src/lib/ds/templates/foldertree.ts
-var folderTreeTemplate = String.raw`<div class="diag-wrap mt-40">
-    <div class="tree">TREE_LINES_INJECT</div>
-  </div>`;
-
-// src/lib/ds/templates/commandpalette.ts
-var commandPaletteTemplate = String.raw`<div class="diag-wrap mt-40">
-    <div class="cmdp">
-      <div class="search"><span class="car">❯</span><span class="q">CMDP_QUERY_INJECT</span></div>
-      CMDP_ROWS_INJECT
-    </div>
-  </div>`;
-
-// src/lib/ds/templates/database.ts
-var databaseTemplate = String.raw`<div class="diag-wrap mt-40">
-    <div class="db">DB_TABLES_INJECT</div>
-  </div>`;
-
-// src/lib/ds/templates/gitbranch.ts
-var gitBranchTemplate = String.raw`<div class="diag-wrap mt-40">
-    <div class="git">
-      <svg viewBox="0 0 920 300" fill="none">
-        <line class="g-main" x1="40" y1="90" x2="880" y2="90" stroke-width="3"/>
-        <path class="g-feat" d="M200 90 C 260 90 260 210 320 210 L 620 210 C 680 210 680 90 740 90" stroke-width="3" fill="none"/>
-        <circle class="g-dot" cx="120" cy="90" r="16"/>
-        <circle class="g-dot" cx="200" cy="90" r="16"/>
-        <circle class="g-fdot" cx="400" cy="210" r="16"/>
-        <circle class="g-fdot" cx="540" cy="210" r="16"/>
-        <circle class="g-fdot" cx="740" cy="90" r="20"/>
-        <circle class="g-dot" cx="840" cy="90" r="16"/>
-        <text class="g-label" x="120" y="60" font-family="JetBrains Mono" font-size="22" text-anchor="middle">main</text>
-        <text class="g-flabel" x="470" y="262" font-family="JetBrains Mono" font-size="22" text-anchor="middle">GIT_BRANCH_INJECT</text>
-        <text class="g-flabel" x="740" y="55" font-family="JetBrains Mono" font-size="22" text-anchor="middle">GIT_MERGE_INJECT</text>
-      </svg>
-    </div>
-  </div>`;
-
-// src/lib/ds/templates/apirequest.ts
-var apiRequestTemplate = String.raw`<div class="diag-wrap mt-40">
-  <div class="diag-api-request">
-    <div class="api-header">
-      <span class="api-method api-method-{{method}}">{{method}}</span>
-      <span class="api-url">{{url}}</span>
-      <span class="api-status">{{status}}</span>
-    </div>
-    {{#hasHeaders}}
-    <div class="api-headers">
-      HEADERS_INJECT
-    </div>
-    {{/hasHeaders}}
-    <div class="api-body">
-      <pre><code>RESPONSE_BODY_INJECT</code></pre>
-    </div>
-  </div>
-</div>`;
-
-// src/lib/ds/templates/eventqueue.ts
-var eventQueueTemplate = String.raw`<div class="diag-wrap mt-40">
-  <div class="diag-event-queue">
-    <div class="eq-node producer">
-      <div class="eq-node-title">{{producer}}</div>
-      <div class="eq-node-role">PRODUCER</div>
-    </div>
-    
-    <div class="eq-broker">
-      <div class="eq-broker-title">{{topicName}}</div>
-      <div class="eq-messages">
-        EVENTS_INJECT
-      </div>
-      <div class="eq-broker-role">TOPIC / QUEUE</div>
-    </div>
-    
-    <div class="eq-node consumer">
-      <div class="eq-node-title">{{consumer}}</div>
-      <div class="eq-node-role">CONSUMER</div>
-    </div>
-  </div>
-</div>`;
-
-// src/lib/ds/templates/latencycomp.ts
-var latencyCompTemplate = String.raw`<div class="diag-wrap mt-40">
-  <div class="diag-latency-comp">
-    BARS_INJECT
-  </div>
-</div>
-NOTE_INJECT`;
-
-// src/lib/ds/templates/config.ts
-var configTemplate = String.raw`<div class="diag-wrap mt-40">
-  <div class="diag-config">
-    <div class="terminal-bar">
-      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
-      <span class="title">{{filename}}</span>
-    </div>
-    <div class="config-body">
-      CONFIG_LINES_INJECT
-    </div>
-  </div>
-</div>`;
-
-// src/lib/ds/templates/statemachine.ts
-var stateMachineTemplate = String.raw`<div class="diag-wrap mt-40">
-  <div class="diag-state-machine">
-    STATES_INJECT
-  </div>
-</div>`;
-
-// src/lib/ds/templates/architecture.ts
-var architectureTemplate = String.raw`<div class="diag-wrap mt-40">
-  <div class="diag-architecture">
-    {{#title}}<div class="arch-title">{{title}}</div>{{/title}}
-    <div class="arch-row client-row">
-      CLIENT_NODE_INJECT
-    </div>
-    <div class="arch-arrow-down">ARROW_DOWN_INJECT</div>
-    <div class="arch-row router-row">
-      ROUTER_NODE_INJECT
-    </div>
-    <div class="arch-arrows-split">ARROW_SPLIT_INJECT</div>
-    <div class="arch-row nodes-row">
-      NODES_INJECT
-    </div>
-  </div>
-</div>`;
-
-// src/lib/ds/templates/decision.ts
-var decisionTemplate = String.raw`<div class="diag-wrap mt-40">
-    <div class="dec">
-      <div class="dec-q">DEC_Q_INJECT</div>
-      <div class="dec-grid">DEC_OPTS_INJECT</div>
-    </div>
-  </div>
-  NOTE_INJECT`;
-
-// src/lib/ds/templates/mythfact.ts
-var mythFactTemplate = String.raw`<div class="diag-wrap mt-40">
-    <div class="mf">
-      <div class="mf-row mf-myth">
-        <span class="mf-tag">MITOS</span>
-        <span class="mf-text">MF_MYTH_INJECT</span>
-      </div>
-      <div class="mf-row mf-fact">
-        <span class="mf-tag">FAKTANYA</span>
-        <span class="mf-text">MF_FACT_INJECT</span>
-      </div>
-      MF_WHY_INJECT
-    </div>
-  </div>`;
-
-// src/lib/ds/templates/pitfalls.ts
-var pitfallsTemplate = String.raw`<div class="diag-wrap mt-40">
-    <div class="pf">PF_ROWS_INJECT</div>
-  </div>
-  NOTE_INJECT`;
-
-// src/lib/ds/hub-lines.ts
-function diagLines(count, o) {
-  const n = count <= 2 ? 2 : count === 3 ? 3 : 4;
-  const xs = n === 2 ? [110, 810] : n === 3 ? [110, 460, 810] : [110, 343, 577, 810];
-  const headTop = o.endY - 4;
-  const headBot = o.endY + 8;
-  const strokeAttrs = `stroke="#EE4B1A" stroke-width="1.5" fill="none"${o.dashed ? ' stroke-dasharray="6 6"' : ""}`;
-  const paths = xs.map((x) => `<path ${strokeAttrs} d="M 460 96 Q 460 ${o.midY} ${x} ${o.endY}" />`).join("");
-  const heads = xs.map(
-    (x) => `<polygon fill="#EE4B1A" points="${x - 8},${headTop} ${x + 8},${headTop} ${x},${headBot}" />`
-  ).join("");
-  return `<svg class="lines" viewBox="0 0 920 ${o.viewH}" preserveAspectRatio="none">${paths}${heads}</svg>`;
-}
-
-// src/lib/ds/templates/device.ts
-var deviceTemplate = String.raw`<div class="diag-wrap mt-40">
-    <div class="terminal">
-      <div class="terminal-bar">
-        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
-        BAR_LABEL_INJECT
-      </div>
-<div class="terminal-body">DEVICE_LINES_INJECT</div>
-    </div>
-  </div>`;
-
-// src/lib/ds/tokens.ts
-var VOUR_BLACK = "#1C0A05";
-var VOUR_CHARCOAL = "#2B241D";
-var VOUR_WHITE = "#FFFFFF";
-var VOUR_MIST = "#FBF6EF";
-var VOUR_PAPER = "#F7F1E6";
-var VOUR_ORANGE = "#EE4B1A";
-var VOUR_ORANGE_DEEP = "#B8380E";
-var VOUR_ORANGE_BRIGHT = "#FF7A45";
-var VOUR_ORANGE_WASH = "#FBE9D9";
-var VOUR_SLATE = "#3D2419";
-var VOUR_SLATE_FAINT = "#7E6153";
-var VOUR_LINE_LIGHT = "rgba(28, 10, 5, 0.14)";
-var VOUR_MIST_MUTED = "rgba(247, 241, 232, 0.72)";
-var VOUR_MIST_FAINT = "rgba(247, 241, 232, 0.52)";
-var VOUR_LINE_DARK = "rgba(247, 241, 232, 0.16)";
-var VOUR_NEGATIVE_ON_DARK = "#B0A49A";
-var VOUR_POSITIVE_ON_DARK = "#86C97F";
-
-// src/lib/ds/render-slide.ts
-function splitHeadline(headline, accentWord) {
-  if (!accentWord) return { headlinePre: headline, accentWord: "", headlinePost: "" };
-  const i = headline.indexOf(accentWord);
-  if (i < 0) return { headlinePre: headline, accentWord: "", headlinePost: "" };
-  return {
-    headlinePre: headline.slice(0, i),
-    accentWord,
-    headlinePost: headline.slice(i + accentWord.length)
-  };
-}
-function paperClass(slide, slideIndex) {
-  const surface = "surface" in slide ? slide.surface : void 0;
-  if (surface !== "paper") return "";
-  return slideIndex % 2 === 1 ? "paper warm" : "paper";
-}
-function eyebrowClass(slideIndex) {
-  return slideIndex % 2 === 0 ? "chip" : "";
-}
-function mockupHasNote(m) {
-  if (!m) return false;
-  if ("note" in m && typeof m.note === "string" && m.note.trim() !== "") return true;
-  if (m.type === "comparison") return Boolean(m.winnerRationale?.trim());
-  if (m.type === "illustration") return Boolean(m.caption?.trim());
-  return false;
-}
-var NARROW_SAFE_MOCKUPS = /* @__PURE__ */ new Set([
-  "card",
-  "callout",
-  "quote",
-  "bigstat",
-  "checklist",
-  "illustration",
-  "promptcard",
-  "concept"
-]);
-function resolveLayout(layout, slideIndex, mockup) {
-  if (!mockup) return "standard";
-  if (layout) {
-    if (layout === "note-emphasis" && !mockupHasNote(mockup)) return "standard";
-    if (layout === "split-content" && !NARROW_SAFE_MOCKUPS.has(mockup.type)) return "standard";
-    return layout;
-  }
-  if (slideIndex % 2 === 1) return "mockup-forward";
-  if (mockupHasNote(mockup)) return "note-emphasis";
-  if (NARROW_SAFE_MOCKUPS.has(mockup.type)) return "split-content";
-  return "standard";
-}
-function renderNote(note) {
-  if (!note) return "";
-  return `<div class="catatan mt-40"><div class="catatan-label chip">Catatan</div><div class="catatan-body">${escapeHtml(note)}</div></div>`;
-}
-function injectSentinels(template, map2) {
-  const tokens = Object.keys(map2).sort((a, b) => b.length - a.length);
-  return template.replace(new RegExp(tokens.join("|"), "g"), (t) => map2[t]);
-}
-function renderCustomFragment(html, scopeId, wrapper) {
-  const safe = sanitizeCustomHtml(html);
-  if (!safe) return null;
-  const cls = `cm-${scopeId}`;
-  return `<div class="${wrapper}"><div class="cm cm-base ${cls}">${safe}</div></div>`;
-}
-function renderTerminalMockup(m) {
-  const terminalLines = m.lines.map((l) => {
-    const escaped = escapeHtml(l.text);
-    if (l.style === "plain" || !l.style) return escaped;
-    return `<span class="${l.style}">${escaped}</span>`;
-  }).join("\n");
-  const base = fillTemplate(terminalTemplate, {
-    terminalFilename: m.filename
-  });
-  return base.replace("TERMINAL_LINES_INJECT", () => terminalLines);
-}
-function renderComparisonMockup(m) {
-  return fillTemplate(comparisonTemplate, {
-    compLoserLabel: m.loserLabel,
-    compLoserLine: m.loserLine,
-    compWinnerLabel: m.winnerLabel,
-    compWinnerLine: m.winnerLine,
-    compRationale: m.winnerRationale ?? ""
-  });
-}
-function renderStepsMockup(m) {
-  const stepsHtml = m.items.map((s, i) => {
-    return fillTemplate(stepCardPartial, {
-      stepN: String(i + 1),
-      stepTitle: s.title,
-      stepBody: s.body,
-      stepTone: i % 2 === 0 ? "card-peach" : "card-alt"
-    });
-  }).join("\n");
-  return stepsTemplate.replace("STEPS_HTML_INJECT", () => stepsHtml);
-}
-function renderCalloutMockup(m) {
-  const base = fillTemplate(calloutTemplate, {
-    calloutText: m.text
-  });
-  return base.replace("ICON_INJECT", () => renderIcon(m.icon, { size: 24, color: "#EE4B1A" }));
-}
-function renderBigstatMockup(m) {
-  return fillTemplate(bigstatTemplate, {
-    bigstatNumber: m.number,
-    bigstatUnit: m.unit ?? "",
-    bigstatCaption: m.caption
-  });
-}
-function renderFlowMockup(m) {
-  const nodes = m.steps.map((s, i) => {
-    const node = `<div class="node${s.focus ? " filled" : ""}">${escapeHtml(s.label)}</div>`;
-    return i === 0 ? node : `<div class="flow-step"><span class="arrow">\u2192</span>${node}</div>`;
-  }).join("");
-  return injectSentinels(flowTemplate, {
-    FLOW_NODES_INJECT: nodes,
-    NOTE_INJECT: renderNote(m.note)
-  });
-}
-var CONCEPT_MAX_CHILDREN = 3;
-function renderConceptMockup(m) {
-  const kids = m.children.slice(0, CONCEPT_MAX_CHILDREN);
-  const children = kids.map((c) => `<div class="node">${escapeHtml(c)}</div>`).join("");
-  const lines = diagLines(kids.length, { viewH: 380, midY: 200, endY: 300 });
-  return injectSentinels(conceptTemplate, {
-    CONCEPT_PARENT_INJECT: escapeHtml(m.parent),
-    CONCEPT_LINES_INJECT: lines,
-    CONCEPT_CHILDREN_INJECT: children,
-    NOTE_INJECT: renderNote(m.note)
-  });
-}
-function renderHubMockup(m) {
-  const tools = m.tools.map(
-    (t) => `<div class="tool"><div class="glyph">${renderIcon(t.icon)}</div><div class="label">${escapeHtml(t.label)}</div></div>`
-  ).join("");
-  const lines = diagLines(m.tools.length, { viewH: 400, midY: 220, endY: 320, dashed: true });
-  return injectSentinels(hubTemplate, {
-    HUB_CENTER_INJECT: escapeHtml(m.center),
-    HUB_LINES_INJECT: lines,
-    HUB_TOOLS_INJECT: tools,
-    NOTE_INJECT: renderNote(m.note)
-  });
-}
-function renderChecklistMockup(m) {
-  const items = m.items.map((i) => `<li><span class="tick">\u2713</span> ${escapeHtml(i)}</li>`).join("");
-  return injectSentinels(checklistTemplate, {
-    CHECKLIST_ITEMS_INJECT: items,
-    NOTE_INJECT: renderNote(m.note)
-  });
-}
-function renderBrowserMockup(m) {
-  const cards = m.cards.map(
-    (c) => `<div class="b-card"><div class="t">${escapeHtml(c.value)}</div><div class="s">${escapeHtml(c.label)}</div></div>`
-  ).join("");
-  return injectSentinels(browserTemplate, {
-    BROWSER_URL_INJECT: escapeHtml(m.url),
-    BROWSER_CARDS_INJECT: cards,
-    NOTE_INJECT: renderNote(m.note)
-  });
-}
-function renderQuoteMockup(m) {
-  return fillTemplate(quoteTemplate, { quote: m.quote, author: m.author ?? "" });
-}
-function renderDataTableMockup(m) {
-  const rows = m.rows.map(
-    (r) => `<div class="dt-row"><div class="c">${escapeHtml(r.no)}</div><div class="c b">${escapeHtml(r.ok)}</div></div>`
-  ).join("");
-  return injectSentinels(dataTableTemplate, {
-    DT_NO_INJECT: escapeHtml(m.noLabel),
-    DT_OK_INJECT: escapeHtml(m.okLabel),
-    DT_ROWS_INJECT: rows
-  });
-}
-function renderCommandListMockup(m) {
-  const rows = m.rows.map(
-    (r) => `<div class="row"><span class="cmd">${escapeHtml(r.cmd)}</span><span class="desc">${escapeHtml(r.desc)}</span></div>`
-  ).join("");
-  return injectSentinels(commandListTemplate, {
-    CLIST_ROWS_INJECT: rows,
-    NOTE_INJECT: renderNote(m.note)
-  });
-}
-function renderTimelineMockup(m) {
-  return fillTemplate(timelineTemplate, {
-    oldLabel: m.oldLabel,
-    oldTitle: m.oldTitle,
-    oldBody: m.oldBody,
-    newLabel: m.newLabel,
-    newTitle: m.newTitle,
-    newBody: m.newBody
-  });
-}
-function renderPromptcardMockup(m) {
-  return fillTemplate(promptCardTemplate, { label: m.label, body: m.body });
-}
-function renderFolderTreeMockup(m) {
-  const lines = m.lines.map((l) => {
-    const escaped = escapeHtml(l.text);
-    return l.active ? `<span class="on">${escaped}</span>` : escaped;
-  }).join("\n");
-  return folderTreeTemplate.replace("TREE_LINES_INJECT", () => lines);
-}
-function renderCommandPaletteMockup(m) {
-  const rows = m.rows.map((r) => {
-    const icon = renderIcon(r.icon, { size: 28, color: "#FF7A45" });
-    const key = r.active ? `<span class="k">\u21B5</span>` : "";
-    return `<div class="row${r.active ? " on" : ""}">${icon}${escapeHtml(r.label)}${key}</div>`;
-  }).join("");
-  return injectSentinels(commandPaletteTemplate, {
-    CMDP_QUERY_INJECT: escapeHtml(m.query),
-    CMDP_ROWS_INJECT: rows
-  });
-}
-function renderDatabaseMockup(m) {
-  const headIcon = renderIcon("database", { size: 26, color: "#FFFFFF" });
-  const renderTable = (t) => {
-    const rows = t.rows.map(
-      (r) => `<div class="tr"><span>${escapeHtml(r.col)}</span><span class="ty">${escapeHtml(r.type)}</span></div>`
-    ).join("");
-    return `<div class="table"><div class="th">${headIcon}${escapeHtml(t.name)}</div>${rows}</div>`;
-  };
-  const [a, b] = m.tables;
-  const tables = `${renderTable(a)}<span class="rel">${escapeHtml(m.relation)}</span>${renderTable(b)}`;
-  return databaseTemplate.replace("DB_TABLES_INJECT", () => tables);
-}
-function renderGitBranchMockup(m) {
-  return injectSentinels(gitBranchTemplate, {
-    GIT_BRANCH_INJECT: escapeHtml(m.branch.name),
-    GIT_MERGE_INJECT: escapeHtml(m.mergeLabel)
-  });
-}
-function renderApiRequestMockup(m) {
-  const headers = m.headers ?? [];
-  const headersHtml = headers.map(
-    (h) => `<div class="api-header-row"><span class="h-key">${escapeHtml(h.key)}:</span> <span class="h-val">${escapeHtml(h.value)}</span></div>`
-  ).join("\n");
-  const base = fillTemplate(apiRequestTemplate, {
-    method: m.method,
-    url: m.url,
-    status: m.status,
-    hasHeaders: headers.length > 0 ? "1" : ""
-  });
-  return base.replace("HEADERS_INJECT", () => headersHtml).replace("RESPONSE_BODY_INJECT", () => escapeHtml(m.responseBody));
-}
-function renderEventQueueMockup(m) {
-  const eventsHtml = m.events.map(
-    (e, idx) => `<div class="eq-msg-pill active-${idx === 0}"><span class="eq-msg-ico">${renderIcon("zap", { size: 16, color: "currentColor" })}</span>${escapeHtml(e)}</div>`
-  ).join("\n");
-  return fillTemplate(eventQueueTemplate, {
-    producer: m.producer,
-    topicName: m.topicName,
-    consumer: m.consumer
-  }).replace("EVENTS_INJECT", () => eventsHtml);
-}
-function renderLatencyCompMockup(m) {
-  const barsHtml = m.items.map((item) => {
-    const rawClass = item.highlight ? "lc-bar-wrap highlight" : "lc-bar-wrap";
-    const bgPercent = Math.min(100, Math.max(5, item.percentage));
-    return `<div class="${rawClass}">
-      <div class="lc-label-row">
-        <span class="lc-label">${escapeHtml(item.label)}</span>
-        <span class="lc-value">${escapeHtml(item.value)}</span>
-      </div>
-      <div class="lc-bar-container">
-        <div class="lc-bar" style="width: ${bgPercent}%;"></div>
-      </div>
-    </div>`;
-  }).join("\n");
-  return fillTemplate(latencyCompTemplate, {
-    note: m.note ?? ""
-  }).replace("BARS_INJECT", () => barsHtml).replace("NOTE_INJECT", () => renderNote(m.note));
-}
-function renderConfigMockup(m) {
-  const configLines = m.lines.map((l) => {
-    const keySpan = `<span class="c-key">${escapeHtml(l.key)}</span>`;
-    const valSpan = `<span class="c-val">${escapeHtml(l.val)}</span>`;
-    const commentSpan = l.comment ? `<span class="c-cmt"># ${escapeHtml(l.comment)}</span>` : "";
-    return `<div class="config-line">${keySpan}: ${valSpan} ${commentSpan}</div>`;
-  }).join("\n");
-  return fillTemplate(configTemplate, {
-    filename: m.filename
-  }).replace("CONFIG_LINES_INJECT", () => configLines);
-}
-function renderStateMachineMockup(m) {
-  const statesHtml = m.states.map((s, idx) => {
-    const isLast = idx === m.states.length - 1;
-    const arrowHtml = !isLast ? `<span class="sm-arrow">\u2500\u2500 ${escapeHtml(m.transitions[idx] || "next")} \u2500\u2500&gt;</span>` : "";
-    const activeClass = `sm-state active-${s.status}`;
-    const circleIcon = renderIcon("circle", { size: 16, color: "currentColor" });
-    return `<div class="sm-state-wrapper">
-      <div class="${activeClass}">${circleIcon}${escapeHtml(s.name)}</div>
-      ${arrowHtml}
-    </div>`;
-  }).join("\n");
-  return fillTemplate(stateMachineTemplate, {}).replace("STATES_INJECT", () => statesHtml);
-}
-function renderArchitectureMockup(m) {
-  const clientIcon = renderIcon("box", { size: 24, color: "currentColor" });
-  const routerIcon = renderIcon("network", { size: 24, color: "currentColor" });
-  const arrowDownIcon = renderIcon("arrow-right", { size: 24, color: "currentColor" });
-  const nodesHtml = m.nodes.map((n, idx) => {
-    const cls = idx === 0 ? "arch-node vm-node mint" : "arch-node vm-node stone";
-    const serverIcon = renderIcon("server", { size: 24, color: "currentColor" });
-    const statusLabel = idx === 0 ? `<span class="arch-status active">ACTIVE</span>` : `<span class="arch-status standby">STANDBY</span>`;
-    return `<div class="${cls}">
-      <div class="arch-node-content">
-        ${serverIcon}
-        <span class="node-text">${escapeHtml(n)}</span>
-        ${statusLabel}
-      </div>
-    </div>`;
-  }).join("\n");
-  const clientContent = `<div class="arch-node client-node"><div class="arch-node-content horizontal">${clientIcon}<span>${escapeHtml(m.client || "Client")}</span></div></div>`;
-  const routerContent = `<div class="arch-node router-node"><div class="arch-node-content horizontal">${routerIcon}<span>${escapeHtml(m.router || "Load Balancer")}</span></div></div>`;
-  let base = fillTemplate(architectureTemplate, {
-    title: m.title ?? ""
-  });
-  const arrowSvg = `<svg class="arch-split-arrows" viewBox="0 0 100 40" preserveAspectRatio="none"><path d="M 50 0 L 50 15 L 15 15 L 15 40 M 50 15 L 85 15 L 85 40" stroke="currentColor" stroke-width="2" fill="none"/></svg>`;
-  return base.replace("CLIENT_NODE_INJECT", () => clientContent).replace("ARROW_DOWN_INJECT", () => arrowDownIcon).replace("ROUTER_NODE_INJECT", () => routerContent).replace("ARROW_SPLIT_INJECT", () => arrowSvg).replace("NODES_INJECT", () => nodesHtml);
-}
-function renderDeviceHook(h) {
-  const bodyLines = h.lines.map((l) => {
-    const escaped = escapeHtml(l.text);
-    return l.style && l.style !== "plain" ? `<span class="${l.style}">${escaped}</span>` : escaped;
-  }).join("\n");
-  const labelHtml = h.label ? h.chrome === "browser" ? `<span class="urlbar">${escapeHtml(h.label)}</span>` : `<span class="title">${escapeHtml(h.label)}</span>` : "";
-  return deviceTemplate.replace("BAR_LABEL_INJECT", () => labelHtml).replace("DEVICE_LINES_INJECT", () => bodyLines);
-}
-function renderImageHook(h) {
-  const src = escapeHtml(h.src);
-  return `<div class="anchor-wrap"><img src="${src}" alt="" style="max-width:100%; max-height:100%; border-radius:20px;"></div>`;
-}
-function renderBadgeHook(h) {
-  const gitIcon = renderIcon("git-branch", { size: 24, color: "#FF7A45" });
-  const sub = h.sub ? `<div class="sub">${escapeHtml(h.sub)}</div>` : "";
-  const strike = h.struck ? `<div class="cover-strike"></div>` : "";
-  return coverBadgeTemplate.replace("BADGE_BROW_INJECT", () => `${gitIcon}${escapeHtml(h.eyebrowLine ?? "ID \xB7 2026")}`).replace("BADGE_ROLE_INJECT", () => escapeHtml(h.role)).replace("BADGE_SUB_INJECT", () => sub).replace("BADGE_STRIKE_INJECT", () => strike);
-}
-function renderNocGridHook(h) {
-  const cols = h.cols ?? 6;
-  const rows = h.rows ?? 3;
-  const down = (h.state ?? "down") === "down";
-  const banner = h.banner ?? "100% PACKET LOSS";
-  const stateColor = down ? VOUR_MIST_MUTED : VOUR_POSITIVE_ON_DARK;
-  const nodeIcon = renderIcon(down ? "x-circle" : "check-circle", { size: 62, color: stateColor });
-  const nodes = Array.from({ length: cols * rows }).map(() => `<span class="node ${down ? "down" : "up"}">${nodeIcon}</span>`).join("");
-  const bannerIcon = renderIcon(down ? "alert-triangle" : "check-circle", {
-    size: 40,
-    color: "currentColor"
-  });
-  return coverNocGridTemplate.replace("GRID_COLS_INJECT", () => String(cols)).replace("NODES_INJECT", () => nodes).replace("BANNER_INJECT", () => `${bannerIcon}${escapeHtml(banner)}`);
-}
-function renderDoorHook(h) {
-  const handIcon = renderIcon("arrow-right", { size: 96, color: "#FF7A45" });
-  const handle = h.pull === false ? "" : `<div class="handle"></div>`;
-  return coverDoorTemplate.replace("LABEL_INJECT", () => escapeHtml(h.label ?? "DORONG")).replace("HANDLE_INJECT", () => handle).replace("HAND_INJECT", () => handIcon);
-}
-function renderIllustrationMockup(m, variant) {
-  const caption = m.caption ? `<div class="catatan mt-20"><div class="catatan-body">${escapeHtml(m.caption)}</div></div>` : "";
-  const sizeClass = m.illustrationSlugs.length > 1 ? "is-pair" : "is-single";
-  const items = m.illustrationSlugs.map((slug) => `<div class="illus-item">${renderIllustration(slug, variant)}</div>`).join("");
-  return `<div class="diag-wrap"><div class="diag-illustration"><div class="illustration-group ${sizeClass}">${items}</div>${caption}</div></div>`;
-}
-function renderDecisionMockup(m) {
-  const opts = m.options.map(
-    // Name first, tag second. With the tag above the name, the one option that carries
-    // a tag pushed its name a row lower than the others and the three option names
-    // stopped sharing a baseline — the first thing the eye compares, misaligned.
-    (o) => `<div class="dec-opt">
-        <div class="dec-name">${escapeHtml(o.name)}</div>
-        ${o.tag ? `<span class="dec-tag">${escapeHtml(o.tag)}</span>` : ""}
-        <div class="dec-when-label">Pakai kalau</div>
-        <div class="dec-when">${escapeHtml(o.when)}</div>
-      </div>`
-  ).join("");
-  return injectSentinels(decisionTemplate, {
-    DEC_Q_INJECT: escapeHtml(m.question ?? "Pakai yang mana?"),
-    DEC_OPTS_INJECT: opts,
-    NOTE_INJECT: renderNote(m.note)
-  });
-}
-function renderMythFactMockup(m) {
-  const why = m.because ? `<div class="mf-why"><span class="mf-why-label">Kenapa penting</span>${escapeHtml(m.because)}</div>` : "";
-  return injectSentinels(mythFactTemplate, {
-    MF_MYTH_INJECT: escapeHtml(m.myth),
-    MF_FACT_INJECT: escapeHtml(m.fact),
-    MF_WHY_INJECT: why
-  });
-}
-function renderPitfallsMockup(m) {
-  const rows = m.items.map(
-    (it, i) => `<div class="pf-row pf-${it.level ?? "mid"}">
-        <span class="pf-num">${String(i + 1).padStart(2, "0")}</span>
-        <span class="pf-text">${escapeHtml(it.text)}</span>
-      </div>`
-  ).join("");
-  return injectSentinels(pitfallsTemplate, {
-    PF_ROWS_INJECT: rows,
-    NOTE_INJECT: renderNote(m.note)
-  });
-}
-function renderScreenshotMockup(m) {
-  if (m.evidenceStatus === "captured" && m.screenshotImage?.dataUrl) {
-    return `<div class="diag-wrap"><div class="diag-screenshot"><img src="${escapeHtml(m.screenshotImage.dataUrl)}" alt="Evidence Screenshot" /></div></div>`;
-  }
-  if (m.evidenceStatus === "fallback_used") {
-    const srcLabel = m.screenshotBrief?.source ? escapeHtml(m.screenshotBrief.source) : "Bukti Studi Kasus";
-    return `<div class="diag-wrap"><div class="catatan mt-20"><div class="catatan-body font-mono text-sm">\u{1F4CC} ${srcLabel} (Mode Referensi Teks)</div></div></div>`;
-  }
-  const sourceText = m.screenshotBrief?.source ? escapeHtml(m.screenshotBrief.source) : "screenshot bukti asli";
-  const mustShowText = m.screenshotBrief?.mustShow ? `<div class="diag-screenshot-brief-item"><strong>Harus terlihat:</strong> ${escapeHtml(m.screenshotBrief.mustShow)}</div>` : "";
-  const mustHideText = m.screenshotBrief?.mustHide ? `<div class="diag-screenshot-brief-item"><strong>Harus di-blur/crop:</strong> ${escapeHtml(m.screenshotBrief.mustHide)}</div>` : "";
-  return `<div class="diag-wrap"><div class="diag-screenshot-placeholder"><div class="diag-screenshot-badge">\u26A0\uFE0F BUTUH SCREENSHOT ASLI</div><div class="diag-screenshot-source">Target: <span>${sourceText}</span></div>${mustShowText}${mustHideText}</div></div>`;
-}
-function renderMockup(m, scopeId, variant) {
-  switch (m.type) {
-    case "terminal":
-      return renderTerminalMockup(m);
-    case "comparison":
-      return renderComparisonMockup(m);
-    case "steps":
-      return renderStepsMockup(m);
-    case "callout":
-      return renderCalloutMockup(m);
-    case "bigstat":
-      return renderBigstatMockup(m);
-    case "flow":
-      return renderFlowMockup(m);
-    case "concept":
-      return renderConceptMockup(m);
-    case "hub":
-      return renderHubMockup(m);
-    case "checklist":
-      return renderChecklistMockup(m);
-    case "browser":
-      return renderBrowserMockup(m);
-    case "quote":
-      return renderQuoteMockup(m);
-    case "datatable":
-      return renderDataTableMockup(m);
-    case "commandlist":
-      return renderCommandListMockup(m);
-    case "timeline":
-      return renderTimelineMockup(m);
-    case "promptcard":
-      return renderPromptcardMockup(m);
-    case "foldertree":
-      return renderFolderTreeMockup(m);
-    case "commandpalette":
-      return renderCommandPaletteMockup(m);
-    case "database":
-      return renderDatabaseMockup(m);
-    case "gitbranch":
-      return renderGitBranchMockup(m);
-    case "apirequest":
-      return renderApiRequestMockup(m);
-    case "eventqueue":
-      return renderEventQueueMockup(m);
-    case "latencycomp":
-      return renderLatencyCompMockup(m);
-    case "config":
-      return renderConfigMockup(m);
-    case "statemachine":
-      return renderStateMachineMockup(m);
-    case "architecture":
-      return renderArchitectureMockup(m);
-    case "decision":
-      return renderDecisionMockup(m);
-    case "mythfact":
-      return renderMythFactMockup(m);
-    case "pitfalls":
-      return renderPitfallsMockup(m);
-    case "illustration":
-      return renderIllustrationMockup(m, variant);
-    case "screenshot":
-      return renderScreenshotMockup(m);
-    case "custom":
-      return renderCustomFragment(m.html, scopeId, "diag-wrap") ?? "";
-    case "card":
-      return "";
-  }
-}
-function resolveMockup(slide) {
-  const customIsEmpty = slide.mockup?.type === "custom" && sanitizeCustomHtml(slide.mockup.html) === null;
-  if (slide.mockup && !customIsEmpty) return slide.mockup;
-  if (slide.card && (slide.card.title.trim() || slide.card.body.trim())) {
-    return { type: "card", ...slide.card };
-  }
-  return void 0;
-}
-function renderSlide(slide, slideIndex = 0) {
-  const brand = brandMarkDataUri;
-  const scopeId = String(slideIndex);
-  switch (slide.role) {
-    case "cover": {
-      const stamp = slide.stamp ?? "Engineering Notes";
-      if (!slide.hook) {
-        const base2 = fillTemplate(coverEditorialTemplate, {
-          brand,
-          coverSurface: "cover-ink",
-          eyebrow: slide.eyebrow,
-          stamp,
-          ...splitHeadline(slide.headline, slide.accentWord),
-          lede: slide.lede ?? ""
-        });
-        const numeral = escapeHtml(slide.ghostNumeral ?? "01");
-        return base2.replace("GHOST_NUMERAL_INJECT", () => numeral);
-      }
-      const h = slide.hook;
-      let fragment = "";
-      if (h.kind === "device") fragment = renderDeviceHook(h);
-      else if (h.kind === "custom")
-        fragment = renderCustomFragment(h.html, scopeId, "anchor-wrap") ?? "";
-      else if (h.kind === "image") fragment = renderImageHook(h);
-      else if (h.kind === "badge") fragment = renderBadgeHook(h);
-      else if (h.kind === "nocgrid") fragment = renderNocGridHook(h);
-      else if (h.kind === "door") fragment = renderDoorHook(h);
-      const base = fillTemplate(coverCompactTemplate, {
-        brand,
-        coverSurface: "ink cover-ink",
-        eyebrow: slide.eyebrow,
-        stamp,
-        ...splitHeadline(slide.headline, slide.accentWord),
-        lede: slide.lede ?? ""
-      });
-      return base.replace("HOOK_INJECT", () => fragment);
-    }
-    case "point": {
-      const mockup = resolveMockup(slide);
-      const surfaceClass = paperClass(slide, slideIndex);
-      const isPaper = surfaceClass.startsWith("paper");
-      const eyebrowCls = eyebrowClass(slideIndex);
-      if (!mockup) {
-        return fillTemplate(pointTemplate, {
-          brand,
-          surfaceClass,
-          counter: slide.counter,
-          eyebrow: slide.eyebrow,
-          eyebrowClass: eyebrowCls,
-          ...splitHeadline(slide.headline, slide.accentWord),
-          body: slide.body,
-          card: "",
-          cardTitle: "",
-          cardBody: "",
-          cardTone: "peach",
-          mockupHtml: "",
-          layout: resolveLayout(slide.layout, slideIndex, mockup)
-        });
-      }
-      if (mockup.type === "card") {
-        const filled = fillTemplate(pointTemplate, {
-          brand,
-          surfaceClass,
-          counter: slide.counter,
-          eyebrow: slide.eyebrow,
-          eyebrowClass: eyebrowCls,
-          ...splitHeadline(slide.headline, slide.accentWord),
-          body: slide.body,
-          card: "1",
-          cardTitle: mockup.title,
-          cardBody: mockup.body,
-          cardTone: mockup.tone || "peach",
-          mockupHtml: "",
-          layout: resolveLayout(slide.layout, slideIndex, mockup)
-        });
-        return filled.replace(
-          "ICON_INJECT",
-          () => renderIcon(mockup.icon, { size: 24, color: "#EE4B1A" })
-        );
-      }
-      const mockupHtml = renderMockup(mockup, scopeId, isPaper ? "onLight" : "onDark");
-      const base = fillTemplate(pointTemplate, {
-        brand,
-        surfaceClass,
-        counter: slide.counter,
-        eyebrow: slide.eyebrow,
-        eyebrowClass: eyebrowCls,
-        ...splitHeadline(slide.headline, slide.accentWord),
-        body: slide.body,
-        card: "",
-        // hide the card block
-        cardTitle: "",
-        cardBody: "",
-        cardTone: "peach",
-        mockupHtml: "1",
-        // truthy to activate the block
-        layout: resolveLayout(slide.layout, slideIndex, mockup)
-      });
-      return base.replace("MOCKUP_INJECT", () => mockupHtml);
-    }
-    case "outro": {
-      const cta = slide.cta ?? { strong: "" };
-      const surfaceClass = paperClass(slide, slideIndex);
-      return fillTemplate(outroTemplate, {
-        brand,
-        surfaceClass,
-        eyebrow: slide.eyebrow ?? "",
-        ...splitHeadline(slide.headline, slide.accentWord),
-        body: slide.body ?? "",
-        ctaStrong: cta.strong,
-        ctaSub: cta.sub ?? ""
-      });
-    }
-  }
-}
 
 // src/lib/ds/carousel-css.ts
 var carouselCss = String.raw`
@@ -78244,25 +78288,26 @@ async function ensureSchema3() {
   schemaEnsured = true;
 }
 function rowToTopic(row) {
+  const str = (v) => v == null ? void 0 : v;
   return {
     id: row.id,
     userId: row.user_id,
     title: row.title,
     category: row.category,
-    description: row.description,
+    description: str(row.description),
     keywords: JSON.parse(row.keywords || "[]"),
-    angle: row.angle,
+    angle: str(row.angle),
     status: row.status,
     priority: row.priority,
-    scheduledDate: row.scheduled_date,
-    carouselId: row.carousel_id,
+    scheduledDate: str(row.scheduled_date),
+    carouselId: str(row.carousel_id),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     // Research agent fields
-    source: row.source,
-    relatedProductId: row.related_product_id,
-    targetAudienceFit: row.target_audience_fit,
-    suggestedAngle: row.suggested_angle
+    source: str(row.source),
+    relatedProductId: str(row.related_product_id),
+    targetAudienceFit: str(row.target_audience_fit),
+    suggestedAngle: str(row.suggested_angle)
   };
 }
 async function createTopic(data) {
@@ -78961,8 +79006,23 @@ async function extractAndSaveTopicsFromNotes(userId2, model, rawNotes, options) 
   const candidates = await extractTopics(rawNotes, products, model);
   const status = options?.status ?? "idea";
   const source = options?.source ?? "notes-extraction";
+  const existing = await getTopics(userId2, { limit: 200 }).catch(() => []);
+  const seenTitles = existing.map((t) => t.title);
   const saved = [];
+  const skipped = [];
   for (const candidate of candidates) {
+    const dup = isDuplicateTopic(candidate.title, seenTitles);
+    if (dup.isDuplicate) {
+      console.warn(
+        `[research-agent] skipping "${candidate.title}" \u2014 ${(dup.similarity * 100).toFixed(1)}% match with "${dup.matchedWith}"`
+      );
+      skipped.push({
+        title: candidate.title,
+        matchedWith: dup.matchedWith,
+        similarity: dup.similarity
+      });
+      continue;
+    }
     const topic = await createTopic({
       userId: userId2,
       title: candidate.title,
@@ -78976,8 +79036,9 @@ async function extractAndSaveTopicsFromNotes(userId2, model, rawNotes, options) 
       suggestedAngle: candidate.suggestedAngle
     });
     saved.push(topic);
+    seenTitles.push(candidate.title);
   }
-  return saved;
+  return { saved, skipped };
 }
 
 // src/routes/user/topics.ts
@@ -79023,13 +79084,13 @@ app7.post("/generate-from-notes", async (c) => {
   if (!modelId) {
     return c.json({ error: "No AI model API keys configured in .env" }, 500);
   }
-  const topics = await extractAndSaveTopicsFromNotes(
+  const { saved, skipped } = await extractAndSaveTopicsFromNotes(
     userId(c),
     resolveModel(modelId),
     body.rawNotes,
     { status: "idea", source: "notes-extraction" }
   );
-  return c.json({ topics, count: topics.length });
+  return c.json({ topics: saved, count: saved.length, skipped });
 });
 app7.post("/generate", async (c) => {
   const input = await c.req.json();
@@ -79277,9 +79338,10 @@ app9.get("/topic/next", async (c) => {
   if (!userId2) {
     return c.json({ error: "No user found in the database. Seed the database first." }, 500);
   }
-  const [topic] = await getTopics(userId2, { status: "idea", limit: 1 });
+  let [topic] = await getTopics(userId2, { status: "approved", limit: 1 });
+  if (!topic) [topic] = await getTopics(userId2, { status: "idea", limit: 1 });
   if (!topic) {
-    return c.json({ error: "No idea-status topics available in the bank" }, 404);
+    return c.json({ error: "No approved or idea topics available in the bank" }, 404);
   }
   await updateTopic(topic.id, userId2, { status: "queued" });
   return c.json({
@@ -79326,7 +79388,7 @@ app9.post("/research-topics", async (c) => {
     return c.json({ error: "No AI model API keys configured in .env" }, 500);
   }
   try {
-    const saved = await extractAndSaveTopicsFromNotes(
+    const { saved, skipped } = await extractAndSaveTopicsFromNotes(
       userId2,
       resolveModel(modelId),
       rawNotes,
@@ -79334,15 +79396,22 @@ app9.post("/research-topics", async (c) => {
     );
     return c.json({
       success: true,
-      message: `Extracted ${saved.length} topic candidates, saved as pending_review`,
+      message: `Extracted ${saved.length} topic candidates, saved as pending_review${skipped.length ? `; skipped ${skipped.length} duplicate(s)` : ""}`,
       topics: saved,
-      saved
+      saved,
+      skipped
     });
   } catch (err) {
     console.error("Research agent failed:", err);
     return c.json({ error: `Research agent failed: ${err.message}` }, 500);
   }
 });
+var ALLOWED_STATUS_TRANSITIONS = {
+  pending_review: ["approved", "rejected"],
+  approved: ["pending_review", "rejected"],
+  rejected: ["pending_review"],
+  idea: ["approved", "rejected", "archived"]
+};
 app9.patch("/research-topics/:id/status", async (c) => {
   let body;
   try {
@@ -79354,21 +79423,29 @@ app9.patch("/research-topics/:id/status", async (c) => {
   if (!newStatus) {
     return c.json({ error: "Missing status in request body" }, 400);
   }
-  const validStatuses = ["idea", "approved", "rejected", "pending_review", "not_posted"];
-  if (!validStatuses.includes(newStatus)) {
-    return c.json(
-      { error: `Invalid status "${newStatus}" \u2014 use one of: ${validStatuses.join(", ")}` },
-      400
-    );
-  }
   const userId2 = await resolveUserId().catch(() => null);
   if (!userId2) {
     return c.json({ error: "No user found in the database" }, 500);
   }
   const topicId = c.req.param("id");
+  const topic = await getTopic(topicId, userId2).catch(() => null);
+  if (!topic) {
+    return c.json({ error: `Topic "${topicId}" not found` }, 404);
+  }
+  const allowed = ALLOWED_STATUS_TRANSITIONS[topic.status] ?? [];
+  if (!allowed.includes(newStatus)) {
+    return c.json(
+      {
+        error: `Cannot move a "${topic.status}" topic to "${newStatus}".`,
+        from: topic.status,
+        allowed
+      },
+      409
+    );
+  }
   try {
     await updateTopic(topicId, userId2, { status: newStatus });
-    return c.json({ success: true, topicId, status: newStatus });
+    return c.json({ success: true, topicId, from: topic.status, status: newStatus });
   } catch (err) {
     console.error(`Failed to update topic ${topicId}:`, err);
     return c.json({ error: `Failed to update topic: ${err.message}` }, 500);

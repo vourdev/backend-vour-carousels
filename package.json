@@ -7,7 +7,8 @@
     "build": "esbuild src/server.ts --bundle --platform=node --target=node20 --outfile=dist/server.js --format=esm --external:playwright --external:@libsql/client --external:better-auth --banner:js='import { createRequire } from \"module\"; const require = createRequire(import.meta.url);' && mkdir -p dist/lib/ds/assets && cp -R src/lib/ds/assets/ dist/lib/ds/assets/",
     "start": "node dist/server.js",
     "test:regression": "tsx scripts/verify-regression.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "seed": "tsx scripts/seed-user.ts"
   },
   "dependencies": {
     "@ai-sdk/deepseek": "^3.0.11",

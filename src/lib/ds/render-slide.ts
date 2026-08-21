@@ -140,7 +140,7 @@ const NARROW_SAFE_MOCKUPS = new Set<Mockup["type"]>([
  * reaches note-emphasis whenever one turns up, rather than only when one happens to
  * coincide with a fixed slot.
  */
-function resolveLayout(
+export function resolveLayout(
   layout: PointLayout | undefined,
   slideIndex: number,
   mockup: Mockup | undefined

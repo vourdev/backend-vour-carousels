@@ -5,18 +5,28 @@ services:
       - "3000:3000"
       - "3001:3001"
     environment:
-      - NODE_ENV=development
+      # Was hardcoded to "development", which is not a harmless default: the CORS
+      # handler in server.ts reflects ANY origin back when NODE_ENV is development.
+      - NODE_ENV=${NODE_ENV:-production}
       - PORT=3000
       - AUTOMATION_PORT=3001
+      - MAX_CONCURRENT_CAPTURES=${MAX_CONCURRENT_CAPTURES:-2}
       - DATABASE_URL=${DATABASE_URL}
       - DATABASE_AUTH_TOKEN=${DATABASE_AUTH_TOKEN}
+      # better-auth throws on boot in production without these.
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+      - BETTER_AUTH_URL=${BETTER_AUTH_URL}
+      # OmniRoute only — see "Models: OmniRoute only" in CLAUDE.md. Other provider
+      # keys are deliberately not passed through; availableModels() ignores them
+      # anyway, and having them here invites someone to re-enable the fallback.
       - OMNIROUTE_API_KEY=${OMNIROUTE_API_KEY}
       - OMNIROUTE_BASE_URL=${OMNIROUTE_BASE_URL}
-      - GOOGLE_GENERATIVE_AI_API_KEY=${GOOGLE_GENERATIVE_AI_API_KEY}
-      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - OMNIROUTE_COMBO=${OMNIROUTE_COMBO:-vour-combos}
       - CLOUDINARY_URL=${CLOUDINARY_URL}
       - BUFFER_TOKEN=${BUFFER_TOKEN}
-      - JWT_SECRET=${JWT_SECRET}
+      # Without at least one channel, /automation/generate answers 500.
+      - BUFFER_IG_CHANNEL_ID=${BUFFER_IG_CHANNEL_ID}
+      - BUFFER_TIKTOK_CHANNEL_ID=${BUFFER_TIKTOK_CHANNEL_ID}
       - AUTOMATION_SECRET=${AUTOMATION_SECRET}
       - ALLOWED_ORIGIN=${ALLOWED_ORIGIN}
     restart: unless-stopped

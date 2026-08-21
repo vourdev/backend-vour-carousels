@@ -278,9 +278,24 @@ export async function getUnderusedMockupTypes(userId: string, limit = 25): Promi
     .map((x) => x.type);
 }
 
-export async function getGlobalMockupStats(): Promise<{ type: string; count: number; percentage: number }[]> {
+/**
+ * Mockup-type distribution, scoped to one user.
+ *
+ * `userId` was not a parameter at first, so the endpoint that serves this — a
+ * session-authenticated route — reported every account's decks to whoever asked. Harmless
+ * on a single-tenant install and wrong the moment there are two. Omitting it still reads
+ * the whole table, which is what the maintenance query wants; the route always passes one.
+ */
+export async function getGlobalMockupStats(
+  userId?: string
+): Promise<{ type: string; count: number; percentage: number }[]> {
   await ensureSchema();
-  const res = await db().execute(`SELECT slide_plan FROM carousels WHERE slide_plan IS NOT NULL`);
+  const res = userId
+    ? await db().execute({
+        sql: `SELECT slide_plan FROM carousels WHERE user_id = ? AND slide_plan IS NOT NULL`,
+        args: [userId],
+      })
+    : await db().execute(`SELECT slide_plan FROM carousels WHERE slide_plan IS NOT NULL`);
   const counts: Record<string, number> = {};
   let totalSlides = 0;
   for (const row of res.rows) {

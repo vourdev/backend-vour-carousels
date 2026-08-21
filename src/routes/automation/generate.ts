@@ -9,7 +9,7 @@ import { scheduleBufferPost } from "../../lib/publish/buffer";
 import { buildPostText } from "../../lib/publish/caption";
 import { nextWibSlot, POST_HOUR_WIB } from "../../lib/publish/schedule";
 import { createCarousel, updateCarousel, getUnderusedMockupTypes } from "../../lib/history/repo";
-import { getTopics, updateTopic, createTopic } from "../../lib/topics/bank";
+import { getTopic, getTopics, updateTopic, createTopic, type TopicStatus } from "../../lib/topics/bank";
 import { generateAndSaveTopics, type GenerateTopicsInput } from "../../lib/topics/service";
 import { extractAndSaveTopicsFromNotes } from "../../lib/research/agent";
 import { dialect } from "../../lib/db";
@@ -306,9 +306,17 @@ app.get("/topic/next", async (c) => {
     return c.json({ error: "No user found in the database. Seed the database first." }, 500);
   }
 
-  const [topic] = await getTopics(userId, { status: "idea", limit: 1 });
+  // "approved" first, then "idea".
+  //
+  // Both are pullable, and "approved" outranks "idea" because a human has already looked
+  // at it: research-agent candidates land as "pending_review" and only reach "approved" by
+  // an explicit decision. Before this, /topic/next queried "idea" alone, so approving a
+  // candidate moved it into a status nothing ever read — the approval endpoint worked and
+  // the topic then disappeared from the pipeline for good.
+  let [topic] = await getTopics(userId, { status: "approved", limit: 1 });
+  if (!topic) [topic] = await getTopics(userId, { status: "idea", limit: 1 });
   if (!topic) {
-    return c.json({ error: "No idea-status topics available in the bank" }, 404);
+    return c.json({ error: "No approved or idea topics available in the bank" }, 404);
   }
 
   await updateTopic(topic.id, userId, { status: "queued" });
@@ -374,7 +382,7 @@ app.post("/research-topics", async (c) => {
   }
 
   try {
-    const saved = await extractAndSaveTopicsFromNotes(
+    const { saved, skipped } = await extractAndSaveTopicsFromNotes(
       userId,
       resolveModel(modelId),
       rawNotes,
@@ -383,9 +391,10 @@ app.post("/research-topics", async (c) => {
 
     return c.json({
       success: true,
-      message: `Extracted ${saved.length} topic candidates, saved as pending_review`,
+      message: `Extracted ${saved.length} topic candidates, saved as pending_review${skipped.length ? `; skipped ${skipped.length} duplicate(s)` : ""}`,
       topics: saved,
       saved,
+      skipped,
     });
   } catch (err: any) {
     console.error("Research agent failed:", err);
@@ -395,10 +404,23 @@ app.post("/research-topics", async (c) => {
 
 /* ── TASK 6: Approval endpoint ───────────────────────────────────────── */
 
-const ALLOWED_STATUS_TRANSITIONS: Record<string, string[]> = {
-  pending_review: ["idea", "approved", "rejected"],
-  approved: ["idea", "pending_review"],
+/**
+ * Which status a topic may move to, from the one it currently holds.
+ *
+ * This table existed before but was never consulted — every value in a flat allow-list was
+ * accepted from any state, so a "rejected" candidate could jump straight into the posting
+ * queue. Transitions are checked against it now.
+ *
+ * "not_posted" is deliberately absent. It was accepted here and written through an `as any`,
+ * but it is not a member of TopicStatus, so the row it produced matched no query anywhere
+ * and the topic was simply lost. The status that means "reviewed, ready to post" is
+ * "approved", and /topic/next reads it.
+ */
+const ALLOWED_STATUS_TRANSITIONS: Record<string, TopicStatus[]> = {
+  pending_review: ["approved", "rejected"],
+  approved: ["pending_review", "rejected"],
   rejected: ["pending_review"],
+  idea: ["approved", "rejected", "archived"],
 };
 
 app.patch("/research-topics/:id/status", async (c) => {
@@ -414,14 +436,6 @@ app.patch("/research-topics/:id/status", async (c) => {
     return c.json({ error: "Missing status in request body" }, 400);
   }
 
-  const validStatuses = ["idea", "approved", "rejected", "pending_review", "not_posted"];
-  if (!validStatuses.includes(newStatus)) {
-    return c.json(
-      { error: `Invalid status "${newStatus}" — use one of: ${validStatuses.join(", ")}` },
-      400
-    );
-  }
-
   const userId = await resolveUserId().catch(() => null);
   if (!userId) {
     return c.json({ error: "No user found in the database" }, 500);
@@ -429,9 +443,29 @@ app.patch("/research-topics/:id/status", async (c) => {
 
   const topicId = c.req.param("id");
 
+  // Read the row first: the transition is only meaningful against the status it holds now,
+  // and this is also what turns a mistyped id into a 404 instead of a cheerful success —
+  // updateTopic matches on (id, user_id) and reports nothing when it matches no row.
+  const topic = await getTopic(topicId, userId).catch(() => null);
+  if (!topic) {
+    return c.json({ error: `Topic "${topicId}" not found` }, 404);
+  }
+
+  const allowed = ALLOWED_STATUS_TRANSITIONS[topic.status] ?? [];
+  if (!allowed.includes(newStatus as TopicStatus)) {
+    return c.json(
+      {
+        error: `Cannot move a "${topic.status}" topic to "${newStatus}".`,
+        from: topic.status,
+        allowed,
+      },
+      409
+    );
+  }
+
   try {
-    await updateTopic(topicId, userId, { status: newStatus as any });
-    return c.json({ success: true, topicId, status: newStatus });
+    await updateTopic(topicId, userId, { status: newStatus as TopicStatus });
+    return c.json({ success: true, topicId, from: topic.status, status: newStatus });
   } catch (err: any) {
     console.error(`Failed to update topic ${topicId}:`, err);
     return c.json({ error: `Failed to update topic: ${err.message}` }, 500);

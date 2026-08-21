@@ -68,14 +68,14 @@ app.post("/generate-from-notes", async (c) => {
     return c.json({ error: "No AI model API keys configured in .env" }, 500);
   }
 
-  const topics = await extractAndSaveTopicsFromNotes(
+  const { saved, skipped } = await extractAndSaveTopicsFromNotes(
     userId(c),
     resolveModel(modelId),
     body.rawNotes,
     { status: "idea", source: "notes-extraction" }
   );
 
-  return c.json({ topics, count: topics.length });
+  return c.json({ topics: saved, count: saved.length, skipped });
 });
 
 /**

@@ -10,7 +10,9 @@ import { getUnderusedMockupTypes, getGlobalMockupStats } from "../../lib/history
 const app = new Hono<{ Variables: { session: any } }>();
 
 app.get("/mockup-stats", async (c) => {
-  const stats = await getGlobalMockupStats();
+  // Scoped to the caller: this used to report every account's decks to anyone with a session.
+  const session = c.get("session") as { user: { id: string } };
+  const stats = await getGlobalMockupStats(session.user.id);
   return c.json({ stats });
 });
 
