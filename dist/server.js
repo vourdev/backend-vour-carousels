@@ -75501,6 +75501,9 @@ Perform the Human Voice Editor pass now and return the polished Markdown brief.`
 
 // src/lib/ai/generate.ts
 var delay2 = (ms) => new Promise((resolve2) => setTimeout(resolve2, ms));
+function isSdkRetryExhausted(err) {
+  return err?.name === "AI_RetryError" || err?.constructor?.name === "RetryError";
+}
 async function withRetry2(fn, attempts = 3) {
   let lastError = null;
   for (let i = 0; i < attempts; i++) {
@@ -75509,6 +75512,7 @@ async function withRetry2(fn, attempts = 3) {
     } catch (err) {
       console.error(`AI call attempt ${i + 1} failed:`, err);
       lastError = err;
+      if (isSdkRetryExhausted(err)) throw err;
       if (i < attempts - 1) {
         await delay2((i + 1) * 2500);
       }

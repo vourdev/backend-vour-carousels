@@ -32,7 +32,23 @@ import {
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
+/**
+ * True once the AI SDK has already exhausted its own transport retries.
+ *
+ * `generateText`/`generateObject` retry failed HTTP calls internally — three
+ * attempts with exponential backoff, honouring `Retry-After`. This wrapper
+ * exists for a different class of failure: a model that answers but returns
+ * unparseable JSON or a plan that fails schema validation, which the SDK never
+ * retries. Keeping the two layers separate matters, because retrying on top of
+ * an exhausted SDK turns 3 attempts into 9 and triples the time before the
+ * caller sees the identical error — long enough to blow past the proxy timeout
+ * and surface as a 504 instead of the real cause.
+ */
+export function isSdkRetryExhausted(err: any): boolean {
+  return err?.name === "AI_RetryError" || err?.constructor?.name === "RetryError";
+}
+
+export async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
   let lastError: any = null;
   for (let i = 0; i < attempts; i++) {
     try {
@@ -40,6 +56,11 @@ async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
     } catch (err: any) {
       console.error(`AI call attempt ${i + 1} failed:`, err);
       lastError = err;
+
+      // The transport already had its three shots; rethrow untouched so the
+      // message stays single-level and names the real cause.
+      if (isSdkRetryExhausted(err)) throw err;
+
       if (i < attempts - 1) {
         // Exponential backoff: 2.5s, 5s
         await delay((i + 1) * 2500);
