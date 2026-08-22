@@ -1,13 +1,11 @@
-import { createClient } from "@libsql/client";
+import type { Client } from "@libsql/client";
+import { createRetryingClient, dbConfig } from "../libsql";
 
-let clientInstance: ReturnType<typeof createClient> | null = null;
+let clientInstance: Client | null = null;
 
 function db() {
   if (!clientInstance) {
-    clientInstance = createClient({
-      url: process.env.DATABASE_URL ?? "file:local-auth.db",
-      authToken: process.env.DATABASE_AUTH_TOKEN,
-    });
+    clientInstance = createRetryingClient(dbConfig());
   }
   return clientInstance;
 }

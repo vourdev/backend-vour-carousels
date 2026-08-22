@@ -1,4 +1,5 @@
-import { createClient, type Client } from "@libsql/client";
+import type { Client } from "@libsql/client";
+import { createRetryingClient, dbConfig } from "../libsql";
 
 /**
  * Revision memory for an in-progress carousel draft.
@@ -36,10 +37,7 @@ let schemaReady: Promise<void> | null = null;
 
 function db(): Client {
   if (!client) {
-    client = createClient({
-      url: process.env.DATABASE_URL ?? "file:local-auth.db",
-      authToken: process.env.DATABASE_AUTH_TOKEN,
-    });
+    client = createRetryingClient(dbConfig());
   }
   return client;
 }

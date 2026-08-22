@@ -15965,6 +15965,111 @@ var init_lib_esm = __esm({
   }
 });
 
+// src/lib/retry.ts
+function isTransientNetworkError(err) {
+  const seen = /* @__PURE__ */ new Set();
+  let current = err;
+  for (let depth = 0; depth < MAX_CAUSE_DEPTH; depth++) {
+    if (current === null || typeof current !== "object") return false;
+    if (seen.has(current)) return false;
+    seen.add(current);
+    const code = current.code;
+    if (typeof code === "string" && TRANSIENT_CODES.has(code)) return true;
+    if (typeof current.message === "string" && current.message.includes("fetch failed")) return true;
+    if (!("cause" in current)) return false;
+    current = current.cause;
+  }
+  return false;
+}
+async function withRetry(fn, opts = {}) {
+  const {
+    attempts = 3,
+    baseDelayMs = 200,
+    maxDelayMs = 2e3,
+    onRetry,
+    sleep = defaultSleep
+  } = opts;
+  let lastErr;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (!isTransientNetworkError(err)) throw err;
+      if (attempt === attempts) break;
+      onRetry?.(err, attempt);
+      await sleep(Math.min(baseDelayMs * 2 ** (attempt - 1), maxDelayMs));
+    }
+  }
+  throw lastErr;
+}
+var TRANSIENT_CODES, MAX_CAUSE_DEPTH, defaultSleep;
+var init_retry = __esm({
+  "src/lib/retry.ts"() {
+    "use strict";
+    TRANSIENT_CODES = /* @__PURE__ */ new Set([
+      // undici / fetch
+      "UND_ERR_CONNECT_TIMEOUT",
+      "UND_ERR_HEADERS_TIMEOUT",
+      "UND_ERR_BODY_TIMEOUT",
+      "UND_ERR_SOCKET",
+      "UND_ERR_RESPONSE_STATUS_CODE",
+      // node sockets
+      "ECONNRESET",
+      "ECONNREFUSED",
+      "ECONNABORTED",
+      "EPIPE",
+      "ETIMEDOUT",
+      "EHOSTUNREACH",
+      "ENETUNREACH",
+      "ENETDOWN",
+      // dns
+      "EAI_AGAIN",
+      "ENOTFOUND"
+    ]);
+    MAX_CAUSE_DEPTH = 8;
+    defaultSleep = (ms) => new Promise((resolve2) => setTimeout(resolve2, ms));
+  }
+});
+
+// src/lib/libsql.ts
+import { createClient as createClient2 } from "@libsql/client";
+function withRetryingClient(client4, opts = {}) {
+  const retryOpts = {
+    onRetry: (err, attempt) => console.warn(
+      `[libsql] transient failure, retrying (attempt ${attempt}):`,
+      err instanceof Error ? err.message : err
+    ),
+    ...opts
+  };
+  return new Proxy(client4, {
+    get(target, prop, receiver) {
+      const value = Reflect.get(target, prop, receiver);
+      if (typeof value !== "function" || typeof prop !== "string" || !RETRYABLE.has(prop)) {
+        return typeof value === "function" ? value.bind(target) : value;
+      }
+      return (...args) => withRetry(() => value.apply(target, args), retryOpts);
+    }
+  });
+}
+function createRetryingClient(config2, opts = {}) {
+  return withRetryingClient(createClient2(config2), opts);
+}
+function dbConfig() {
+  return {
+    url: process.env.DATABASE_URL ?? "file:local-auth.db",
+    authToken: process.env.DATABASE_AUTH_TOKEN
+  };
+}
+var RETRYABLE;
+var init_libsql = __esm({
+  "src/lib/libsql.ts"() {
+    "use strict";
+    init_retry();
+    RETRYABLE = /* @__PURE__ */ new Set(["execute", "batch", "executeMultiple", "migrate"]);
+  }
+});
+
 // src/lib/db.ts
 var db_exports = {};
 __export(db_exports, {
@@ -15975,9 +16080,9 @@ var init_db = __esm({
   "src/lib/db.ts"() {
     "use strict";
     init_lib_esm();
+    init_libsql();
     dialect = new LibsqlDialect({
-      url: process.env.DATABASE_URL ?? "file:local-auth.db",
-      authToken: process.env.DATABASE_AUTH_TOKEN
+      client: createRetryingClient(dbConfig())
     });
   }
 });
@@ -33072,6 +33177,11 @@ async function getSession(headers) {
 }
 
 // src/middleware/auth.ts
+init_retry();
+function isSessionStoreUnreachable(err) {
+  if (isTransientNetworkError(err)) return true;
+  return err?.body?.code === "FAILED_TO_GET_SESSION";
+}
 var authMiddleware = () => {
   return async (c, next) => {
     try {
@@ -33092,6 +33202,10 @@ var authMiddleware = () => {
       await next();
     } catch (err) {
       console.error("Auth middleware error:", err);
+      if (isSessionStoreUnreachable(err)) {
+        c.header("Retry-After", "2");
+        return c.json({ error: "Auth store temporarily unreachable, please retry" }, 503);
+      }
       return c.json({ error: "Internal Server Error in Auth Middleware" }, 500);
     }
   };
@@ -72923,18 +73037,15 @@ function sanitizeCustomHtml(html) {
 }
 
 // src/lib/ds/illustrations.server.ts
+init_libsql();
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { createClient as createClient2 } from "@libsql/client";
 var ASSETS_DIR = existsSync(join(process.cwd(), "src", "lib", "ds", "assets", "illustrations")) ? join(process.cwd(), "src", "lib", "ds", "assets", "illustrations") : join(process.cwd(), "dist", "lib", "ds", "assets", "illustrations");
 var cache = /* @__PURE__ */ new Map();
 var client = null;
 function getDbClient() {
   if (!client) {
-    client = createClient2({
-      url: process.env.DATABASE_URL ?? "file:local-auth.db",
-      authToken: process.env.DATABASE_AUTH_TOKEN
-    });
+    client = createRetryingClient(dbConfig());
   }
   return client;
 }
@@ -75390,7 +75501,7 @@ Perform the Human Voice Editor pass now and return the polished Markdown brief.`
 
 // src/lib/ai/generate.ts
 var delay2 = (ms) => new Promise((resolve2) => setTimeout(resolve2, ms));
-async function withRetry(fn, attempts = 3) {
+async function withRetry2(fn, attempts = 3) {
   let lastError = null;
   for (let i = 0; i < attempts; i++) {
     try {
@@ -75426,7 +75537,7 @@ function extractAndParseJson(rawText) {
   return JSON.parse(cleaned);
 }
 async function generateBrief(idea, model) {
-  return withRetry(async () => {
+  return withRetry2(async () => {
     const { text: text2 } = await generateText({
       model,
       system: briefSystem,
@@ -75594,7 +75705,7 @@ ${ctx.stats?.filter((s) => s.percentage >= 12).map((s) => `  \u2717 ${s.type} ($
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550`;
   }
   const systemPrompt = planSystem + underusedInstruction;
-  return withRetry(async () => {
+  return withRetry2(async () => {
     try {
       const { object: object3 } = await generateObject({
         model,
@@ -75618,7 +75729,7 @@ ${ctx.stats?.filter((s) => s.percentage >= 12).map((s) => `  \u2717 ${s.type} ($
 }
 async function reviseSlidePlan(plan, message, model, history = []) {
   const prompt = reviseUserPrompt(JSON.stringify(plan), message, history);
-  return withRetry(async () => {
+  return withRetry2(async () => {
     try {
       const { object: object3 } = await generateObject({
         model,
@@ -75669,7 +75780,7 @@ async function reviseTargetSlides(plan, scope, message, model, history) {
     slideJson: JSON.stringify(plan.slides[i], null, 2)
   }));
   const prompt = scopedSlideRevisePrompt(JSON.stringify(plan), targets, message, history);
-  return withRetry(async () => {
+  return withRetry2(async () => {
     try {
       const { object: object3 } = await generateObject({
         model,
@@ -75697,7 +75808,7 @@ async function reviseGlobalFields(plan, scope, message, model, history) {
   if (scope.globals.includes("hashtags")) shape.hashtags = external_exports.array(external_exports.string().min(1).max(30)).length(5);
   const schema = external_exports.object(shape);
   const prompt = scopedGlobalRevisePrompt(JSON.stringify(plan), scope.globals, message, history);
-  return withRetry(async () => {
+  return withRetry2(async () => {
     try {
       const { object: object3 } = await generateObject({
         model,
@@ -75732,7 +75843,7 @@ async function reviseSlidePlanScoped(plan, message, model, history = []) {
   return { plan: merged, scope, changed: scopedChangeSummary(plan, merged, scope) };
 }
 async function polishBriefVoice(brief, model) {
-  return withRetry(async () => {
+  return withRetry2(async () => {
     const { text: text2 } = await generateText({
       model,
       system: humanVoiceEditorSystem,
@@ -75839,15 +75950,12 @@ function briefScopeViolations(before, afterBrief, targetIndices) {
 }
 
 // src/lib/memory/repo.ts
-import { createClient as createClient3 } from "@libsql/client";
+init_libsql();
 var client2 = null;
 var schemaReady = null;
 function db() {
   if (!client2) {
-    client2 = createClient3({
-      url: process.env.DATABASE_URL ?? "file:local-auth.db",
-      authToken: process.env.DATABASE_AUTH_TOKEN
-    });
+    client2 = createRetryingClient(dbConfig());
   }
   return client2;
 }
@@ -76056,15 +76164,12 @@ function summarizePlanDiff(before, after) {
 }
 
 // src/lib/history/repo.ts
-import { createClient as createClient4 } from "@libsql/client";
+init_libsql();
 var client3 = null;
 var schemaReady2 = null;
 function db2() {
   if (!client3) {
-    client3 = createClient4({
-      url: process.env.DATABASE_URL ?? "file:local-auth.db",
-      authToken: process.env.DATABASE_AUTH_TOKEN
-    });
+    client3 = createRetryingClient(dbConfig());
   }
   return client3;
 }
@@ -78376,11 +78481,11 @@ app6.post("/carousel", async (c) => {
 var publish_default = app6;
 
 // src/lib/topics/bank.ts
-import { createClient as createClient5 } from "@libsql/client";
+import { createClient as createClient3 } from "@libsql/client";
 var clientInstance = null;
 function db3() {
   if (!clientInstance) {
-    clientInstance = createClient5({
+    clientInstance = createClient3({
       url: process.env.DATABASE_URL ?? "file:local-auth.db",
       authToken: process.env.DATABASE_AUTH_TOKEN
     });
@@ -78616,14 +78721,11 @@ var generatedTopicListSchema = external_exports.object({
 });
 
 // src/lib/products/repo.ts
-import { createClient as createClient6 } from "@libsql/client";
+init_libsql();
 var clientInstance2 = null;
 function db4() {
   if (!clientInstance2) {
-    clientInstance2 = createClient6({
-      url: process.env.DATABASE_URL ?? "file:local-auth.db",
-      authToken: process.env.DATABASE_AUTH_TOKEN
-    });
+    clientInstance2 = createRetryingClient(dbConfig());
   }
   return clientInstance2;
 }

@@ -6,7 +6,8 @@
 // every importer of render-slide dragged them into the browser bundle.
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { createClient } from "@libsql/client";
+import type { Client } from "@libsql/client";
+import { createRetryingClient, dbConfig } from "../libsql";
 import {
   FALLBACK_ILLUSTRATION,
   normalizeIllustration,
@@ -24,13 +25,10 @@ export type IllustrationVariant = "onLight" | "onDark";
 // runtime, so cache what has been read. Only slugs actually used pay the disk hit.
 const cache = new Map<string, string>();
 
-let client: ReturnType<typeof createClient> | null = null;
+let client: Client | null = null;
 function getDbClient() {
   if (!client) {
-    client = createClient({
-      url: process.env.DATABASE_URL ?? "file:local-auth.db",
-      authToken: process.env.DATABASE_AUTH_TOKEN,
-    });
+    client = createRetryingClient(dbConfig());
   }
   return client;
 }

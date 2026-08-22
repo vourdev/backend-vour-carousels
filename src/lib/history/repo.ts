@@ -1,4 +1,5 @@
-import { createClient, type Client } from "@libsql/client";
+import type { Client } from "@libsql/client";
+import { createRetryingClient, dbConfig } from "../libsql";
 import type { SlidePlan } from "../ds/schema";
 
 export type CarouselStatus = "draft" | "exported" | "scheduled" | "posted" | "failed";
@@ -29,10 +30,7 @@ let schemaReady: Promise<void> | null = null;
 
 function db(): Client {
   if (!client) {
-    client = createClient({
-      url: process.env.DATABASE_URL ?? "file:local-auth.db",
-      authToken: process.env.DATABASE_AUTH_TOKEN,
-    });
+    client = createRetryingClient(dbConfig());
   }
   return client;
 }
