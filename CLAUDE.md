@@ -94,6 +94,21 @@ out and the bank fills with `queued` rows that were in fact already posted.
 
 ## Things that will bite you
 
+**`npm start` does not read `.env`.** It is `node dist/server.js` with no `--env-file`, and
+nothing in `src/` imports dotenv — production gets its environment from the swarm service, not
+from a file. Run it locally and `DATABASE_URL` is undefined, `dbConfig()` falls back to an empty
+`file:local-auth.db`, and every request answers `Unauthorized: Invalid or missing session`
+because the session row lives in Turso. The symptom looks exactly like a broken cookie or a
+secret mismatch, and it is neither. Use `npm run dev` (which passes
+`--env-file-if-exists=.env`), or `node --env-file=.env dist/server.js` when you specifically
+need the bundle.
+
+**`dist/` is tracked, so it can be committed stale.** A commit that changes `src/` does not
+rebuild the bundle. It has already shipped once with the source of a feature and a bundle from
+before it, which means a clean checkout running `npm start` served the *old* server while the
+diff said otherwise. Run `npm run build` before committing anything under `src/`, and verify by
+grepping the bundle for a symbol only the new code has.
+
 **OmniRoute does not support structured output.** `generateObject` fails on every plan call —
 `No object generated: could not parse the response`. The `generateText` + `extractAndParseJson`
 + `repairSlidePlan` fallback in `lib/ai/generate.ts` is therefore the **primary** production
