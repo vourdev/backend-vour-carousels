@@ -169,6 +169,26 @@ The prompt presents that list as "UNDERUSED, prioritize these". The diversity fe
 driving the monoculture. `screenshot`/`custom`/`browser` are also excluded permanently: they
 are rare by design, so they sit at the bottom of any ranking forever.
 
+**A `flow` is three nodes on one row, and the schema silently enforces it.** `.diag-flow`
+used to be `flex-wrap: wrap`, so a fourth step landed on a second row carrying its own
+arrow — which reads as the chain *forking*. Every flow slide in the carousels history came
+back with exactly four steps, all of them linear, so the branch existed only in the
+rendering. `compressFlowSteps` in `ds/schema.ts` folds anything longer to first · pivot ·
+last (pivot = the step marked `focus`), by `.transform()` rather than `.max()` for the same
+reason as `mockupConcept` — a fifth step should cost the model its fourth node, not the
+whole deck. Two consequences: a step CAN disappear between the model's output and the
+render, and the row must never wrap again, which is why `.diag-flow` is `nowrap` with
+`min-width: 0` on the items so long labels shrink instead. Linearity itself needs no check:
+`steps` is a flat array, so a branch cannot be expressed.
+
+**A note spans the slide, never a column.** `section.slide-point > .catatan` carries
+`grid-column: 1 / -1` alongside its `order`, so full width is the default for any grid
+composition instead of something each one has to remember. `split-content` placed it in
+column 2 and the note rendered at 435px of the 920px content box — 47% — beside a mockup
+that was already narrow. It sits in row 5 there now, under both columns. The child
+combinator is load-bearing: `comparison` and `illustration` nest their own `.catatan`, and
+those belong to their mockup's layout.
+
 **Slide `layout` absent means "renderer decides", not "standard".** The field used to carry
 `.default("standard")`, which stamped an explicit value on every point slide at parse time —
 the renderer could no longer tell a real choice from an omission, so every deck came out in

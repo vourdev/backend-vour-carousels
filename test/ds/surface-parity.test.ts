@@ -156,8 +156,20 @@ describe("mockup fit on the fixed canvas", () => {
     expect(html).not.toContain('<div class="arrow">');
   });
 
-  it("lets the flow row wrap instead of overflowing the content box", () => {
-    expect(carouselExtraCss).toMatch(/\.diag-flow\s*\{[^}]*flex-wrap:\s*wrap/);
+  /**
+   * This asserted `flex-wrap: wrap`, which was the fix for the flow row overflowing the
+   * content box and being clipped. It traded that for a worse bug: the overflow moved to
+   * a second row opening with its own arrow, and a linear four-step chain rendered as a
+   * fork. The chain is capped at three nodes now (compressFlowSteps) and shrinks to fit
+   * rather than breaking, so neither the clipping nor the phantom branch can come back.
+   */
+  it("keeps the flow row on one line and lets the nodes shrink instead", () => {
+    expect(carouselExtraCss).toMatch(/\.diag-flow\s*\{[^}]*flex-wrap:\s*nowrap/);
+    expect(carouselExtraCss).not.toMatch(/\.diag-flow\s*\{[^}]*flex-wrap:\s*wrap/);
+    // Shrinking is what replaces wrapping: a flex item cannot go below its content width
+    // without min-width:0, and the label itself has to be allowed to break.
+    expect(carouselExtraCss).toMatch(/\.diag-flow \.flow-step\s*\{[^}]*min-width:\s*0/);
+    expect(carouselExtraCss).toMatch(/\.diag-flow \.node\s*\{[^}]*min-width:\s*0/);
     expect(carouselExtraCss).toMatch(/\.diag-flow \.node\s*\{[^}]*white-space:\s*normal/);
   });
 });
