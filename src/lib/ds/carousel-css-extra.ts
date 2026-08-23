@@ -258,6 +258,9 @@ export const carouselExtraCss = String.raw`
   body section:not(.paper) .counter { color: ${VOUR_ORANGE_BRIGHT}; }
   body section:not(.paper) h1 { color: #FFFFFF; }
   body section:not(.paper) h1 .a { color: ${VOUR_ORANGE_BRIGHT}; }
+  /* Same reach as the base .a rule: a rescued double-asterisk word outside a headline still
+     has to clear contrast on the dark canvas, where the paper accent is too dim to read. */
+  body section:not(.paper) .a { color: ${VOUR_ORANGE_BRIGHT}; }
   body section:not(.paper) .lede,
   body section:not(.paper) .body-text { color: rgba(247,241,232,0.72); }
   body section:not(.paper) .geser { color: ${VOUR_ORANGE_BRIGHT}; }
@@ -1015,11 +1018,19 @@ export const carouselExtraCss = String.raw`
   section.layout-split-content {
     display: grid !important;
     grid-template-columns: 1fr 1fr;
-    /* Five rows: three for the copy column, one shared by the body text and the bottom of
-       the mockup, and a trailing 1fr that holds the note. The 1fr used to be row 4, which
-       put every pixel of slack BETWEEN the columns and the note once the note stopped
-       being a column child — a 330px hole mid-slide. Slack belongs after the last block. */
-    grid-template-rows: auto auto auto auto 1fr;
+    /* Seven rows, two of which are empty by design.
+
+       Rows 2 and 7 are a matched pair of 1fr gutters that bracket the composition, so the
+       slack a short slide leaves over is split above it and below it instead of piling up
+       in one place. With a single trailing 1fr — the previous shape — five short checklist
+       items and a two-line body ended at y=960 and left 310px of blank canvas under the
+       note, which reads as a slide that failed to render rather than one with air in it.
+       Bracketing costs nothing when the content is long: both gutters collapse to zero and
+       the rows fall back to exactly the stack they had before.
+
+       Row 1 stays outside the pair. The counter is chrome, not composition; it belongs
+       against the top edge whatever the copy does. */
+    grid-template-rows: auto 1fr auto auto auto auto 1fr;
     column-gap: 50px;
     row-gap: 0;
     align-content: start;
@@ -1050,27 +1061,27 @@ export const carouselExtraCss = String.raw`
   }
   section.layout-split-content .eyebrow {
     grid-column: 1;
-    grid-row: 2;
+    grid-row: 3;
     margin-top: 64px !important;
     align-self: start;
   }
   section.layout-split-content h1.compact {
     grid-column: 1;
-    grid-row: 3;
+    grid-row: 4;
     margin-top: 24px !important;
     font-size: 72px !important;
     line-height: 1.1;
   }
   section.layout-split-content .body-text {
     grid-column: 1;
-    grid-row: 4;
+    grid-row: 5;
     margin-top: 32px !important;
     font-size: 28px !important;
     line-height: 1.4;
   }
   section.layout-split-content .diag-wrap {
     grid-column: 2;
-    grid-row: 2 / 4;
+    grid-row: 3 / 5;
     margin-top: 24px !important;
     align-self: start;
     justify-self: center;
@@ -1081,25 +1092,24 @@ export const carouselExtraCss = String.raw`
   }
   section.layout-split-content .card {
     grid-column: 2;
-    grid-row: 2 / 4;
+    grid-row: 3 / 5;
     margin-top: 24px !important;
     align-self: start;
     justify-self: center;
     width: 100%;
   }
   /* Explicit placement, because auto-placement put the note in the first free cell —
-     column 2 row 2, i.e. directly ABOVE the mockup it annotates.
+     column 2 row 3, i.e. directly ABOVE the mockup it annotates.
 
-     Row 5 is a new row under BOTH columns; the note inherits the slot rule's
-     grid-column: 1 / -1 and spans them. It used to sit in column 2 row 4, the tall
-     1fr row — under the diagram, but boxed into half the canvas with it. Row 4 keeps the
-     1fr, so it still absorbs the slack and the note is bottom-anchored rather than
-     floating in the middle of a short slide.
+     Row 6 is the last content row, under BOTH columns; the note inherits the slot rule's
+     grid-column: 1 / -1 and spans them. It sits inside the bracketing gutters rather than
+     after them, so it travels with the composition instead of being pinned to the bottom
+     edge while everything it annotates floats away above it.
 
      Child combinator: a nested note (comparison, illustration) belongs to its mockup's
      own layout, not to this grid. */
   section.layout-split-content > .catatan {
-    grid-row: 5;
+    grid-row: 6;
     margin-top: 24px !important;
     align-self: start;
   }

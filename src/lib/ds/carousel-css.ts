@@ -50,6 +50,10 @@ export const carouselCss = String.raw`
   h1.hero { font-size: 128px; line-height: 0.98; }               /* --fs-title-lg — cover */
   h1.compact { font-size: 88px; line-height: 1.04; }             /* USE ON EVERY MOCKUP SLIDE — see MAKING_CAROUSELS.md §7 */
   h1 .a   { color: #EE4B1A; }                                    /* the accent word — exactly ONE per headline */
+  /* The same accent anywhere else it lands. escapeHtml converts a model's stray
+     double-asterisk word into this span wherever the copy sits, and body text and cards are
+     outside the h1 rule above — without this the rescue leaves an unstyled span. */
+  .a      { color: #EE4B1A; font-weight: inherit; }
 
   .lede, .body-text {
     font-family: 'Inter', system-ui, sans-serif;

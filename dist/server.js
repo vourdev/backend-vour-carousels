@@ -72784,6 +72784,17 @@ var slidePlanSchema = external_exports.object({
   slides: external_exports.array(slideSchema).min(1)
 });
 
+// src/lib/ds/accent.ts
+function hoistAccentMarkdown(headline, accentWord) {
+  if (typeof headline !== "string" || !headline.includes("**")) return { headline, accentWord };
+  const m = headline.match(/\*\*([^*]+)\*\*/);
+  if (!m) return { headline, accentWord };
+  return {
+    headline: headline.replace(/\*\*([^*]+)\*\*/g, "$1"),
+    accentWord: accentWord?.trim() ? accentWord : m[1]
+  };
+}
+
 // src/lib/ds/repair.ts
 function clampStr(v, max) {
   if (typeof v !== "string") return v;
@@ -72869,6 +72880,11 @@ function repairSlidePlan(raw2) {
     if (Array.isArray(raw2.slides)) {
       for (const s of raw2.slides) {
         if (!s || typeof s !== "object") continue;
+        if (typeof s.headline === "string") {
+          const fixed = hoistAccentMarkdown(s.headline, s.accentWord);
+          s.headline = fixed.headline;
+          if (fixed.accentWord !== void 0) s.accentWord = fixed.accentWord;
+        }
         s.headline = clampStr(s.headline, 90);
         s.eyebrow = clampStr(s.eyebrow, 40);
         s.lede = clampStr(s.lede, 140);
@@ -72913,8 +72929,13 @@ function stripEmoji(s) {
 }
 
 // src/lib/ds/fill.ts
+function accentMarkdown(escaped) {
+  return escaped.replace(/\*\*([^*]+)\*\*/g, '<span class="a">$1</span>');
+}
 function escapeHtml(s) {
-  return stripEmoji(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  return accentMarkdown(
+    stripEmoji(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;")
+  );
 }
 function fillTemplate(template, vars) {
   let out = template.replace(
@@ -73530,7 +73551,8 @@ var VOUR_NEGATIVE_ON_DARK = "#B0A49A";
 var VOUR_POSITIVE_ON_DARK = "#86C97F";
 
 // src/lib/ds/render-slide.ts
-function splitHeadline(headline, accentWord) {
+function splitHeadline(rawHeadline, rawAccent) {
+  const { headline, accentWord } = hoistAccentMarkdown(rawHeadline, rawAccent);
   if (!accentWord) return { headlinePre: headline, accentWord: "", headlinePost: "" };
   const i = headline.indexOf(accentWord);
   if (i < 0) return { headlinePre: headline, accentWord: "", headlinePost: "" };
@@ -73578,16 +73600,29 @@ var NARROW_SAFE_MOCKUPS = /* @__PURE__ */ new Set([
   "promptcard",
   "concept"
 ]);
-function resolveLayout(layout, slideIndex, mockup) {
+function contentUnits(body, m) {
+  const bodyLines = body?.trim() ? Math.ceil(body.trim().length / 40) : 0;
+  let mockupLines = 1;
+  if (m.type === "checklist") mockupLines = m.items.length;
+  else if (m.type === "concept") mockupLines = m.children.length;
+  else if (m.type === "quote") mockupLines = Math.ceil(m.quote.length / 40);
+  else if (m.type === "promptcard") mockupLines = Math.ceil(m.body.length / 40);
+  else if (m.type === "callout") mockupLines = Math.ceil(m.text.length / 40);
+  else if (m.type === "card") mockupLines = 1 + Math.ceil(m.body.length / 40);
+  return bodyLines + mockupLines;
+}
+var SPLIT_CONTENT_MIN_UNITS = 4;
+function resolveLayout(layout, slideIndex, mockup, body) {
   if (!mockup) return "standard";
+  const splitFits = NARROW_SAFE_MOCKUPS.has(mockup.type) && contentUnits(body, mockup) >= SPLIT_CONTENT_MIN_UNITS;
   if (layout) {
     if (layout === "note-emphasis" && !mockupHasNote(mockup)) return "standard";
-    if (layout === "split-content" && !NARROW_SAFE_MOCKUPS.has(mockup.type)) return "standard";
+    if (layout === "split-content" && !splitFits) return "standard";
     return layout;
   }
   if (slideIndex % 2 === 1) return "mockup-forward";
   if (mockupHasNote(mockup)) return "note-emphasis";
-  if (NARROW_SAFE_MOCKUPS.has(mockup.type)) return "split-content";
+  if (splitFits) return "split-content";
   return "standard";
 }
 function renderNote(note) {
@@ -74085,7 +74120,7 @@ function renderSlide(slide, slideIndex = 0) {
           cardBody: "",
           cardTone: "peach",
           mockupHtml: "",
-          layout: resolveLayout(slide.layout, slideIndex, mockup)
+          layout: resolveLayout(slide.layout, slideIndex, mockup, slide.body)
         });
       }
       if (mockup.type === "card") {
@@ -74102,7 +74137,7 @@ function renderSlide(slide, slideIndex = 0) {
           cardBody: mockup.body,
           cardTone: mockup.tone || "peach",
           mockupHtml: "",
-          layout: resolveLayout(slide.layout, slideIndex, mockup)
+          layout: resolveLayout(slide.layout, slideIndex, mockup, slide.body)
         });
         return filled.replace(
           "ICON_INJECT",
@@ -74125,7 +74160,7 @@ function renderSlide(slide, slideIndex = 0) {
         cardTone: "peach",
         mockupHtml: "1",
         // truthy to activate the block
-        layout: resolveLayout(slide.layout, slideIndex, mockup)
+        layout: resolveLayout(slide.layout, slideIndex, mockup, slide.body)
       });
       return base.replace("MOCKUP_INJECT", () => mockupHtml);
     }
@@ -74146,6 +74181,18 @@ function renderSlide(slide, slideIndex = 0) {
 }
 
 // src/lib/ai/revision-scope.ts
+var ASPECT_FIELDS = {
+  // `hook` is the cover's visual anchor — its mockup by another name.
+  mockup: ["mockup", "hook"],
+  layout: ["layout"],
+  surface: ["surface"]
+};
+var STRUCTURAL_FIELDS = /* @__PURE__ */ new Set([
+  ...ASPECT_FIELDS.mockup,
+  ...ASPECT_FIELDS.layout,
+  ...ASPECT_FIELDS.surface
+]);
+var ALL_ASPECTS = ["copy", "layout", "mockup", "surface"];
 var UNSCOPED = { slides: [], globals: [], resolved: false, source: "unscoped" };
 var RE_SLIDE_NUMBER = /\b(?:slide|halaman|page)\s*(?:ke-?\s*|nomor\s*|no\.?\s*|#\s*)?(\d{1,2})\b/gi;
 var RE_COVER = /\b(?:cover|sampul|slide\s+pertama|slide\s+awal|slide\s+1)\b/i;
@@ -74160,6 +74207,16 @@ var RE_STRUCTURAL = [
   /\b(?:jadikan|ubah\s+jadi|bikin\s+jadi|make\s+it)\s+\d{1,2}\s+slide\b/i,
   /\b(?:gabung|merge|split|pecah|pisah|urutkan|reorder|tukar|swap)\s+(?:slide|halaman)\b/i
 ];
+var RE_ASPECT_LAYOUT = /\b(?:layout|tata\s*letak|komposisi|susunan|full[\s-]?width|selebar|satu\s+kolom|dua\s+kolom|split[\s-]?content|centered|rata\s+tengah|mockup[\s-]?forward|note[\s-]?emphasis|standard)\b/i;
+var RE_ASPECT_MOCKUP = /\b(?:mockup|visual|ilustrasi|illustration|diagram|bagan|grafik|chart|checklist|flow|kartu|card|callout|quote|kutipan|screenshot|terminal|tabel|table|gambar(?:nya)?)\b/i;
+var RE_ASPECT_SURFACE = /\b(?:surface|background|latar|warna\s+dasar|gelap|terang|dark|light|ink|paper)\b/i;
+function parseAspects(message) {
+  const aspects = ["copy"];
+  if (RE_ASPECT_LAYOUT.test(message)) aspects.push("layout");
+  if (RE_ASPECT_MOCKUP.test(message)) aspects.push("mockup");
+  if (RE_ASPECT_SURFACE.test(message)) aspects.push("surface");
+  return aspects;
+}
 var RE_DECK_WIDE = /\b(?:semua|seluruh|setiap|tiap|all|every|whole\s+deck|keseluruhan)\s+(?:slide|halaman|headline|body|mockup)\b/i;
 function parseRevisionScope(message, slideCount) {
   for (const re of RE_STRUCTURAL) {
@@ -74188,11 +74245,12 @@ function parseRevisionScope(message, slideCount) {
   return {
     slides: [...slides].sort((a, b) => a - b),
     globals,
+    aspects: parseAspects(message),
     resolved: true,
     source: "parsed"
   };
 }
-function scopeFromClassifier(raw2, slideCount) {
+function scopeFromClassifier(raw2, slideCount, message) {
   if (raw2.wholeDeck) return { ...UNSCOPED, reason: "classifier: request applies to the whole deck", reasonCode: "classifier" };
   const slides = [...new Set((raw2.slides ?? []).filter((n) => n >= 1 && n <= slideCount).map((n) => n - 1))].sort(
     (a, b) => a - b
@@ -74203,7 +74261,7 @@ function scopeFromClassifier(raw2, slideCount) {
   if (slides.length === 0 && globals.length === 0) {
     return { ...UNSCOPED, reason: "classifier: could not identify a target", reasonCode: "classifier" };
   }
-  return { slides, globals, resolved: true, source: "classified" };
+  return { slides, globals, aspects: parseAspects(message ?? ""), resolved: true, source: "classified" };
 }
 function describeScope(scope) {
   if (!scope.resolved) return `whole plan (${scope.reason ?? "unscoped"})`;
@@ -74212,13 +74270,38 @@ function describeScope(scope) {
   if (scope.globals.length) parts.push(scope.globals.join(", "));
   return parts.join(" + ");
 }
+function mergeSlideAspects(before, next, aspects) {
+  const active = new Set(aspects);
+  const out = { ...before };
+  const src = next;
+  if (active.has("copy")) {
+    for (const key of /* @__PURE__ */ new Set([...Object.keys(out), ...Object.keys(src)])) {
+      if (key === "role" || STRUCTURAL_FIELDS.has(key)) continue;
+      if (key in src) out[key] = src[key];
+      else delete out[key];
+    }
+  }
+  for (const aspect of ["mockup", "layout", "surface"]) {
+    if (!active.has(aspect)) continue;
+    for (const key of ASPECT_FIELDS[aspect]) {
+      if (key in src) out[key] = src[key];
+      else delete out[key];
+    }
+  }
+  out.role = before.role;
+  return out;
+}
 function mergeScopedRevision(before, patch, scope) {
   const inScope = new Set(scope.slides);
+  const aspects = scope.aspects ?? ALL_ASPECTS;
   const byIndex = /* @__PURE__ */ new Map();
   for (const entry of patch.slides ?? []) {
     if (inScope.has(entry.index)) byIndex.set(entry.index, entry.slide);
   }
-  const slides = before.slides.map((slide, i) => byIndex.get(i) ?? slide);
+  const slides = before.slides.map((slide, i) => {
+    const next = byIndex.get(i);
+    return next ? mergeSlideAspects(slide, next, aspects) : slide;
+  });
   return {
     ...before,
     slides,
@@ -74264,10 +74347,21 @@ function assertScopePreserved(before, after, scope) {
     violations.push(`slide count: ${before.slides.length} -> ${after.slides.length}`);
   }
   const inScope = new Set(scope.slides);
+  const aspects = new Set(scope.aspects ?? ALL_ASPECTS);
   const max = Math.min(before.slides.length, after.slides.length);
   for (let i = 0; i < max; i++) {
-    if (inScope.has(i)) continue;
-    if (!semanticEq(before.slides[i], after.slides[i])) violations.push(`slide ${i + 1} changed`);
+    if (!inScope.has(i)) {
+      if (!semanticEq(before.slides[i], after.slides[i])) violations.push(`slide ${i + 1} changed`);
+      continue;
+    }
+    for (const aspect of ["mockup", "layout", "surface"]) {
+      if (aspects.has(aspect)) continue;
+      for (const key of ASPECT_FIELDS[aspect]) {
+        const a = before.slides[i][key];
+        const b = after.slides[i][key];
+        if (!semanticEq(a, b)) violations.push(`slide ${i + 1} ${key} changed (${aspect} not in scope)`);
+      }
+    }
   }
   if (violations.length) throw new RevisionScopeViolation(scope, violations);
 }
@@ -75063,6 +75157,14 @@ SLIDE ROLES
     \u2192 strong MUST be a concrete call-to-action (save / share / follow / try). Never omit the cta.
 Deck spine: cover \u2192 points \u2192 outro. Use "point" for all middle slides.
 
+ACCENT WORD \u2014 the brief writes it as **word**; the plan does NOT. Every "headline" here is
+PLAIN TEXT with no markdown at all: no **, no __, no backticks, no *. The word that gets the
+accent colour goes in "accentWord" as the bare word, spelled exactly as it appears inside the
+headline, and the renderer colours it in place. One accent word per headline, or none.
+  brief:  Kirim **payload** ke worker
+  plan:   { "headline": "Kirim payload ke worker", "accentWord": "payload" }
+Leaving the asterisks in the headline prints them on the canvas.
+
 COVER \u2014 the first slide is an AD for the other slides, not slide 0. Make people swipe.
 Pick ONE trigger angle, then a headline + ONE visual anchor that fits it:
   MISCONCEPTION  \u2192 "you've been wrong about X"      \u2192 anchor: door
@@ -75415,6 +75517,16 @@ WHAT YOU RETURN
 - Never return a slide that is not in the target list. The caller ignores extras, so
   returning them only wastes the turn \u2014 the deck's other slides, title, caption and
   hashtags are carried over in code and cannot be edited from here.
+
+CHANGE ONLY WHAT WAS ASKED FOR
+- A request about wording is a request about wording. Rewriting a headline is not a licence
+  to swap the mockup, change the layout or flip the surface \u2014 the user asked for a word, and
+  a slide that comes back recomposed reads as the deck breaking, not as a revision landing.
+- Same the other way: "bikin full width" changes \`layout\` and nothing else; "ganti mockup
+  jadi illustration" changes \`mockup\` and nothing else.
+- \`layout\`, \`mockup\`, \`hook\` and \`surface\` are each carried over from the previous
+  slide in code unless the request actually named them, so a change to one of them that
+  nobody asked for is discarded rather than shipped. Returning it only wastes the turn.
 
 CHANGING A SLIDE'S MOCKUP TYPE IS EXPLICITLY SUPPORTED
 - "ganti mockup slide 4 jadi illustration", "bikin slide 3 pakai terminal", "ubah jadi
@@ -75837,7 +75949,7 @@ async function resolveRevisionScope(plan, message, model) {
       system: scopeClassifierSystem,
       prompt: scopeClassifierPrompt(message, plan)
     });
-    return scopeFromClassifier(object3, plan.slides.length);
+    return scopeFromClassifier(object3, plan.slides.length, message);
   } catch (err) {
     console.warn("[revision-scope] classifier failed, falling back to whole-plan revision:", err);
     return parsed;
@@ -76645,6 +76757,10 @@ var carouselCss = String.raw`
   h1.hero { font-size: 128px; line-height: 0.98; }               /* --fs-title-lg — cover */
   h1.compact { font-size: 88px; line-height: 1.04; }             /* USE ON EVERY MOCKUP SLIDE — see MAKING_CAROUSELS.md §7 */
   h1 .a   { color: #EE4B1A; }                                    /* the accent word — exactly ONE per headline */
+  /* The same accent anywhere else it lands. escapeHtml converts a model's stray
+     double-asterisk word into this span wherever the copy sits, and body text and cards are
+     outside the h1 rule above — without this the rescue leaves an unstyled span. */
+  .a      { color: #EE4B1A; font-weight: inherit; }
 
   .lede, .body-text {
     font-family: 'Inter', system-ui, sans-serif;
@@ -77185,6 +77301,9 @@ var carouselExtraCss = String.raw`
   body section:not(.paper) .counter { color: ${VOUR_ORANGE_BRIGHT}; }
   body section:not(.paper) h1 { color: #FFFFFF; }
   body section:not(.paper) h1 .a { color: ${VOUR_ORANGE_BRIGHT}; }
+  /* Same reach as the base .a rule: a rescued double-asterisk word outside a headline still
+     has to clear contrast on the dark canvas, where the paper accent is too dim to read. */
+  body section:not(.paper) .a { color: ${VOUR_ORANGE_BRIGHT}; }
   body section:not(.paper) .lede,
   body section:not(.paper) .body-text { color: rgba(247,241,232,0.72); }
   body section:not(.paper) .geser { color: ${VOUR_ORANGE_BRIGHT}; }
@@ -77942,11 +78061,19 @@ var carouselExtraCss = String.raw`
   section.layout-split-content {
     display: grid !important;
     grid-template-columns: 1fr 1fr;
-    /* Five rows: three for the copy column, one shared by the body text and the bottom of
-       the mockup, and a trailing 1fr that holds the note. The 1fr used to be row 4, which
-       put every pixel of slack BETWEEN the columns and the note once the note stopped
-       being a column child — a 330px hole mid-slide. Slack belongs after the last block. */
-    grid-template-rows: auto auto auto auto 1fr;
+    /* Seven rows, two of which are empty by design.
+
+       Rows 2 and 7 are a matched pair of 1fr gutters that bracket the composition, so the
+       slack a short slide leaves over is split above it and below it instead of piling up
+       in one place. With a single trailing 1fr — the previous shape — five short checklist
+       items and a two-line body ended at y=960 and left 310px of blank canvas under the
+       note, which reads as a slide that failed to render rather than one with air in it.
+       Bracketing costs nothing when the content is long: both gutters collapse to zero and
+       the rows fall back to exactly the stack they had before.
+
+       Row 1 stays outside the pair. The counter is chrome, not composition; it belongs
+       against the top edge whatever the copy does. */
+    grid-template-rows: auto 1fr auto auto auto auto 1fr;
     column-gap: 50px;
     row-gap: 0;
     align-content: start;
@@ -77977,27 +78104,27 @@ var carouselExtraCss = String.raw`
   }
   section.layout-split-content .eyebrow {
     grid-column: 1;
-    grid-row: 2;
+    grid-row: 3;
     margin-top: 64px !important;
     align-self: start;
   }
   section.layout-split-content h1.compact {
     grid-column: 1;
-    grid-row: 3;
+    grid-row: 4;
     margin-top: 24px !important;
     font-size: 72px !important;
     line-height: 1.1;
   }
   section.layout-split-content .body-text {
     grid-column: 1;
-    grid-row: 4;
+    grid-row: 5;
     margin-top: 32px !important;
     font-size: 28px !important;
     line-height: 1.4;
   }
   section.layout-split-content .diag-wrap {
     grid-column: 2;
-    grid-row: 2 / 4;
+    grid-row: 3 / 5;
     margin-top: 24px !important;
     align-self: start;
     justify-self: center;
@@ -78008,25 +78135,24 @@ var carouselExtraCss = String.raw`
   }
   section.layout-split-content .card {
     grid-column: 2;
-    grid-row: 2 / 4;
+    grid-row: 3 / 5;
     margin-top: 24px !important;
     align-self: start;
     justify-self: center;
     width: 100%;
   }
   /* Explicit placement, because auto-placement put the note in the first free cell —
-     column 2 row 2, i.e. directly ABOVE the mockup it annotates.
+     column 2 row 3, i.e. directly ABOVE the mockup it annotates.
 
-     Row 5 is a new row under BOTH columns; the note inherits the slot rule's
-     grid-column: 1 / -1 and spans them. It used to sit in column 2 row 4, the tall
-     1fr row — under the diagram, but boxed into half the canvas with it. Row 4 keeps the
-     1fr, so it still absorbs the slack and the note is bottom-anchored rather than
-     floating in the middle of a short slide.
+     Row 6 is the last content row, under BOTH columns; the note inherits the slot rule's
+     grid-column: 1 / -1 and spans them. It sits inside the bracketing gutters rather than
+     after them, so it travels with the composition instead of being pinned to the bottom
+     edge while everything it annotates floats away above it.
 
      Child combinator: a nested note (comparison, illustration) belongs to its mockup's
      own layout, not to this grid. */
   section.layout-split-content > .catatan {
-    grid-row: 5;
+    grid-row: 6;
     margin-top: 24px !important;
     align-self: start;
   }

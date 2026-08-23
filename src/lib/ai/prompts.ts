@@ -833,6 +833,14 @@ SLIDE ROLES
     → strong MUST be a concrete call-to-action (save / share / follow / try). Never omit the cta.
 Deck spine: cover → points → outro. Use "point" for all middle slides.
 
+ACCENT WORD — the brief writes it as **word**; the plan does NOT. Every "headline" here is
+PLAIN TEXT with no markdown at all: no **, no __, no backticks, no *. The word that gets the
+accent colour goes in "accentWord" as the bare word, spelled exactly as it appears inside the
+headline, and the renderer colours it in place. One accent word per headline, or none.
+  brief:  Kirim **payload** ke worker
+  plan:   { "headline": "Kirim payload ke worker", "accentWord": "payload" }
+Leaving the asterisks in the headline prints them on the canvas.
+
 COVER — the first slide is an AD for the other slides, not slide 0. Make people swipe.
 Pick ONE trigger angle, then a headline + ONE visual anchor that fits it:
   MISCONCEPTION  → "you've been wrong about X"      → anchor: door
@@ -1218,6 +1226,16 @@ WHAT YOU RETURN
 - Never return a slide that is not in the target list. The caller ignores extras, so
   returning them only wastes the turn — the deck's other slides, title, caption and
   hashtags are carried over in code and cannot be edited from here.
+
+CHANGE ONLY WHAT WAS ASKED FOR
+- A request about wording is a request about wording. Rewriting a headline is not a licence
+  to swap the mockup, change the layout or flip the surface — the user asked for a word, and
+  a slide that comes back recomposed reads as the deck breaking, not as a revision landing.
+- Same the other way: "bikin full width" changes \`layout\` and nothing else; "ganti mockup
+  jadi illustration" changes \`mockup\` and nothing else.
+- \`layout\`, \`mockup\`, \`hook\` and \`surface\` are each carried over from the previous
+  slide in code unless the request actually named them, so a change to one of them that
+  nobody asked for is discarded rather than shipped. Returning it only wastes the turn.
 
 CHANGING A SLIDE'S MOCKUP TYPE IS EXPLICITLY SUPPORTED
 - "ganti mockup slide 4 jadi illustration", "bikin slide 3 pakai terminal", "ubah jadi

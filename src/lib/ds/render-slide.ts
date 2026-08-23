@@ -1,6 +1,7 @@
 import type { Slide, Mockup, CoverHook } from "../ds/schema";
 import { compressFlowSteps } from "../ds/schema";
 import { fillTemplate, escapeHtml } from "../ds/fill";
+import { hoistAccentMarkdown } from "../ds/accent";
 import { brandMarkDataUri } from "../ds/brand";
 import { coverEditorialTemplate } from "../ds/templates/cover-editorial";
 import { coverCompactTemplate } from "../ds/templates/cover-compact";
@@ -44,7 +45,18 @@ import { diagLines } from "../ds/hub-lines";
 import { deviceTemplate } from "../ds/templates/device";
 import { VOUR_MIST_MUTED, VOUR_POSITIVE_ON_DARK } from "../ds/tokens";
 
-function splitHeadline(headline: string, accentWord?: string) {
+/**
+ * Split a headline into the three template slots, resolving markdown notation first.
+ *
+ * The normalisation has to happen here rather than only in `escapeHtml`. This function
+ * cuts the string into three pieces before any of them is escaped, so a headline reading
+ * `**Selectivity** itu kunci` leaves a lone `**` in the pre slot and another opening the
+ * post slot — neither fragment holds a matched pair, and the sanitizer downstream has
+ * nothing left to recognise. Measured on a real model run: the asterisks printed while an
+ * accent span sat between them.
+ */
+function splitHeadline(rawHeadline: string, rawAccent?: string) {
+  const { headline, accentWord } = hoistAccentMarkdown(rawHeadline, rawAccent);
   if (!accentWord) return { headlinePre: headline, accentWord: "", headlinePost: "" };
   const i = headline.indexOf(accentWord);
   if (i < 0) return { headlinePre: headline, accentWord: "", headlinePost: "" };
@@ -146,6 +158,35 @@ export const NARROW_SAFE_MOCKUPS = new Set<Mockup["type"]>([
 ]);
 
 /**
+ * Roughly how many lines of copy a slide is carrying.
+ *
+ * split-content is a two-column composition, and two columns need enough in them to read
+ * as columns. Four short checklist items beside a one-line body leave both columns barely
+ * started while the grid still reserves the full canvas for them — the bracketing gutters
+ * keep that balanced rather than bottom-heavy, but balanced emptiness is still emptiness.
+ * A single column is simply the better shape for that much content.
+ *
+ * The count is deliberately crude. It only has to separate "a handful of words" from
+ * "a slide's worth", and a character estimate that is off by a line either way does not
+ * change which side of that line a slide falls on. 40 characters is about one line in the
+ * 435px body column at 28px.
+ */
+function contentUnits(body: string | undefined, m: Mockup): number {
+  const bodyLines = body?.trim() ? Math.ceil(body.trim().length / 40) : 0;
+  let mockupLines = 1;
+  if (m.type === "checklist") mockupLines = m.items.length;
+  else if (m.type === "concept") mockupLines = m.children.length;
+  else if (m.type === "quote") mockupLines = Math.ceil(m.quote.length / 40);
+  else if (m.type === "promptcard") mockupLines = Math.ceil(m.body.length / 40);
+  else if (m.type === "callout") mockupLines = Math.ceil(m.text.length / 40);
+  else if (m.type === "card") mockupLines = 1 + Math.ceil(m.body.length / 40);
+  return bodyLines + mockupLines;
+}
+
+/** Below this, split-content is asked to compose more canvas than there is content. */
+const SPLIT_CONTENT_MIN_UNITS = 4;
+
+/**
  * The composition template this slide actually renders with.
  *
  * The plan's own choice wins when it can be honoured. Two of the four templates are
@@ -176,21 +217,27 @@ export const NARROW_SAFE_MOCKUPS = new Set<Mockup["type"]>([
 export function resolveLayout(
   layout: PointLayout | undefined,
   slideIndex: number,
-  mockup: Mockup | undefined
+  mockup: Mockup | undefined,
+  body?: string
 ): PointLayout {
   // Nothing to compose around — every alternative template is defined by where it puts
   // the mockup, so without one they all collapse into a worse "standard".
   if (!mockup) return "standard";
 
+  // Two gates on split-content, and they fail for different reasons: a wide diagram does
+  // not survive a 435px column, and thin copy does not fill two columns at any width.
+  const splitFits =
+    NARROW_SAFE_MOCKUPS.has(mockup.type) && contentUnits(body, mockup) >= SPLIT_CONTENT_MIN_UNITS;
+
   if (layout) {
     if (layout === "note-emphasis" && !mockupHasNote(mockup)) return "standard";
-    if (layout === "split-content" && !NARROW_SAFE_MOCKUPS.has(mockup.type)) return "standard";
+    if (layout === "split-content" && !splitFits) return "standard";
     return layout;
   }
 
   if (slideIndex % 2 === 1) return "mockup-forward";
   if (mockupHasNote(mockup)) return "note-emphasis";
-  if (NARROW_SAFE_MOCKUPS.has(mockup.type)) return "split-content";
+  if (splitFits) return "split-content";
   return "standard";
 }
 
@@ -927,7 +974,7 @@ export function renderSlide(slide: Slide, slideIndex = 0): string {
           cardBody: "",
           cardTone: "peach",
           mockupHtml: "",
-          layout: resolveLayout(slide.layout, slideIndex, mockup),
+          layout: resolveLayout(slide.layout, slideIndex, mockup, slide.body),
         });
       }
 
@@ -948,7 +995,7 @@ export function renderSlide(slide: Slide, slideIndex = 0): string {
           cardBody: mockup.body,
           cardTone: mockup.tone || "peach",
           mockupHtml: "",
-          layout: resolveLayout(slide.layout, slideIndex, mockup),
+          layout: resolveLayout(slide.layout, slideIndex, mockup, slide.body),
         });
         // Function replacer keeps raw SVG safe from $-sequence interpretation.
         return filled.replace("ICON_INJECT", () =>
@@ -971,7 +1018,7 @@ export function renderSlide(slide: Slide, slideIndex = 0): string {
         cardBody: "",
         cardTone: "peach",
         mockupHtml: "1",  // truthy to activate the block
-        layout: resolveLayout(slide.layout, slideIndex, mockup),
+        layout: resolveLayout(slide.layout, slideIndex, mockup, slide.body),
       });
       // Replace the sentinel with raw (unescaped) mockup HTML
       // Function replacer: a bare string lets $-sequences in mockup content

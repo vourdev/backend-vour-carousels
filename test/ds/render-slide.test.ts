@@ -621,9 +621,13 @@ describe("custom mockup and cover css", () => {
   });
 
   it("applies point layouts correctly", () => {
-    const base = { role: "point" as const, counter: "1/1", eyebrow: "E", headline: "H", body: "B" };
-    // Narrow-safe AND note-bearing, so none of the four gets degraded away.
-    const mockup = { type: "checklist" as const, items: ["a", "b"], note: "N" };
+    // Narrow-safe, note-bearing AND carrying enough copy, so none of the four gets
+    // degraded away — split-content is gated on content volume as well as mockup type.
+    const base = {
+      role: "point" as const, counter: "1/1", eyebrow: "E", headline: "H",
+      body: "Satu poin kelewat, workflow lo berisiko gagal diam-diam tanpa alert.",
+    };
+    const mockup = { type: "checklist" as const, items: ["a", "b", "c", "d"], note: "N" };
 
     for (const layout of ["standard", "mockup-forward", "split-content", "note-emphasis"] as const) {
       expect(renderSlide({ ...base, layout, mockup })).toContain(`layout-${layout}`);
@@ -677,8 +681,9 @@ describe("custom mockup and cover css", () => {
   it("gives a narrow-safe note-less mockup the split composition", () => {
     const html = renderSlide(
       {
-        role: "point", counter: "2/9", eyebrow: "E", headline: "H", body: "B",
-        mockup: { type: "quote", quote: "cache itu bukan sihir" },
+        role: "point", counter: "2/9", eyebrow: "E", headline: "H",
+        body: "Cache menyembunyikan query lambat sampai suatu hari cache-nya kosong.",
+        mockup: { type: "quote", quote: "cache itu bukan sihir, cuma menunda tagihannya" },
       },
       2
     );
@@ -783,5 +788,50 @@ describe("decision / mythfact / pitfalls render", () => {
     expect(html).toContain("03");
     // A tick against a mistake reads as "done" — that is why this is not a checklist.
     expect(html).not.toContain("✓");
+  });
+});
+
+/* ── Markdown notation in a headline ──────────────────────────────────────────
+ * The brief writes **word**; a model that copies it into the plan verbatim used to print
+ * the asterisks on the canvas. Tested at the renderer because /api/assemble casts a plan
+ * and renders it without parsing, so the repair layer never runs on the wizard's path. */
+describe("headline markdown", () => {
+  const point = (headline: string, accentWord?: string) =>
+    renderSlide(
+      {
+        role: "point", counter: "02 / 04", eyebrow: "E", headline, accentWord,
+        body: "Body", mockup: { type: "callout", icon: "database", text: "t" },
+      },
+      2
+    );
+
+  it("prints no asterisks and colours the marked word", () => {
+    const html = point("Jangan kirim **payload** mentah");
+    expect(html).not.toContain("*");
+    expect(html).toContain('<span class="a">payload</span>');
+  });
+
+  /**
+   * The case escapeHtml alone cannot reach: splitHeadline cuts the string into three
+   * template slots before any of them is escaped, so the opening and closing markers land
+   * in different slots and no fragment holds a matched pair. A real model run rendered the
+   * asterisks with an accent span sitting between them.
+   */
+  it("handles a marked word the plan also named as accentWord", () => {
+    const html = point("**Selectivity** itu kunci utama", "Selectivity");
+    expect(html).not.toContain("*");
+    expect(html).toContain('<span class="a">Selectivity</span>');
+  });
+
+  it("leaves an accentWord the model chose for itself in charge", () => {
+    const html = point("Kirim **payload** ke worker", "worker");
+    expect(html).toContain('<span class="a">worker</span>');
+    expect(html).not.toContain("*");
+  });
+
+  it("does not disturb a headline that never had markdown", () => {
+    const html = point("Kirim payload ke worker", "payload");
+    expect(html).toContain('<span class="a">payload</span>');
+    expect(html).toContain("Kirim ");
   });
 });

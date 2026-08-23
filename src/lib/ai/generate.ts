@@ -478,7 +478,7 @@ export async function resolveRevisionScope(
       system: scopeClassifierSystem,
       prompt: scopeClassifierPrompt(message, plan),
     });
-    return scopeFromClassifier(object, plan.slides.length);
+    return scopeFromClassifier(object, plan.slides.length, message);
   } catch (err: unknown) {
     console.warn("[revision-scope] classifier failed, falling back to whole-plan revision:", err);
     return parsed;

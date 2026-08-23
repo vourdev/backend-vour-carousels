@@ -1,4 +1,5 @@
 import { mockupSchema, slidePlanSchema, coverHookSchema, type SlidePlan } from "../ds/schema";
+import { hoistAccentMarkdown } from "../ds/accent";
 
 /**
  * Best-effort repair of a raw LLM slide-plan object BEFORE strict validation.
@@ -142,6 +143,11 @@ export function repairSlidePlan(raw: any): SlidePlan {
     if (Array.isArray(raw.slides)) {
       for (const s of raw.slides) {
         if (!s || typeof s !== "object") continue;
+        if (typeof s.headline === "string") {
+          const fixed = hoistAccentMarkdown(s.headline, s.accentWord);
+          s.headline = fixed.headline;
+          if (fixed.accentWord !== undefined) s.accentWord = fixed.accentWord;
+        }
         s.headline = clampStr(s.headline, 90);
         s.eyebrow = clampStr(s.eyebrow, 40);
         s.lede = clampStr(s.lede, 140);

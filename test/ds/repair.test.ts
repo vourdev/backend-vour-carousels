@@ -146,3 +146,50 @@ describe("repairSlidePlan — cover hooks never crash generation", () => {
     expect(cover.hook?.kind).toBe("nocgrid");
   });
 });
+
+describe("markdown accent notation in a headline", () => {
+  const deck = (headline: string, accentWord?: string) => ({
+    title: "t",
+    caption: "c",
+    hashtags: ["a", "b", "c", "d", "e"],
+    slides: [
+      { role: "cover", eyebrow: "E", headline: "Cover" },
+      { role: "point", counter: "1/2", eyebrow: "E", headline, accentWord, body: "b",
+        mockup: { type: "callout", icon: "database", text: "t" } },
+      { role: "outro", headline: "O", cta: { strong: "Follow" } },
+    ],
+  });
+
+  // The brief writes **word**; the plan is supposed to move it into `accentWord`. When the
+  // model copies the headline across verbatim the asterisks print on the canvas.
+  it("moves the marked word into accentWord and drops the markers", () => {
+    const out = repairSlidePlan(deck("Kirim **payload** ke worker"));
+    const s = out.slides[1] as { headline: string; accentWord?: string };
+    expect(s.headline).toBe("Kirim payload ke worker");
+    expect(s.accentWord).toBe("payload");
+  });
+
+  it("does not overrule an accentWord the model set itself", () => {
+    const out = repairSlidePlan(deck("Kirim **payload** ke worker", "worker"));
+    const s = out.slides[1] as { headline: string; accentWord?: string };
+    expect(s.headline).toBe("Kirim payload ke worker");
+    expect(s.accentWord).toBe("worker");
+  });
+
+  it("leaves a clean headline untouched", () => {
+    const out = repairSlidePlan(deck("Kirim payload ke worker"));
+    const s = out.slides[1] as { headline: string; accentWord?: string };
+    expect(s.headline).toBe("Kirim payload ke worker");
+    expect(s.accentWord).toBeUndefined();
+  });
+
+  // The 90-character clamp is a publishing constraint; four characters of notation are not
+  // part of the headline and must not eat into it.
+  it("clamps the headline after the markers are removed", () => {
+    const long = `${"a".repeat(88)} **${"b".repeat(10)}**`;
+    const out = repairSlidePlan(deck(long));
+    const s = out.slides[1] as { headline: string };
+    expect(s.headline).toHaveLength(90);
+    expect(s.headline).not.toContain("*");
+  });
+});

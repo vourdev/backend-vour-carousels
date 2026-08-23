@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   parseRevisionScope,
+  parseAspects,
   scopeFromClassifier,
   mergeScopedRevision,
   assertScopePreserved,
@@ -231,5 +232,136 @@ describe("scopedChangeSummary", () => {
 describe("describeScope", () => {
   it("renders 1-based slides and globals", () => {
     expect(describeScope(scoped([1, 3], ["caption"]))).toBe("slide 2, 4 + caption");
+  });
+});
+
+/* ── Aspect scoping ───────────────────────────────────────────────────────────
+ * Naming the slide was never enough: the model is handed one slide and returns one
+ * slide, so a reword came back carrying a new layout and a new mockup. */
+
+describe("parseAspects", () => {
+  it("treats a plain wording change as copy only", () => {
+    expect(parseAspects("di slide 5 ganti kata payload jadi muatan")).toEqual(["copy"]);
+    expect(parseAspects("perpendek headline slide 3")).toEqual(["copy"]);
+  });
+
+  it("puts layout in play when the request is about the composition", () => {
+    expect(parseAspects("slide 5 bikin full width")).toContain("layout");
+    expect(parseAspects("ubah tata letak slide 2")).toContain("layout");
+    expect(parseAspects("slide 4 jadikan dua kolom")).toContain("layout");
+  });
+
+  it("puts mockup in play when the request names a visual", () => {
+    expect(parseAspects("ganti mockup slide 4 jadi illustration")).toContain("mockup");
+    expect(parseAspects("slide 6 pakai diagram aja")).toContain("mockup");
+  });
+
+  it("puts surface in play when the request is about the canvas", () => {
+    expect(parseAspects("slide 3 bikin gelap")).toContain("surface");
+  });
+
+  it("always keeps copy, so a visual request cannot drop a wording change with it", () => {
+    expect(parseAspects("ganti mockup slide 4 dan perpendek headline-nya")).toContain("copy");
+  });
+});
+
+describe("mergeScopedRevision aspect filtering", () => {
+  const withAspects = (slides: number[], aspects: RevisionScope["aspects"]): RevisionScope => ({
+    slides,
+    globals: [],
+    aspects,
+    resolved: true,
+    source: "parsed",
+  });
+
+  /** What a model actually returns for "ganti satu kata": the whole slide, redecorated. */
+  const overreaching: Slide = {
+    role: "point",
+    counter: "02 / 08",
+    eyebrow: "E2",
+    headline: "Headline 2 yang sudah diubah",
+    accentWord: "diubah",
+    body: "Body 2",
+    surface: "ink",
+    layout: "split-content",
+    mockup: { type: "checklist", items: ["a", "b"] },
+  };
+
+  it("takes the copy and leaves the composition alone", () => {
+    const before = plan();
+    const after = mergeScopedRevision(
+      before,
+      { slides: [{ index: 1, slide: overreaching }] },
+      withAspects([1], ["copy"])
+    );
+    const s = after.slides[1] as Extract<Slide, { role: "point" }>;
+
+    expect(s.headline).toBe("Headline 2 yang sudah diubah");
+    expect(s.mockup).toEqual({ type: "callout", icon: "zap", text: "Callout 2" });
+    expect(s.layout).toBeUndefined();
+    expect(s.surface).toBeUndefined();
+  });
+
+  it("takes the layout too when the request asked for it, still not the mockup", () => {
+    const after = mergeScopedRevision(
+      plan(),
+      { slides: [{ index: 1, slide: overreaching }] },
+      withAspects([1], ["copy", "layout"])
+    );
+    const s = after.slides[1] as Extract<Slide, { role: "point" }>;
+
+    expect(s.layout).toBe("split-content");
+    expect(s.mockup).toEqual({ type: "callout", icon: "zap", text: "Callout 2" });
+  });
+
+  it("takes the mockup when the request asked for it, still not the layout", () => {
+    const after = mergeScopedRevision(
+      plan(),
+      { slides: [{ index: 1, slide: overreaching }] },
+      withAspects([1], ["copy", "mockup"])
+    );
+    const s = after.slides[1] as Extract<Slide, { role: "point" }>;
+
+    expect(s.mockup).toEqual({ type: "checklist", items: ["a", "b"] });
+    expect(s.layout).toBeUndefined();
+  });
+
+  it("never lets the model change what kind of slide this is", () => {
+    const after = mergeScopedRevision(
+      plan(),
+      { slides: [{ index: 1, slide: { ...overreaching, role: "outro" } as Slide }] },
+      withAspects([1], ["copy"])
+    );
+    expect(after.slides[1].role).toBe("point");
+  });
+
+  it("honours an omission inside an in-scope aspect", () => {
+    const { accentWord: _drop, ...withoutAccent } = overreaching as Record<string, unknown>;
+    const after = mergeScopedRevision(
+      plan(),
+      { slides: [{ index: 1, slide: withoutAccent as Slide }] },
+      withAspects([1], ["copy"])
+    );
+    expect((after.slides[1] as Record<string, unknown>).accentWord).toBeUndefined();
+  });
+
+  it("still replaces everything when no aspects are given", () => {
+    const after = mergeScopedRevision(
+      plan(),
+      { slides: [{ index: 1, slide: overreaching }] },
+      scoped([1])
+    );
+    expect((after.slides[1] as Extract<Slide, { role: "point" }>).mockup).toEqual({
+      type: "checklist",
+      items: ["a", "b"],
+    });
+  });
+
+  it("is caught by the guard if a caller merges by hand and gets it wrong", () => {
+    const before = plan();
+    const after = { ...before, slides: before.slides.map((s, i) => (i === 1 ? overreaching : s)) };
+    expect(() => assertScopePreserved(before, after, withAspects([1], ["copy"]))).toThrow(
+      RevisionScopeViolation
+    );
   });
 });

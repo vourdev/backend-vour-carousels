@@ -138,10 +138,28 @@ describe("conditional compositions match what the prompt advertises", () => {
     }
   });
 
+  // Every fixture here is a one-character placeholder, so each is paired with a realistic
+  // body: split-content is now gated on how much copy the slide carries as well as on the
+  // mockup type, and a two-word slide legitimately fails that gate.
+  const REAL_BODY =
+    "Satu poin kelewat, workflow lo berisiko gagal diam-diam tanpa ada alert yang masuk.";
+
   it("honours split-content on every narrow-safe type", () => {
     for (const [name, mockup] of Object.entries(NARROW)) {
-      expect(resolveLayout("split-content", 0, mockup), name).toBe("split-content");
+      expect(resolveLayout("split-content", 0, mockup, REAL_BODY), name).toBe("split-content");
     }
+  });
+
+  // Two columns need enough to put in them. Below the threshold the composition reserves
+  // the whole canvas for a handful of words, so a single column is the better shape.
+  it("degrades split-content when there is barely any copy", () => {
+    const thin: Mockup = { type: "checklist", items: ["a", "b"] };
+    expect(resolveLayout("split-content", 0, thin, "B")).toBe("standard");
+    expect(resolveLayout(undefined, 0, thin, "B")).toBe("standard");
+
+    // And honours it again as soon as the slide is actually carrying something.
+    const full: Mockup = { type: "checklist", items: ["a", "b", "c", "d"] };
+    expect(resolveLayout("split-content", 0, full, REAL_BODY)).toBe("split-content");
   });
 
   // The degrade path is what makes an over-broad recommendation invisible rather than loud.

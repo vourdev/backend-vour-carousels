@@ -19,11 +19,47 @@ import { slideSchema, type Slide, type SlidePlan } from "../ds/schema";
 
 export type GlobalField = "title" | "caption" | "hashtags";
 
+/**
+ * Which part of a targeted slide a request is allowed to change.
+ *
+ * Naming the slide was never enough. The model was handed one slide and asked for one
+ * slide back, so "ganti kata payload di slide 5" came back with a different composition
+ * and a different mockup attached — every field the model re-emitted was a field that
+ * could change, exactly the drift this module exists to stop, just one level down. The
+ * cross-slide guard could not see it, because slide 5 was legitimately in scope.
+ *
+ * `copy` is always in scope. A request that names a visual is usually also rewording
+ * something, and dropping half of what was asked for is worse than honouring a little
+ * more than was asked — the same trade the scope parser makes.
+ */
+export type SlideAspect = "copy" | "layout" | "mockup" | "surface";
+
+/** Fields each non-copy aspect owns. Everything else on a slide is copy. */
+const ASPECT_FIELDS: Record<Exclude<SlideAspect, "copy">, readonly string[]> = {
+  // `hook` is the cover's visual anchor — its mockup by another name.
+  mockup: ["mockup", "hook"],
+  layout: ["layout"],
+  surface: ["surface"],
+};
+
+const STRUCTURAL_FIELDS = new Set<string>([
+  ...ASPECT_FIELDS.mockup,
+  ...ASPECT_FIELDS.layout,
+  ...ASPECT_FIELDS.surface,
+]);
+
+export const ALL_ASPECTS: SlideAspect[] = ["copy", "layout", "mockup", "surface"];
+
 export interface RevisionScope {
   /** 0-based slide indices the request targets. */
   slides: number[];
   /** Deck-level fields the request targets. */
   globals: GlobalField[];
+  /**
+   * Parts of each targeted slide the request may change. Absent means every part — the
+   * shape an unresolved scope and older callers both have.
+   */
+  aspects?: SlideAspect[];
   /**
    * False when nothing could be pinned down — the request is deck-wide ("bikin semua
    * headline lebih pendek"), structural ("hapus slide 5"), or simply unclear. The
@@ -72,6 +108,29 @@ const RE_STRUCTURAL = [
   /\b(?:gabung|merge|split|pecah|pisah|urutkan|reorder|tukar|swap)\s+(?:slide|halaman)\b/i,
 ];
 
+/**
+ * Words that put a slide's composition, visual or surface in play.
+ *
+ * Anything that does not match these is a copy edit, which is the overwhelming majority
+ * of revisions and the case that was being broken: rewording a headline should leave the
+ * mockup and the layout exactly where they were.
+ */
+const RE_ASPECT_LAYOUT =
+  /\b(?:layout|tata\s*letak|komposisi|susunan|full[\s-]?width|selebar|satu\s+kolom|dua\s+kolom|split[\s-]?content|centered|rata\s+tengah|mockup[\s-]?forward|note[\s-]?emphasis|standard)\b/i;
+const RE_ASPECT_MOCKUP =
+  /\b(?:mockup|visual|ilustrasi|illustration|diagram|bagan|grafik|chart|checklist|flow|kartu|card|callout|quote|kutipan|screenshot|terminal|tabel|table|gambar(?:nya)?)\b/i;
+const RE_ASPECT_SURFACE =
+  /\b(?:surface|background|latar|warna\s+dasar|gelap|terang|dark|light|ink|paper)\b/i;
+
+/** Which parts of a slide the request puts in play. Copy is always one of them. */
+export function parseAspects(message: string): SlideAspect[] {
+  const aspects: SlideAspect[] = ["copy"];
+  if (RE_ASPECT_LAYOUT.test(message)) aspects.push("layout");
+  if (RE_ASPECT_MOCKUP.test(message)) aspects.push("mockup");
+  if (RE_ASPECT_SURFACE.test(message)) aspects.push("surface");
+  return aspects;
+}
+
 /** Deck-wide requests: they legitimately touch every slide, so scoping them is wrong. */
 const RE_DECK_WIDE = /\b(?:semua|seluruh|setiap|tiap|all|every|whole\s+deck|keseluruhan)\s+(?:slide|halaman|headline|body|mockup)\b/i;
 
@@ -113,6 +172,7 @@ export function parseRevisionScope(message: string, slideCount: number): Revisio
   return {
     slides: [...slides].sort((a, b) => a - b),
     globals,
+    aspects: parseAspects(message),
     resolved: true,
     source: "parsed",
   };
@@ -121,7 +181,8 @@ export function parseRevisionScope(message: string, slideCount: number): Revisio
 /** Normalize a classifier's 1-based answer into a scope, dropping out-of-range slides. */
 export function scopeFromClassifier(
   raw: { slides?: number[]; globals?: string[]; wholeDeck?: boolean },
-  slideCount: number
+  slideCount: number,
+  message?: string
 ): RevisionScope {
   if (raw.wholeDeck) return { ...UNSCOPED, reason: "classifier: request applies to the whole deck", reasonCode: "classifier" };
 
@@ -135,7 +196,9 @@ export function scopeFromClassifier(
   if (slides.length === 0 && globals.length === 0) {
     return { ...UNSCOPED, reason: "classifier: could not identify a target", reasonCode: "classifier" };
   }
-  return { slides, globals, resolved: true, source: "classified" };
+  // The classifier answers "which slide", not "which part of it" — the aspect still comes
+  // from the words the user typed, which is where the intent actually is.
+  return { slides, globals, aspects: parseAspects(message ?? ""), resolved: true, source: "classified" };
 }
 
 export function describeScope(scope: RevisionScope): string {
@@ -164,14 +227,55 @@ export interface ScopedPatch {
  * out-of-scope field has no path from the model's response into the result, even if
  * the model returned one.
  */
+/**
+ * One slide, rebuilt from the old one plus only the aspects the request put in play.
+ *
+ * The model answers for the whole slide whatever it is asked, so the answer is filtered
+ * here rather than trusted. For an in-scope aspect the model's version is authoritative —
+ * including omissions, so dropping an accent word is expressible. For an out-of-scope
+ * aspect the old value is carried across and the model's never consulted, which is what
+ * keeps a wording change from arriving with a new mockup attached.
+ *
+ * `role` is never taken from the model. Changing what kind of slide this is restructures
+ * the deck, and that request goes down the unscoped path.
+ */
+function mergeSlideAspects(before: Slide, next: Slide, aspects: SlideAspect[]): Slide {
+  const active = new Set(aspects);
+  const out: Record<string, unknown> = { ...(before as unknown as Record<string, unknown>) };
+  const src = next as unknown as Record<string, unknown>;
+
+  if (active.has("copy")) {
+    for (const key of new Set([...Object.keys(out), ...Object.keys(src)])) {
+      if (key === "role" || STRUCTURAL_FIELDS.has(key)) continue;
+      if (key in src) out[key] = src[key];
+      else delete out[key];
+    }
+  }
+
+  for (const aspect of ["mockup", "layout", "surface"] as const) {
+    if (!active.has(aspect)) continue;
+    for (const key of ASPECT_FIELDS[aspect]) {
+      if (key in src) out[key] = src[key];
+      else delete out[key];
+    }
+  }
+
+  out.role = (before as unknown as Record<string, unknown>).role;
+  return out as unknown as Slide;
+}
+
 export function mergeScopedRevision(before: SlidePlan, patch: ScopedPatch, scope: RevisionScope): SlidePlan {
   const inScope = new Set(scope.slides);
+  const aspects = scope.aspects ?? ALL_ASPECTS;
   const byIndex = new Map<number, Slide>();
   for (const entry of patch.slides ?? []) {
     if (inScope.has(entry.index)) byIndex.set(entry.index, entry.slide);
   }
 
-  const slides = before.slides.map((slide, i) => byIndex.get(i) ?? slide);
+  const slides = before.slides.map((slide, i) => {
+    const next = byIndex.get(i);
+    return next ? mergeSlideAspects(slide, next, aspects) : slide;
+  });
 
   return {
     ...before,
@@ -240,10 +344,24 @@ export function assertScopePreserved(before: SlidePlan, after: SlidePlan, scope:
   }
 
   const inScope = new Set(scope.slides);
+  const aspects = new Set(scope.aspects ?? ALL_ASPECTS);
   const max = Math.min(before.slides.length, after.slides.length);
   for (let i = 0; i < max; i++) {
-    if (inScope.has(i)) continue;
-    if (!semanticEq(before.slides[i], after.slides[i])) violations.push(`slide ${i + 1} changed`);
+    if (!inScope.has(i)) {
+      if (!semanticEq(before.slides[i], after.slides[i])) violations.push(`slide ${i + 1} changed`);
+      continue;
+    }
+    // In scope, but only for some of itself. A request to reword slide 5 that comes back
+    // with a new composition is the drift this catches — invisible to the loop above,
+    // because slide 5 is exactly where the model was supposed to be working.
+    for (const aspect of ["mockup", "layout", "surface"] as const) {
+      if (aspects.has(aspect)) continue;
+      for (const key of ASPECT_FIELDS[aspect]) {
+        const a = (before.slides[i] as unknown as Record<string, unknown>)[key];
+        const b = (after.slides[i] as unknown as Record<string, unknown>)[key];
+        if (!semanticEq(a, b)) violations.push(`slide ${i + 1} ${key} changed (${aspect} not in scope)`);
+      }
+    }
   }
 
   if (violations.length) throw new RevisionScopeViolation(scope, violations);
