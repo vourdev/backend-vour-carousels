@@ -8,7 +8,8 @@
     "start": "node dist/server.js",
     "test:regression": "tsx scripts/verify-regression.ts",
     "test": "vitest run",
-    "seed": "tsx scripts/seed-user.ts"
+    "seed": "tsx scripts/seed-user.ts",
+    "check:layout": "tsx scripts/check-hook-position.ts"
   },
   "dependencies": {
     "@ai-sdk/deepseek": "^3.0.11",

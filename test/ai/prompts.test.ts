@@ -15,6 +15,7 @@ import {
   humanVoiceEditorSystem,
   humanVoiceEditorUserPrompt,
 } from "@/lib/ai/prompts";
+import { NARROW_SAFE_MOCKUPS, NOTE_BEARING_MOCKUPS } from "@/lib/ds/render-slide";
 
 describe("prompt builders", () => {
   it("brief system encodes the canonical brief + copy caps", () => {
@@ -122,6 +123,65 @@ describe("planSystem", () => {
     expect(planSystem).toMatch(/CONTEXT-DRIVEN MOCKUP CHOICE/);
     expect(planSystem).toMatch(/code\/UI is the point/i);
     expect(planSystem).toMatch(/MAX 1 per 5 slides|AT MOST ONCE per deck/i);
+  });
+});
+
+/**
+ * The plan prompt used to carry a second, hand-written copy of the layout docs beside the
+ * "point" schema. The two drifted: one claimed the field defaults to "standard" (the
+ * schema default was deliberately removed — see resolveLayout), and one recommended
+ * split-content for five mockups the renderer degrades on sight. The model complied with
+ * the prompt and the deck came out monotone anyway.
+ */
+describe("planSystem layout contract", () => {
+  it("documents the layout field exactly once", () => {
+    const headings = planSystem.match(/LAYOUT — the visual composition/g) ?? [];
+    expect(headings).toHaveLength(1);
+    // The old second copy's giveaway phrasing.
+    expect(planSystem).not.toMatch(/positioning & structure layout flow/);
+  });
+
+  it("does not claim the layout field has a default", () => {
+    expect(planSystem).not.toMatch(/layout[^\n]{0,40}Defaults to "standard"/i);
+    expect(planSystem).not.toMatch(/"standard" \(default\)/);
+    expect(planSystem).toMatch(/OMITTING "layout" IS A REAL CHOICE, NOT A DEFAULT/);
+  });
+
+  // TASK 2's rule, stated where the model reads it: emphasis is weight, not position.
+  it("defines note-emphasis as visual weight rather than reordering", () => {
+    expect(planSystem).toMatch(/The note travels LAST/);
+    expect(planSystem).toMatch(/more VISUAL WEIGHT[^\n]*\n?[^\n]*does NOT move it earlier/);
+  });
+
+  it("states the one-block-above-the-hook budget", () => {
+    expect(planSystem).toMatch(/At most ONE block sits above the headline/);
+  });
+
+  // Reading the renderer's own sets is the point: a hand-typed list is what drifted.
+  it("recommends each conditional layout only for mockups that can carry it", () => {
+    expect(planSystem).toContain([...NARROW_SAFE_MOCKUPS].join(" · "));
+    expect(planSystem).toContain([...NOTE_BEARING_MOCKUPS].join(" · "));
+  });
+});
+
+/**
+ * The brief and the plan run in sequence on the same deck. They stated the variety budget
+ * separately and disagreed — brief "≥ 3 distinct types, Terminal at most ONCE", plan
+ * "≥ 5 distinct types, dark mockups 1 per 5 slides" — so a compliant brief could hand the
+ * planner an outline that already broke the planner's own rules.
+ */
+describe("variety budget is single-sourced", () => {
+  it("states the same distinct-type minimum in both prompts", () => {
+    expect(briefSystem).toContain("≥ 5 distinct mockup types per deck.");
+    expect(planSystem).toContain("≥ 5 distinct mockup types per deck.");
+    expect(briefSystem).not.toMatch(/≥ 3 distinct types per deck/);
+  });
+
+  it("states the dark-mockup cap once, not once per prompt with different numbers", () => {
+    expect(briefSystem).not.toMatch(/Terminal at most ONCE/);
+    for (const prompt of [briefSystem, planSystem]) {
+      expect(prompt.match(/MAX 1 per 5 slides, combined\./g) ?? []).toHaveLength(1);
+    }
   });
 });
 

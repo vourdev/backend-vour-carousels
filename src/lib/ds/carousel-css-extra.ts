@@ -939,22 +939,57 @@ export const carouselExtraCss = String.raw`
   section:not(.paper) .lc-bar-wrap.highlight .lc-value { color: #FF7A45; }
 
   /* Point Slide Layout Variations */
-  
-  /* Mockup-Forward layout: orders mockup (diag-wrap/card) to top of content */
-  .layout-mockup-forward { display: flex; flex-direction: column; }
-  .layout-mockup-forward .counter { order: 1; }
-  .layout-mockup-forward .diag-wrap { order: 2; margin-top: 32px !important; }
-  .layout-mockup-forward .card { order: 2; margin-top: 32px !important; }
-  .layout-mockup-forward .eyebrow { order: 3; margin-top: 40px !important; }
-  .layout-mockup-forward h1.compact { order: 4; margin-top: 16px !important; }
-  .layout-mockup-forward .body-text { order: 5; margin-top: 16px !important; margin-bottom: 40px !important; }
-  /* The note annotates the mockup, so it has to travel with it. Mockup templates emit
-     .catatan as a SIBLING of .diag-wrap (see flow.ts), and an unordered flex child
-     defaults to order:0 — which sorted it ahead of even the counter and parked the
-     conclusion at the top of the slide, 230px above the diagram it explains. Same order
-     as .diag-wrap keeps the pair together; equal order falls back to DOM order, and the
-     note already follows the mockup there. */
-  .layout-mockup-forward .catatan { order: 2; margin-top: 24px !important; }
+
+  /* ── Reading-order slots ──────────────────────────────────────────────────
+     Eyebrow + headline are the HOOK: the reason a thumb stops scrolling. They have
+     to land inside the first two blocks a reader sees no matter which composition
+     the plan picked, so the slot numbers live here once rather than being restated
+     per template.
+
+     Slot 20 is the only slot ahead of the hook, and only ONE node can ever sit in
+     it: .card and .diag-wrap are mutually exclusive at render time (a "card"
+     mockup fills the card block, everything else fills the mockup block — see
+     renderSlide's "point" case), and nothing else claims 20.
+
+     .catatan is support copy — it explains a conclusion the headline has already
+     made — so it is pinned last on every composition. It used to be an unordered
+     flex child, which means order:0, which sorted it ahead of even the counter and
+     parked the note at the very top of the slide. Moving it to the mockup's slot
+     fixed that particular symptom and left the real one: mockup AND note both ahead
+     of the hook, headline starting 930px down a 1350px canvas.
+
+     Gaps of ten leave room to slot a block in without renumbering the rest. The
+     child combinator matters: mockups nest their own .catatan (comparison, illustration) and
+     those must stay where their template put them. */
+  section.slide-point > .counter { order: 10; }
+  section.slide-point > .eyebrow { order: 30; }
+  section.slide-point > h1.compact { order: 40; }
+  section.slide-point > .body-text { order: 50; }
+  section.slide-point > .diag-wrap { order: 60; }
+  section.slide-point > .card { order: 60; }
+  section.slide-point > .catatan { order: 70; }
+
+  /* Mockup-Forward: the visual leads, the hook follows it immediately. This is the
+     one composition that uses slot 20, and the note stays in slot 70 with everything
+     else — it is the mockup that moves, not the note that follows it up.
+
+     Both classes are named on the override so it outranks the slot rule above rather
+     than tying with it and losing on source order. Every composition that re-slots a
+     block has to spell the selector out the same way. */
+  /* .diag-wrap keeps its flex:1 here. Tried shrink-only so the visual would hug the
+     counter and the hook follow it straight away: a three-item checklist then ended at
+     y=300 with 470px of empty canvas under the note, which reads as a slide that failed
+     to render. Growing instead centers the visual in the upper half and bottom-anchors
+     the copy block — the gap between them is whitespace rather than a hole. */
+  section.slide-point.layout-mockup-forward > .diag-wrap { order: 20; margin-top: 32px !important; }
+  section.slide-point.layout-mockup-forward > .card { order: 20; margin-top: 32px !important; }
+  section.slide-point.layout-mockup-forward > .eyebrow { margin-top: 40px !important; }
+  section.slide-point.layout-mockup-forward > h1.compact { margin-top: 16px !important; }
+  /* Doubles as the gap to the note and, when there is no note, as the air under the
+     copy — .diag-wrap is flex:1 and eats the slack up top, so whatever ends the stack
+     would otherwise sit flush against the 80px bottom padding. */
+  section.slide-point.layout-mockup-forward > .body-text { margin-top: 16px !important; margin-bottom: 40px !important; }
+  section.slide-point.layout-mockup-forward > .catatan { margin-top: 0 !important; }
 
   /* Split-Content layout: fits columns side-by-side using CSS Grid */
   section.layout-split-content {
@@ -1030,8 +1065,10 @@ export const carouselExtraCss = String.raw`
   }
   /* Explicit placement, because auto-placement put the note in the first free cell —
      column 2 row 2, i.e. directly ABOVE the mockup it annotates. Row 4 is the tall 1fr
-     row, so the note sits under the diagram in the same column. */
-  section.layout-split-content .catatan {
+     row, so the note sits under the diagram in the same column, below the headline's
+     row either way. Child combinator: a nested note (comparison, illustration) belongs
+     to its mockup's own layout, not to this grid. */
+  section.layout-split-content > .catatan {
     grid-column: 2;
     grid-row: 4;
     margin-top: 24px !important;

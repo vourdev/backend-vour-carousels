@@ -1,5 +1,6 @@
 import { ICON_SLUGS } from "../ds/icons";
 import { ILLUSTRATION_CATEGORIES } from "../ds/illustrations";
+import { NARROW_SAFE_MOCKUPS, NOTE_BEARING_MOCKUPS } from "../ds/render-slide";
 import { CUSTOM_CLASS_WHITELIST } from "../ds/sanitize";
 import { VOICE_SAMPLES, VOICE_PATTERNS, SENTENCE_TEMPLATES } from "./voice-samples";
 
@@ -14,6 +15,20 @@ const ILLUSTRATION_CATALOG = Object.entries(ILLUSTRATION_CATEGORIES)
   .join("\n  ");
 
 const TONES = `"peach" (neutral) | "stone" (loser/warning) | "mint" (success) | "sky" (tooling) | "pink" (design) | "amber" (highlight)`;
+
+/**
+ * How much a deck has to vary. Single-sourced because the brief prompt and the plan
+ * prompt run in sequence on the same deck and both stated it — with different numbers.
+ * The brief asked for "≥ 3 distinct types, Terminal at most ONCE" and the plan for "≥ 5
+ * distinct types, dark mockups 1 per 5 slides", so a fully compliant brief could hand the
+ * planner an outline that already broke the planner's budget.
+ */
+const VARIETY_BUDGET = `- ≥ 5 distinct mockup types per deck.
+- NEVER the same mockup type on two consecutive slides.
+- Dark code mockups (terminal + commandpalette): MAX 1 per 5 slides, combined.
+- browser: MAX 1 per deck. custom: MAX ~1 per deck.
+- Rotate tone colours; never the same tone twice running. Palette: ${TONES}.
+- Surface rhythm: at most ~1 "ink" (dark) slide per 3, and never two in a row.`;
 
 const HASHTAG_RULE = `Hashtags: EXACTLY 5 — TikTok accepts at most 5 hashtags, never more, never fewer. This is a HARD schema constraint (an array of any other length is REJECTED, not truncated).
 Fixed shape: "fyp" first, 3 topic-specific tags in the middle, "vourdev" last.
@@ -87,6 +102,65 @@ PROPORTION (the caps above are LIMITS, not targets):
 const COPY_CAPS = `- Eyebrow ≤ 3 words (max 30 chars), ALL CAPS.
 - Headline ≤ 7 words (max 60 chars) with exactly ONE accent word.
 - Body/Description 1-2 sentences (max 120 chars) — zero vertical clipping on the 1080×1350 canvas.`;
+
+/**
+ * The composition contract for a point slide. Single-sourced: the plan prompt described
+ * `layout` twice — once beside the "point" schema and once as a numbered rule — and the
+ * two copies had drifted into disagreeing about what the field defaults to and which
+ * mockups each composition suits.
+ *
+ * The mockup lists are read from the renderer's own sets rather than restated. The
+ * hand-written split-content list recommended five types that resolveLayout degrades on
+ * sight, so the model was picking a composition it could never get.
+ */
+const LAYOUT_RULE = `LAYOUT — the visual composition of a point slide.
+You pick the NAME only; every pixel of the rendering is fixed in CSS.
+
+  "standard"        eyebrow → headline → body → mockup → note
+  "mockup-forward"  mockup → eyebrow → headline → body → note
+  "split-content"   copy column left (eyebrow → headline → body); mockup + note right
+  "note-emphasis"   same order as "standard"; the note is drawn larger, in an accent box
+
+TWO THINGS HOLD IN ALL FOUR — no layout choice can change them:
+- The note travels LAST. It is support copy: it lands a conclusion the headline has
+  already made. "note-emphasis" gives the note more VISUAL WEIGHT — size, accent colour,
+  prominence — it does NOT move it earlier. So write a note that PAYS OFF the headline,
+  never one that introduces it.
+- At most ONE block sits above the headline, and only "mockup-forward" puts one there.
+  Eyebrow + headline are the HOOK, the reason a thumb stops scrolling; they stay inside
+  the first two blocks a reader sees.
+
+WHEN TO PICK WHICH
+- "standard" — general purpose: body over ~80 chars, or nothing else fits better.
+  Good for: card, callout, bigstat, steps, comparison, illustration.
+- "mockup-forward" — the mockup IS the point and the copy is its caption; the reader
+  should look before reading.
+  Good for: terminal, database, gitbranch, foldertree, commandpalette, browser, config,
+  apirequest, architecture, eventqueue, statemachine.
+- "split-content" — body under ~80 chars and the mockup is compact enough to read at half
+  width; copy and visual are equal partners. ONLY these mockups fit the narrow column,
+  and any other is re-rendered as "standard": ${[...NARROW_SAFE_MOCKUPS].join(" · ")}.
+- "note-emphasis" — the note is the single most important sentence on the slide, not a
+  footnote. Needs a mockup that HAS a note, and needs you to actually fill it; on any
+  other mockup it is re-rendered as "standard": ${[...NOTE_BEARING_MOCKUPS].join(" · ")}.
+
+OMITTING "layout" IS A REAL CHOICE, NOT A DEFAULT. Leave the field off and the renderer
+picks a composition that suits the mockup and alternates against the neighbouring slides.
+Omitting beats guessing. Writing "standard" on every slide is the single surest way to
+produce a deck that looks like a slideshow template.
+
+DIVERSITY, when you do name layouts:
+- ≥ 2 different layouts in a deck with ≥ 4 point slides; ≥ 3 with ≥ 6.
+- Never 3 consecutive point slides on the same layout.
+
+WORKED EXAMPLE (8-slide deck) — note that every named layout is one the mockup can
+actually carry, and the two that could go either way are left to the renderer:
+  slide 2 (concept)          layout "standard"        // longer explanation, full width
+  slide 3 (terminal)         layout "mockup-forward"  // the code IS the point
+  slide 4 (checklist, +note) layout "split-content"   // short body, narrow-safe mockup
+  slide 5 (hub, +note)       layout "note-emphasis"   // the note carries the insight
+  slide 6 (comparison)       layout "standard"        // before/after needs full width
+  slide 7 (flow)             layout omitted           // renderer alternates it in`;
 
 /* ── Gate 1 · idea → Markdown brief ────────────────────────────────────── */
 
@@ -384,17 +458,14 @@ Slide yang TIDAK masuk kriteria di atas (kode konkret, proses teknis, comparison
 → TETAP pakai mockup teknis yang sesuai — illustration BUKAN pengganti semua mockup
 
 ANTI-REPETITION (hard rules):
-1. NEVER the same mockup type on two consecutive slides.
-2. If two consecutive slides share a category, change the visual approach
-   (PROCESS twice → e.g. flow then foldertree, not flow then flow).
-3. Dark code mockups (terminal + commandpalette) — MAX 1 per 5 slides combined.
-   browser — MAX 1 per deck. Reach for them only when code/UI is the point.
-4. Rotate tone colors; never the same card/diagram tone twice running.
-5. Surface rhythm: at most ~1 "ink" (dark) slide per 3, never two in a row.
-6. A good 8-slide deck uses ≥ 5 different mockup types ("illustration" dihitung sebagai 1 tipe distinct yang valid; slug berbeda dalam tipe illustration tetap dihitung sebagai 1 tipe "illustration").
-7. custom — MAX ~1 per deck. It is the escape hatch for a layout the typed
-   mockups genuinely cannot draw, not a shortcut around picking the right type.
-   If a typed mockup fits, use the typed mockup.
+${VARIETY_BUDGET}
+- If two consecutive slides share a category, change the visual approach
+  (PROCESS twice → e.g. flow then foldertree, not flow then flow).
+- Reach for a dark code mockup only when code/UI is the point.
+- "illustration" counts as ONE distinct type however many slugs it holds; two slides that
+  both use illustration with different slugs are still a repeat.
+- custom is the escape hatch for a layout the typed mockups genuinely cannot draw, not a
+  shortcut around picking the right type. If a typed mockup fits, use the typed mockup.
 
 NO EMOJI IN SLIDE COPY (HARD RULE)
 Emoji are the only thing on a slide that ignores the design system: a font paints ❌ red,
@@ -708,7 +779,9 @@ ${TITLE_CAPTION_RULE}
 3. Copy caps:
 ${COPY_CAPS}
 4. EVERY middle slide MUST specify a Mockup Type AND detailed Mockup Details. NEVER leave a slide without a mockup specification.
-5. VARY mockup types across slides — pick by content fit; NEVER the same type on consecutive slides; ≥ 3 distinct types per deck; Terminal at most ONCE and only for real code/CLI/config.
+5. VARY mockup types across slides — pick by content fit, and stay inside the
+   ANTI-REPETITION budget above. It is the same budget the slide plan is held to; a brief
+   that breaks it hands the planner an outline the planner then has to fight.
 6. Mockup content budgets:
 ${MOCKUP_BUDGETS}
 7. Caption follows the four-part shape specified in rule 2 above — hook, blank line,
@@ -752,10 +825,9 @@ SLIDE ROLES
                  style attributes, no <style>; classes filtered to the whitelist. Plain
                  semantic HTML, styled automatically to the surface.)
 - "point": { counter (e.g. "02 / 05"), eyebrow, headline, accentWord?, body, surface?: "paper"|"ink", layout?: "standard"|"mockup-forward"|"split-content"|"note-emphasis", mockup: <one of the types below> }
-    layout — positioning & structure layout flow. Defaults to "standard" (standard sequence: eyebrow → headline → body → mockup at bottom).
-      - Use "mockup-forward" when the mockup itself is the hero element (terminal command, Git diagram, ERD tables) and body copy is just a caption.
-      - Use "split-content" (columns layout: text left, mockup right) for slides with short descriptions to add visual composition variety.
-      - Use "note-emphasis" when the mockup has an important notes box ("note") containing a critical conclusion or key warning that should stand out.
+    layout — OPTIONAL. The visual composition; see the LAYOUT section below for what each
+      name does and when to pick it. Omitting it hands the choice to the renderer, which
+      is often the right call.
 - "outro": { eyebrow?, headline, accentWord?, body?, cta } — cta is REQUIRED:
     cta: { strong: "<the action, e.g. Simpan & bagikan>", sub?: "<why/how, 1 short line>" }
     → strong MUST be a concrete call-to-action (save / share / follow / try). Never omit the cta.
@@ -777,9 +849,9 @@ brand row + stamp (top) → eyebrow → headline → anchor centered in the free
 Headline rules: hook word FIRST (a number, or a negative like "Salah"/"Jangan"/"Bukan", or a question word);
 ≤ 10 words; leave a curiosity gap (don't reveal the solution); stay credible (no misleading clickbait).
 Accent exactly ONE keyword with the brand-accent span. Cover is ALWAYS the Ink surface.
-SURFACE RHYTHM (DESIGN.md §13): a point slide defaults to "paper" (a cool off-white). Set surface:"ink"
-(full dark) on AT MOST ~1 slide per 3, and NEVER two ink slides in a row — it is a rhythm accent,
-not a theme. Do NOT put an always-dark device (terminal, commandpalette) on an ink slide: it is a
+SURFACE (DESIGN.md §13): a point slide defaults to "paper" (a cool off-white); surface:"ink" is
+full dark. Ink is a rhythm accent, not a theme — the frequency is in the ANTI-REPETITION budget
+above. Do NOT put an always-dark device (terminal, commandpalette) on an ink slide: it is a
 near-black panel on a near-black canvas. (The renderer flips such a slide back to paper, but pick
 correctly rather than relying on that.) Every other mockup follows the slide surface automatically.
 Good ink picks: card, flow, concept, hub, checklist, foldertree, database, callout, bigstat.
@@ -897,10 +969,10 @@ VARIETY EXAMPLE (a good, non-monotone deck — mirror this diversity, not the co
   stamp "Engineering Notes", ghostNumeral "01"
 - point → concept (parent + 2-3 children), layout "standard"
 - point → flow (3-4 steps, one focus), layout "note-emphasis" (its note carries the point)
-- point → hub (center + 3-4 tool icons), layout "split-content"
+- point → hub (center + 3-4 tool icons), layout omitted (renderer's pick)
 - point → terminal (only if a real code scene — max 1), layout "mockup-forward"
 - point → comparison (bad vs good), layout "standard"
-- point → checklist (recap), layout "standard"
+- point → checklist (recap), layout "split-content"
 - outro → cta { strong: "Simpan & bagikan" }
 
 SECOND VARIETY EXAMPLE (a backend deck — same deck shape, a completely different type mix.
@@ -911,8 +983,8 @@ and both of these decks are equally correct):
 - point → architecture (load balancer + 2 instances), layout "standard"
 - point → latencycomp (cache 0.2ms vs db 15ms vs api 120ms), layout "note-emphasis"
 - point → statemachine (request lifecycle: PENDING → PROCESSING → FAILED), layout "standard"
-- point → config (the pool setting that was wrong), layout "split-content"
-- point → eventqueue (retry queue that saved it), layout "standard"
+- point → config (the pool setting that was wrong), layout "mockup-forward"
+- point → eventqueue (retry queue that saved it), layout omitted (renderer's pick)
 - outro → cta { strong: "Simpan buat jaga-jaga" }
 
 THIRD VARIETY EXAMPLE (a "kapan pakai yang mana" deck — the shape that keeps getting
@@ -925,8 +997,9 @@ forced into comparison. Note there is no winner anywhere in it):
 - point → checklist (recap), layout "note-emphasis"
 - outro → cta { strong: "Simpan buat rapat stack berikutnya" }
 
-Use ≥ 5 distinct mockup types per deck, rotate tone colors, and do not let any example
-above narrow your choice — pick by the CATEGORY table, not by which types you have seen most.
+Do not let any example above narrow your choice: they exist to show three different-looking
+decks, not to enumerate the good types. Pick by the CATEGORY table, not by which types you
+have seen most.
 
 STRICT DESIGN & COPY BUDGET RULES
 1. Copy caps (accentWord MUST appear verbatim inside the headline):
@@ -942,14 +1015,12 @@ ${COPY_CAPS}
    type (or a real example), not a copy.
 3. Mockup copy budgets:
 ${MOCKUP_BUDGETS}
-4. CONTEXT-DRIVEN MOCKUP CHOICE: pick the mockup that best fits the slide's content —
-   flow for pipelines/sequences, hub for one thing wiring to several tools, concept for a
-   term's sub-concepts, comparison for bad-vs-good, steps for how-to, bigstat for a metric,
-   callout for a warning, card for a general point, checklist for a recap. Follow the
-   VISUAL DIRECTOR category map + anti-repetition rules above: dark code mockups
-   (terminal + commandpalette) MAX 1 per 5 slides combined, browser MAX 1 per deck.
-   Every deck MUST use ≥ 5 distinct mockup types and must NEVER repeat a type on
-   consecutive slides (nor the same category-visual twice running).
+4. CONTEXT-DRIVEN MOCKUP CHOICE: classify the slide by its content category, then pick a
+   type the VISUAL DIRECTOR table lists for that category — not the type that came to mind
+   first, and not one you already used. The per-type "Use for…" line in the catalogue above
+   tells you what each one is for. The ANTI-REPETITION rules in that same section are the
+   binding budget (consecutive types, dark-mockup and browser caps, distinct-type minimum,
+   tone rotation, surface rhythm); they are stated once, there, and they are not advisory.
 5. Title and caption follow this exact spec — the schema REJECTS empty or oversized
    values, and a rejection burns a retry attempt, so get them right the first time:
 ${TITLE_CAPTION_RULE}
@@ -957,47 +1028,9 @@ ${TITLE_CAPTION_RULE}
    over into the caption field, reshaped to the four-part structure above — do not
    invent an unrelated caption, and do not paste the brief's Markdown headings.
 7. ${HASHTAG_RULE}
-8. Rotate tone colors across slides: ${TONES}.
-9. LAYOUT DIVERSITY (MANDATORY — as important as mockup variety):
-   The \"layout\" field on each point slide controls the VISUAL COMPOSITION — where the
-   eyebrow, headline, body and mockup sit relative to each other. A deck where every slide
-   uses the same layout looks like a slideshow template, not editorial content.
-   Four options (all rendering is FIXED in CSS — you only pick the name):
+8. ${LAYOUT_RULE}
 
-   \"standard\" (default) — eyebrow → headline → body → mockup at bottom.
-     WHEN: general-purpose, longer body text (>80 chars), or when no other layout fits better.
-     GOOD FOR: card, callout, bigstat, steps, comparison, illustration.
-
-   \"mockup-forward\" — mockup dominates the upper half, headline+body become a caption below.
-     WHEN: the mockup IS the point of the slide (code example, schema, file structure, architecture).
-     GOOD FOR: terminal, database, gitbranch, foldertree, commandpalette, browser, config.
-     SIGNAL: if the reader should look at the mockup FIRST and read the text second.
-
-   \"split-content\" — text column left, mockup column right (side-by-side).
-     WHEN: body text is short (<80 chars) and the mockup is a compact diagram.
-     GOOD FOR: flow, concept, hub, checklist, card, eventqueue, statemachine, latencycomp.
-     SIGNAL: the text and mockup are equal partners, neither dominates.
-
-   \"note-emphasis\" — the mockup's \"note\" field gets a large accent box treatment.
-     WHEN: the note contains the KEY INSIGHT or WARNING of the slide, not just a footnote.
-     GOOD FOR: any mockup with a \"note\" field (flow, hub, concept, checklist, comparison).
-     SIGNAL: the note is the most important sentence on the slide — without emphasis, readers skip it.
-
-   HARD RULES:
-   - Use ≥ 2 different layouts in any deck with ≥ 4 point slides.
-   - Use ≥ 3 different layouts in any deck with ≥ 6 point slides.
-   - NEVER 3 consecutive point slides with the same layout.
-   - Do NOT default everything to \"standard\" — that defeats the purpose.
-
-   LAYOUT VARIETY EXAMPLE (8-slide deck):
-   slide 2 (concept)     → layout: \"standard\"         // term breakdown, longer explanation
-   slide 3 (terminal)    → layout: \"mockup-forward\"    // code IS the point
-   slide 4 (flow)        → layout: \"split-content\"     // short body, compact pipeline
-   slide 5 (hub, +note)  → layout: \"note-emphasis\"     // note carries the key insight
-   slide 6 (comparison)  → layout: \"standard\"          // before/after needs full width
-   slide 7 (checklist)   → layout: \"split-content\"     // recap items beside text
-
-10. FINAL PASS (mandatory): re-read every eyebrow, headline, lede, body, mockup string, the
+9. FINAL PASS (mandatory): re-read every eyebrow, headline, lede, body, mockup string, the
    outro cta, and the caption against the HUMAN VOICE EDITOR rules above. Rewrite anything
    that trips a banned pattern BEFORE returning the plan. Also run the ritme check: no 3+
    consecutive slides with identical sentence structure, and no repeated headline opener

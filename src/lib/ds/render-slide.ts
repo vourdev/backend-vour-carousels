@@ -85,6 +85,32 @@ function eyebrowClass(slideIndex: number): string {
 
 type PointLayout = "standard" | "mockup-forward" | "split-content" | "note-emphasis";
 
+/**
+ * Mockup types that can carry a note at all.
+ *
+ * Exported because the plan prompt has to list them: `note-emphasis` is the only thing
+ * that restyles a note, so naming it on a mockup that has no note field produces a slide
+ * byte-identical to `standard` while still spending one of the deck's layout slots. The
+ * prompt used to keep its own hand-written copy of this list. Derive it, do not restate
+ * it — test/ds/render-slide.test.ts proves every entry actually reaches note-emphasis.
+ *
+ * `comparison` and `illustration` are in because their note arrives under another name
+ * (`winnerRationale`, `caption`); see mockupHasNote.
+ */
+export const NOTE_BEARING_MOCKUPS = new Set<Mockup["type"]>([
+  "flow",
+  "concept",
+  "hub",
+  "checklist",
+  "browser",
+  "commandlist",
+  "latencycomp",
+  "decision",
+  "pitfalls",
+  "comparison",
+  "illustration",
+]);
+
 /** Mockups that actually emit a `.catatan` strip — the only thing note-emphasis restyles. */
 function mockupHasNote(m: Mockup | undefined): boolean {
   if (!m) return false;
@@ -100,8 +126,14 @@ function mockupHasNote(m: Mockup | undefined): boolean {
  * The wide diagrams are drawn for the full 920px column: a 3-node flow chain wraps onto
  * two lines at half width, which reads as a broken diagram rather than a deliberate one.
  * Only mockups that are a single block of text or one drawing are listed here.
+ *
+ * Exported for the same reason as NOTE_BEARING_MOCKUPS: the plan prompt has to recommend
+ * split-content for these types and no others. Its hand-written copy had drifted to
+ * flow · hub · eventqueue · statemachine · latencycomp — five types, none of them on this
+ * list, every one of them degraded straight back to "standard" by resolveLayout. The
+ * model was following the prompt and the deck came out monotone anyway.
  */
-const NARROW_SAFE_MOCKUPS = new Set<Mockup["type"]>([
+export const NARROW_SAFE_MOCKUPS = new Set<Mockup["type"]>([
   "card",
   "callout",
   "quote",
