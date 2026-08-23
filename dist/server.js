@@ -31581,14 +31581,14 @@ var Hono = class _Hono {
    * app.route("/api", app2) // GET /api/user
    * ```
    */
-  route(path, app10) {
+  route(path, app11) {
     const subApp = this.basePath(path);
-    app10.routes.map((r) => {
+    app11.routes.map((r) => {
       let handler;
-      if (app10.errorHandler === errorHandler) {
+      if (app11.errorHandler === errorHandler) {
         handler = r.handler;
       } else {
-        handler = async (c, next) => (await compose([], app10.errorHandler)(c, () => r.handler(c, next))).res;
+        handler = async (c, next) => (await compose([], app11.errorHandler)(c, () => r.handler(c, next))).res;
         handler[COMPOSED_HANDLER] = r.handler;
       }
       subApp.#addRoute(r.method, r.path, handler, r.basePath);
@@ -76078,14 +76078,14 @@ async function appendRevision(input) {
     createdAt: now2
   };
 }
-async function listRevisions(userId2, draftId, stage) {
+async function listRevisions(userId3, draftId, stage) {
   await ensureSchema();
   const res = await db().execute({
     sql: `SELECT * FROM revision_memory
           WHERE user_id = ? AND draft_id = ?${stage ? " AND stage = ?" : ""}
           ORDER BY rowid DESC
           LIMIT ?`,
-    args: stage ? [userId2, draftId, stage, MAX_REMEMBERED_TURNS] : [userId2, draftId, MAX_REMEMBERED_TURNS]
+    args: stage ? [userId3, draftId, stage, MAX_REMEMBERED_TURNS] : [userId3, draftId, MAX_REMEMBERED_TURNS]
   });
   return res.rows.map(rowToTurn).reverse();
 }
@@ -76356,11 +76356,19 @@ async function updateCarousel(id, patch) {
   args.push(id);
   await db2().execute({ sql: `UPDATE carousels SET ${sets.join(", ")} WHERE id = ?`, args });
 }
-async function getCarousel(id, userId2) {
+async function listCarousels(userId3, limit = 50) {
+  await ensureSchema2();
+  const res = await db2().execute({
+    sql: `SELECT * FROM carousels WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`,
+    args: [userId3, limit]
+  });
+  return res.rows.map(rowToCarousel);
+}
+async function getCarousel(id, userId3) {
   await ensureSchema2();
   const res = await db2().execute({
     sql: `SELECT * FROM carousels WHERE id = ? AND user_id = ?`,
-    args: [id, userId2]
+    args: [id, userId3]
   });
   return res.rows[0] ? rowToCarousel(res.rows[0]) : null;
 }
@@ -76398,11 +76406,11 @@ var ALL_MOCKUP_TYPES = [
   "mythfact",
   "pitfalls"
 ];
-async function getRecentMockupStats(userId2, limit = 20) {
+async function getRecentMockupStats(userId3, limit = 20) {
   await ensureSchema2();
   const res = await db2().execute({
     sql: `SELECT slide_plan FROM carousels WHERE user_id = ? AND slide_plan IS NOT NULL ORDER BY created_at DESC LIMIT ?`,
-    args: [userId2, limit]
+    args: [userId3, limit]
   });
   const counts = {};
   for (const row of res.rows) {
@@ -76422,16 +76430,16 @@ async function getRecentMockupStats(userId2, limit = 20) {
   return counts;
 }
 var NEVER_PROMOTE = /* @__PURE__ */ new Set(["screenshot", "custom", "browser"]);
-async function getUnderusedMockupTypes(userId2, limit = 25) {
-  const stats = await getRecentMockupStats(userId2, limit);
+async function getUnderusedMockupTypes(userId3, limit = 25) {
+  const stats = await getRecentMockupStats(userId3, limit);
   if (Object.keys(stats).length === 0) return [];
   return ALL_MOCKUP_TYPES.filter((type) => !NEVER_PROMOTE.has(type)).map((type) => ({ type, count: stats[type] || 0 })).sort((a, b) => a.count - b.count).slice(0, 8).map((x) => x.type);
 }
-async function getGlobalMockupStats(userId2) {
+async function getGlobalMockupStats(userId3) {
   await ensureSchema2();
-  const res = userId2 ? await db2().execute({
+  const res = userId3 ? await db2().execute({
     sql: `SELECT slide_plan FROM carousels WHERE user_id = ? AND slide_plan IS NOT NULL`,
-    args: [userId2]
+    args: [userId3]
   }) : await db2().execute(`SELECT slide_plan FROM carousels WHERE slide_plan IS NOT NULL`);
   const counts = {};
   let totalSlides = 0;
@@ -76456,8 +76464,8 @@ async function getGlobalMockupStats(userId2) {
     return { type, count, percentage };
   }).sort((a, b) => b.count - a.count);
 }
-async function getRecentMockupStatsWithPercentages(userId2, limit = 25) {
-  const counts = await getRecentMockupStats(userId2, limit);
+async function getRecentMockupStatsWithPercentages(userId3, limit = 25) {
+  const counts = await getRecentMockupStats(userId3, limit);
   const totalSlides = Object.values(counts).reduce((a, b) => a + b, 0);
   return ALL_MOCKUP_TYPES.map((type) => {
     const count = counts[type] || 0;
@@ -76466,11 +76474,11 @@ async function getRecentMockupStatsWithPercentages(userId2, limit = 25) {
   }).sort((a, b) => a.count - b.count);
 }
 var ALL_LAYOUT_VALUES = ["standard", "mockup-forward", "split-content", "note-emphasis"];
-async function getRecentLayoutStats(userId2, limit = 25) {
+async function getRecentLayoutStats(userId3, limit = 25) {
   await ensureSchema2();
   const res = await db2().execute({
     sql: `SELECT slide_plan FROM carousels WHERE user_id = ? AND slide_plan IS NOT NULL ORDER BY created_at DESC LIMIT ?`,
-    args: [userId2, limit]
+    args: [userId3, limit]
   });
   const counts = {};
   let totalSlides = 0;
@@ -76502,11 +76510,11 @@ var app3 = new Hono2();
 var DIVERSITY_DEADLINE_MS = 4e3;
 app3.get("/mockup-stats", async (c) => {
   const session = c.get("session");
-  const userId2 = session?.user?.id;
+  const userId3 = session?.user?.id;
   const [globalStats, recentStats, layoutStats] = await Promise.all([
     getGlobalMockupStats(),
-    userId2 ? getRecentMockupStatsWithPercentages(userId2).catch(() => []) : Promise.resolve([]),
-    userId2 ? getRecentLayoutStats(userId2).catch(() => []) : Promise.resolve([])
+    userId3 ? getRecentMockupStatsWithPercentages(userId3).catch(() => []) : Promise.resolve([]),
+    userId3 ? getRecentLayoutStats(userId3).catch(() => []) : Promise.resolve([])
   ]);
   return c.json({ global: globalStats, recent: recentStats, layouts: layoutStats });
 });
@@ -76517,10 +76525,10 @@ app3.post("/", async (c) => {
     return c.json({ error: "Missing brief" }, 400);
   }
   const model = resolveModel(modelId);
-  const userId2 = session?.user?.id;
+  const userId3 = session?.user?.id;
   const [underused, stats] = await Promise.all([
-    userId2 ? withDeadline(getUnderusedMockupTypes(userId2), DIVERSITY_DEADLINE_MS, []) : Promise.resolve([]),
-    userId2 ? withDeadline(getRecentMockupStatsWithPercentages(userId2), DIVERSITY_DEADLINE_MS, []) : Promise.resolve([])
+    userId3 ? withDeadline(getUnderusedMockupTypes(userId3), DIVERSITY_DEADLINE_MS, []) : Promise.resolve([]),
+    userId3 ? withDeadline(getRecentMockupStatsWithPercentages(userId3), DIVERSITY_DEADLINE_MS, []) : Promise.resolve([])
   ]);
   const diversity = { underusedTypes: underused, stats };
   const plan = await generateSlidePlan(brief, model, diversity);
@@ -78329,12 +78337,62 @@ app4.post("/", async (c) => {
 });
 var assemble_default = app4;
 
+// src/lib/publish/cloudinary.ts
+var import_cloudinary = __toESM(require_cloudinary2(), 1);
+async function uploadImage(base64Data) {
+  if (!process.env.CLOUDINARY_URL) {
+    throw new Error("CLOUDINARY_URL environment variable is not configured");
+  }
+  const uploadStr = base64Data.startsWith("data:") ? base64Data : `data:image/jpeg;base64,${base64Data}`;
+  const response = await import_cloudinary.v2.uploader.upload(uploadStr, {
+    folder: "vourdev-carousels",
+    resource_type: "image"
+  });
+  return response.secure_url;
+}
+function toTikTokSafeUrl(url2) {
+  const marker25 = "/upload/";
+  const idx = url2.indexOf(marker25);
+  if (idx === -1) return url2;
+  const insertAt = idx + marker25.length;
+  return `${url2.slice(0, insertAt)}c_limit,w_1280,h_1600/${url2.slice(insertAt)}`;
+}
+
+// src/lib/publish/upload-slides.ts
+var MAX_PARALLEL = 4;
+async function uploadSlides(images) {
+  if (images.length === 0) return { urls: [] };
+  if (!process.env.CLOUDINARY_URL) {
+    return { urls: [], error: "CLOUDINARY_URL is not configured" };
+  }
+  const urls = new Array(images.length);
+  let next = 0;
+  async function worker() {
+    for (let i = next++; i < images.length; i = next++) {
+      urls[i] = await uploadImage(images[i]);
+    }
+  }
+  try {
+    await Promise.all(
+      Array.from({ length: Math.min(MAX_PARALLEL, images.length) }, worker)
+    );
+    return { urls };
+  } catch (err) {
+    return { urls: [], error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 // src/routes/user/capture.ts
 var app5 = new Hono2();
 app5.post("/", async (c) => {
-  const { html, opts } = await c.req.json();
+  const { plan, html: rawHtml, opts, carouselId } = await c.req.json();
+  let html = rawHtml;
+  if (!html && plan) {
+    await warmUpIllustrations();
+    html = assembleCarousel(plan);
+  }
   if (!html?.trim()) {
-    return c.json({ error: "Missing html content" }, 400);
+    return c.json({ error: "Missing plan or html content" }, 400);
   }
   try {
     const images = await captureQueue.capture(async (browser) => {
@@ -78376,7 +78434,19 @@ app5.post("/", async (c) => {
         await context.close();
       }
     });
-    return c.json({ images });
+    console.log(`[capture] rendered ${images.length} slides${carouselId ? ` for ${carouselId}` : ""}`);
+    const { urls, error: uploadError } = await uploadSlides(images);
+    if (uploadError) {
+      console.error("Slide upload after capture failed:", uploadError);
+    }
+    if (carouselId && urls.length > 0) {
+      const session = c.get("session");
+      const owned = await getCarousel(carouselId, session.user.id);
+      if (owned) {
+        await updateCarousel(carouselId, { imageUrls: urls, status: "exported" });
+      }
+    }
+    return urls.length > 0 ? c.json({ urls, images: [] }) : c.json({ urls: [], images, uploadError });
   } catch (err) {
     console.error("Capture slides error:", err);
     return c.json({ error: err.message || "Failed to capture slides" }, 500);
@@ -78384,26 +78454,21 @@ app5.post("/", async (c) => {
 });
 var capture_default = app5;
 
-// src/lib/publish/cloudinary.ts
-var import_cloudinary = __toESM(require_cloudinary2(), 1);
-async function uploadImage(base64Data) {
-  if (!process.env.CLOUDINARY_URL) {
-    throw new Error("CLOUDINARY_URL environment variable is not configured");
-  }
-  const uploadStr = base64Data.startsWith("data:") ? base64Data : `data:image/jpeg;base64,${base64Data}`;
-  const response = await import_cloudinary.v2.uploader.upload(uploadStr, {
-    folder: "vourdev-carousels",
-    resource_type: "image"
-  });
-  return response.secure_url;
+// src/routes/user/carousels.ts
+var app6 = new Hono2();
+function userId(c) {
+  return c.get("session").user.id;
 }
-function toTikTokSafeUrl(url2) {
-  const marker25 = "/upload/";
-  const idx = url2.indexOf(marker25);
-  if (idx === -1) return url2;
-  const insertAt = idx + marker25.length;
-  return `${url2.slice(0, insertAt)}c_limit,w_1280,h_1600/${url2.slice(insertAt)}`;
-}
+app6.get("/", async (c) => {
+  const limit = Number(c.req.query("limit") ?? 50);
+  return c.json({ carousels: await listCarousels(userId(c), limit) });
+});
+app6.get("/:id", async (c) => {
+  const carousel = await getCarousel(c.req.param("id"), userId(c));
+  if (!carousel) return c.json({ error: "Carousel not found" }, 404);
+  return c.json({ carousel });
+});
+var carousels_default = app6;
 
 // src/lib/publish/buffer.ts
 async function scheduleBufferPost(params) {
@@ -78497,7 +78562,7 @@ ${tags}`;
 }
 
 // src/routes/user/publish.ts
-var app6 = new Hono2();
+var app7 = new Hono2();
 async function scheduleToChannels(params) {
   const igChannelId = process.env.BUFFER_IG_CHANNEL_ID;
   const ttChannelId = process.env.BUFFER_TIKTOK_CHANNEL_ID;
@@ -78525,7 +78590,7 @@ async function scheduleToChannels(params) {
 function hasChannels() {
   return Boolean(process.env.BUFFER_IG_CHANNEL_ID || process.env.BUFFER_TIKTOK_CHANNEL_ID);
 }
-app6.post("/upload", async (c) => {
+app7.post("/upload", async (c) => {
   const { image } = await c.req.json();
   if (!image) {
     return c.json({ error: "Missing image base64" }, 400);
@@ -78533,7 +78598,7 @@ app6.post("/upload", async (c) => {
   const secureUrl = await uploadImage(image);
   return c.json({ url: secureUrl });
 });
-app6.post("/schedule", async (c) => {
+app7.post("/schedule", async (c) => {
   const { urls, plan, dueAt } = await c.req.json();
   if (!urls || !plan || !dueAt) {
     return c.json({ error: "Missing urls, plan or dueAt" }, 400);
@@ -78552,7 +78617,7 @@ app6.post("/schedule", async (c) => {
   });
   return c.json(results);
 });
-app6.post("/carousel", async (c) => {
+app7.post("/carousel", async (c) => {
   const session = c.get("session");
   const { carouselId, dueAt } = await c.req.json();
   if (!carouselId || !dueAt) {
@@ -78585,7 +78650,7 @@ app6.post("/carousel", async (c) => {
   });
   return c.json(results);
 });
-var publish_default = app6;
+var publish_default = app7;
 
 // src/lib/topics/bank.ts
 import { createClient as createClient3 } from "@libsql/client";
@@ -78693,7 +78758,7 @@ async function createTopic(data) {
   if (!res.rows[0]) throw new Error("Failed to create topic");
   return rowToTopic(res.rows[0]);
 }
-async function updateTopic(id, userId2, data) {
+async function updateTopic(id, userId3, data) {
   await ensureSchema3();
   const updates = [];
   const args = [];
@@ -78751,16 +78816,16 @@ async function updateTopic(id, userId2, data) {
   }
   updates.push("updated_at = ?");
   args.push(Date.now());
-  args.push(id, userId2);
+  args.push(id, userId3);
   await db3().execute({
     sql: `UPDATE topics SET ${updates.join(", ")} WHERE id = ? AND user_id = ?`,
     args
   });
 }
-async function getTopics(userId2, filters) {
+async function getTopics(userId3, filters) {
   await ensureSchema3();
   let sql2 = `SELECT * FROM topics WHERE user_id = ?`;
-  const args = [userId2];
+  const args = [userId3];
   if (filters?.status) {
     sql2 += ` AND status = ?`;
     args.push(filters.status);
@@ -78777,19 +78842,19 @@ async function getTopics(userId2, filters) {
   const res = await db3().execute({ sql: sql2, args });
   return res.rows.map(rowToTopic);
 }
-async function getTopic(id, userId2) {
+async function getTopic(id, userId3) {
   await ensureSchema3();
   const res = await db3().execute({
     sql: `SELECT * FROM topics WHERE id = ? AND user_id = ?`,
-    args: [id, userId2]
+    args: [id, userId3]
   });
   return res.rows[0] ? rowToTopic(res.rows[0]) : null;
 }
-async function deleteTopic(id, userId2) {
+async function deleteTopic(id, userId3) {
   await ensureSchema3();
   await db3().execute({
     sql: `DELETE FROM topics WHERE id = ? AND user_id = ?`,
-    args: [id, userId2]
+    args: [id, userId3]
   });
 }
 
@@ -79202,10 +79267,10 @@ function scheduleDates(mode, start, count) {
 }
 
 // src/lib/topics/service.ts
-async function generateAndSaveTopics(userId2, model, input) {
+async function generateAndSaveTopics(userId3, model, input) {
   const mode = input.mode;
   const count = mode === "ideas" ? Math.min(Math.max(input.count ?? 7, 1), 31) : MODE_COUNTS[mode];
-  const existing = await getTopics(userId2, { limit: 100 }).catch(() => []);
+  const existing = await getTopics(userId3, { limit: 100 }).catch(() => []);
   const existingTopics = existing.map((t) => ({ title: t.title, category: t.category }));
   const categoryDistribution = {};
   for (const t of existing) {
@@ -79230,7 +79295,7 @@ async function generateAndSaveTopics(userId2, model, input) {
     const t = generated[i];
     saved.push(
       await createTopic({
-        userId: userId2,
+        userId: userId3,
         title: t.title,
         category: t.category,
         description: t.description,
@@ -79350,12 +79415,12 @@ Ekstrak kandidat topik carousel dari catatan di atas. Return JSON saja.`;
     `Research agent failed after 3 attempts. Last error: ${lastError instanceof Error ? lastError.message : String(lastError)}`
   );
 }
-async function extractAndSaveTopicsFromNotes(userId2, model, rawNotes, options) {
+async function extractAndSaveTopicsFromNotes(userId3, model, rawNotes, options) {
   const products = await getActiveProducts();
   const candidates = await extractTopics(rawNotes, products, model);
   const status = options?.status ?? "idea";
   const source = options?.source ?? "notes-extraction";
-  const existing = await getTopics(userId2, { limit: 200 }).catch(() => []);
+  const existing = await getTopics(userId3, { limit: 200 }).catch(() => []);
   const seenTitles = existing.map((t) => t.title);
   const saved = [];
   const skipped = [];
@@ -79373,7 +79438,7 @@ async function extractAndSaveTopicsFromNotes(userId2, model, rawNotes, options) 
       continue;
     }
     const topic = await createTopic({
-      userId: userId2,
+      userId: userId3,
       title: candidate.title,
       category: candidate.category,
       description: candidate.targetAudienceFit,
@@ -79391,40 +79456,40 @@ async function extractAndSaveTopicsFromNotes(userId2, model, rawNotes, options) 
 }
 
 // src/routes/user/topics.ts
-var app7 = new Hono2();
-function userId(c) {
+var app8 = new Hono2();
+function userId2(c) {
   return c.get("session").user.id;
 }
-app7.get("/", async (c) => {
+app8.get("/", async (c) => {
   const status = c.req.query("status");
   const category = c.req.query("category");
   const limitRaw = c.req.query("limit");
   const limit = limitRaw ? Number(limitRaw) : void 0;
-  const topics = await getTopics(userId(c), {
+  const topics = await getTopics(userId2(c), {
     status,
     category,
     limit: Number.isFinite(limit) ? limit : void 0
   });
   return c.json({ topics });
 });
-app7.post("/", async (c) => {
+app8.post("/", async (c) => {
   const body = await c.req.json();
   if (!body?.title?.trim()) {
     return c.json({ error: "Missing title" }, 400);
   }
-  const topic = await createTopic({ ...body, userId: userId(c) });
+  const topic = await createTopic({ ...body, userId: userId2(c) });
   return c.json({ topic });
 });
-app7.patch("/:id", async (c) => {
+app8.patch("/:id", async (c) => {
   const patch = await c.req.json();
-  const topic = await updateTopic(c.req.param("id"), userId(c), patch);
+  const topic = await updateTopic(c.req.param("id"), userId2(c), patch);
   return c.json({ topic });
 });
-app7.delete("/:id", async (c) => {
-  await deleteTopic(c.req.param("id"), userId(c));
+app8.delete("/:id", async (c) => {
+  await deleteTopic(c.req.param("id"), userId2(c));
   return c.json({ success: true });
 });
-app7.post("/generate-from-notes", async (c) => {
+app8.post("/generate-from-notes", async (c) => {
   const body = await c.req.json().catch(() => ({}));
   if (!body?.rawNotes?.trim()) {
     return c.json({ error: "Missing or empty rawNotes in request body" }, 400);
@@ -79434,14 +79499,14 @@ app7.post("/generate-from-notes", async (c) => {
     return c.json({ error: "No AI model API keys configured in .env" }, 500);
   }
   const { saved, skipped } = await extractAndSaveTopicsFromNotes(
-    userId(c),
+    userId2(c),
     resolveModel(modelId),
     body.rawNotes,
     { status: "idea", source: "notes-extraction" }
   );
   return c.json({ topics: saved, count: saved.length, skipped });
 });
-app7.post("/generate", async (c) => {
+app8.post("/generate", async (c) => {
   const input = await c.req.json();
   if (!["ideas", "weekly", "monthly"].includes(input?.mode)) {
     return c.json({ error: `Invalid mode "${input?.mode}" \u2014 use ideas | weekly | monthly` }, 400);
@@ -79450,13 +79515,13 @@ app7.post("/generate", async (c) => {
   if (!modelId) {
     return c.json({ error: "No AI model API keys configured in .env" }, 500);
   }
-  const topics = await generateAndSaveTopics(userId(c), resolveModel(modelId), input);
+  const topics = await generateAndSaveTopics(userId2(c), resolveModel(modelId), input);
   return c.json({ topics, count: topics.length });
 });
-app7.post("/:id/brief", async (c) => {
+app8.post("/:id/brief", async (c) => {
   const { modelId } = await c.req.json().catch(() => ({}));
   const id = c.req.param("id");
-  const topic = await getTopic(id, userId(c));
+  const topic = await getTopic(id, userId2(c));
   if (!topic) {
     return c.json({ error: "Topic not found" }, 404);
   }
@@ -79467,15 +79532,15 @@ app7.post("/:id/brief", async (c) => {
   const brief = await expandTopicToBrief(topic, resolveModel(resolved));
   return c.json({ brief });
 });
-var topics_default = app7;
+var topics_default = app8;
 
 // src/routes/user/products.ts
-var app8 = new Hono2();
-app8.get("/", async (c) => {
+var app9 = new Hono2();
+app9.get("/", async (c) => {
   const products = await getActiveProducts();
   return c.json({ products });
 });
-var products_default = app8;
+var products_default = app9;
 
 // src/lib/publish/schedule.ts
 var WIB_OFFSET_MS = 7 * 60 * 60 * 1e3;
@@ -79489,7 +79554,7 @@ function nextWibSlot(now2, hour = POST_HOUR_WIB, minute = 0) {
 // src/routes/automation/generate.ts
 init_db();
 init_esm();
-var app9 = new Hono2();
+var app10 = new Hono2();
 var db5 = new Kysely({ dialect });
 async function resolveUserId() {
   const user = await db5.selectFrom("user").select("id").limit(1).executeTakeFirst();
@@ -79499,7 +79564,7 @@ async function createAndPublishCarousel({
   topic,
   angleInstruction,
   dueAt,
-  userId: userId2,
+  userId: userId3,
   modelId,
   resolvedModel,
   channels
@@ -79507,8 +79572,8 @@ async function createAndPublishCarousel({
   const ideaWithAngle = `${topic}${angleInstruction}`;
   const brief = await generateBrief(ideaWithAngle, resolvedModel);
   const [underused, stats] = await Promise.all([
-    getUnderusedMockupTypes(userId2).catch(() => []),
-    getRecentMockupStatsWithPercentages(userId2).catch(() => [])
+    getUnderusedMockupTypes(userId3).catch(() => []),
+    getRecentMockupStatsWithPercentages(userId3).catch(() => [])
   ]);
   const diversity = { underusedTypes: underused, stats };
   const plan = stripUnfulfillableEvidence(await generateSlidePlan(brief, resolvedModel, diversity));
@@ -79559,7 +79624,7 @@ async function createAndPublishCarousel({
     imageUrls.push(secureUrl);
   }
   const dbItem = await createCarousel({
-    userId: userId2,
+    userId: userId3,
     source: "ai",
     title: plan.title,
     caption: plan.caption,
@@ -79607,7 +79672,7 @@ async function createAndPublishCarousel({
     ttPostId
   };
 }
-app9.post("/generate", async (c) => {
+app10.post("/generate", async (c) => {
   let body;
   try {
     body = await c.req.json();
@@ -79618,14 +79683,14 @@ app9.post("/generate", async (c) => {
   if (!topic || !topic.trim()) {
     return c.json({ error: "Missing topic or title in request body" }, 400);
   }
-  let userId2 = null;
+  let userId3 = null;
   try {
     const user = await db5.selectFrom("user").select("id").limit(1).executeTakeFirst();
-    userId2 = user?.id;
+    userId3 = user?.id;
   } catch (err) {
     return c.json({ error: `Database user lookup failed: ${err.message}` }, 500);
   }
-  if (!userId2) {
+  if (!userId3) {
     return c.json({ error: "No user found in the database. Seed the database first." }, 500);
   }
   const modelId = defaultModel();
@@ -79648,7 +79713,7 @@ app9.post("/generate", async (c) => {
       topic,
       angleInstruction: " (fokus: Panduan Praktis, Tips & Tutorial)",
       dueAt: dueAt1,
-      userId: userId2,
+      userId: userId3,
       modelId,
       resolvedModel,
       channels
@@ -79657,7 +79722,7 @@ app9.post("/generate", async (c) => {
       topic,
       angleInstruction: " (fokus: Kesalahan Umum, Mitos, Studi Kasus & Konsep Mendalam)",
       dueAt: dueAt2,
-      userId: userId2,
+      userId: userId3,
       modelId,
       resolvedModel,
       channels
@@ -79668,7 +79733,7 @@ app9.post("/generate", async (c) => {
   for (const err of failures) console.error("Carousel generation failed:", err);
   if (body.topicId) {
     const closingStatus = scheduled.length > 0 ? "published" : "idea";
-    await updateTopic(body.topicId, userId2, {
+    await updateTopic(body.topicId, userId3, {
       status: closingStatus,
       ...scheduled.length > 0 ? { carouselId: scheduled[0].id } : {}
     }).catch((err) => {
@@ -79686,17 +79751,17 @@ app9.post("/generate", async (c) => {
     carousels: scheduled
   });
 });
-app9.get("/topic/next", async (c) => {
-  const userId2 = await resolveUserId().catch(() => null);
-  if (!userId2) {
+app10.get("/topic/next", async (c) => {
+  const userId3 = await resolveUserId().catch(() => null);
+  if (!userId3) {
     return c.json({ error: "No user found in the database. Seed the database first." }, 500);
   }
-  let [topic] = await getTopics(userId2, { status: "approved", limit: 1 });
-  if (!topic) [topic] = await getTopics(userId2, { status: "idea", limit: 1 });
+  let [topic] = await getTopics(userId3, { status: "approved", limit: 1 });
+  if (!topic) [topic] = await getTopics(userId3, { status: "idea", limit: 1 });
   if (!topic) {
     return c.json({ error: "No approved or idea topics available in the bank" }, 404);
   }
-  await updateTopic(topic.id, userId2, { status: "queued" });
+  await updateTopic(topic.id, userId3, { status: "queued" });
   return c.json({
     id: topic.id,
     title: topic.title,
@@ -79705,7 +79770,7 @@ app9.get("/topic/next", async (c) => {
     angle: topic.angle
   });
 });
-app9.post("/topics/generate", async (c) => {
+app10.post("/topics/generate", async (c) => {
   const body = await c.req.json().catch(() => ({}));
   if (!["ideas", "weekly", "monthly"].includes(body?.mode)) {
     return c.json({ error: `Invalid mode "${body?.mode}" \u2014 use ideas | weekly | monthly` }, 400);
@@ -79721,7 +79786,7 @@ app9.post("/topics/generate", async (c) => {
   const topics = await generateAndSaveTopics(uid, resolveModel(modelId), body);
   return c.json({ success: true, topics, count: topics.length });
 });
-app9.post("/research-topics", async (c) => {
+app10.post("/research-topics", async (c) => {
   let body;
   try {
     body = await c.req.json();
@@ -79732,8 +79797,8 @@ app9.post("/research-topics", async (c) => {
   if (!rawNotes || !rawNotes.trim()) {
     return c.json({ error: "Missing or empty rawNotes in request body" }, 400);
   }
-  const userId2 = await resolveUserId().catch(() => null);
-  if (!userId2) {
+  const userId3 = await resolveUserId().catch(() => null);
+  if (!userId3) {
     return c.json({ error: "No user found in the database. Seed the database first." }, 500);
   }
   const modelId = defaultModel();
@@ -79742,7 +79807,7 @@ app9.post("/research-topics", async (c) => {
   }
   try {
     const { saved, skipped } = await extractAndSaveTopicsFromNotes(
-      userId2,
+      userId3,
       resolveModel(modelId),
       rawNotes,
       { status: "pending_review", source: "research-agent-mvp" }
@@ -79765,7 +79830,7 @@ var ALLOWED_STATUS_TRANSITIONS = {
   rejected: ["pending_review"],
   idea: ["approved", "rejected", "archived"]
 };
-app9.patch("/research-topics/:id/status", async (c) => {
+app10.patch("/research-topics/:id/status", async (c) => {
   let body;
   try {
     body = await c.req.json();
@@ -79776,12 +79841,12 @@ app9.patch("/research-topics/:id/status", async (c) => {
   if (!newStatus) {
     return c.json({ error: "Missing status in request body" }, 400);
   }
-  const userId2 = await resolveUserId().catch(() => null);
-  if (!userId2) {
+  const userId3 = await resolveUserId().catch(() => null);
+  if (!userId3) {
     return c.json({ error: "No user found in the database" }, 500);
   }
   const topicId = c.req.param("id");
-  const topic = await getTopic(topicId, userId2).catch(() => null);
+  const topic = await getTopic(topicId, userId3).catch(() => null);
   if (!topic) {
     return c.json({ error: `Topic "${topicId}" not found` }, 404);
   }
@@ -79797,22 +79862,22 @@ app9.patch("/research-topics/:id/status", async (c) => {
     );
   }
   try {
-    await updateTopic(topicId, userId2, { status: newStatus });
+    await updateTopic(topicId, userId3, { status: newStatus });
     return c.json({ success: true, topicId, from: topic.status, status: newStatus });
   } catch (err) {
     console.error(`Failed to update topic ${topicId}:`, err);
     return c.json({ error: `Failed to update topic: ${err.message}` }, 500);
   }
 });
-app9.get("/mockup-stats", async (c) => {
-  const userId2 = await resolveUserId().catch(() => null);
-  if (!userId2) {
+app10.get("/mockup-stats", async (c) => {
+  const userId3 = await resolveUserId().catch(() => null);
+  if (!userId3) {
     return c.json({ error: "No user found in the database" }, 500);
   }
   const [globalStats, recentStats, layoutStats] = await Promise.all([
     getGlobalMockupStats(),
-    getRecentMockupStatsWithPercentages(userId2),
-    getRecentLayoutStats(userId2)
+    getRecentMockupStatsWithPercentages(userId3),
+    getRecentLayoutStats(userId3)
   ]);
   return c.json({
     global: globalStats,
@@ -79820,7 +79885,7 @@ app9.get("/mockup-stats", async (c) => {
     layouts: layoutStats
   });
 });
-var generate_default = app9;
+var generate_default = app10;
 
 // src/server.ts
 var userApp = new Hono2();
@@ -79854,6 +79919,7 @@ userApp.route("/api/brief", brief_default);
 userApp.route("/api/plan", plan_default);
 userApp.route("/api/assemble", assemble_default);
 userApp.route("/api/capture", capture_default);
+userApp.route("/api/carousels", carousels_default);
 userApp.route("/api/publish", publish_default);
 userApp.route("/api/topics", topics_default);
 userApp.route("/api/products", products_default);
