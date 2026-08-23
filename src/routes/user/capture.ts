@@ -2,6 +2,9 @@ import { Hono } from "hono";
 import { captureQueue } from "../../services/capture-queue";
 import { uploadSlides } from "../../lib/publish/upload-slides";
 import { getCarousel, updateCarousel } from "../../lib/history/repo";
+import { assembleCarousel } from "../../lib/ds/assemble";
+import { warmUpIllustrations } from "../../lib/ds/illustrations.server";
+import type { SlidePlan } from "../../lib/ds/schema";
 
 const app = new Hono<{ Variables: { session: any } }>();
 
@@ -14,20 +17,37 @@ const app = new Hono<{ Variables: { session: any } }>();
  * capture. Uploading here moves work the publish step was doing anyway, and makes the
  * result survive.
  *
- * The base64 is still returned. The wizard downloads JPEGs straight from it, and a
- * Cloudinary failure then degrades to exactly the old behaviour instead of throwing
- * away a render that cost a Chromium context and one screenshot per slide.
+ * The base64 comes back ONLY when the upload failed. On the happy path the response is
+ * a handful of URLs instead of ~2.4 MB of base64 that had to cross the VPS uplink,
+ * Cloudflare and Vercel to reach a browser that immediately turned it into blobs and
+ * threw it away on the next reload. On the failure path it is still returned, so a
+ * Cloudinary outage degrades to exactly the old behaviour rather than losing a render
+ * that cost a Chromium context and one screenshot per slide.
  */
 app.post("/", async (c) => {
-  const { html, opts, carouselId } = (await c.req.json()) as {
-    html: string;
+  const { plan, html: rawHtml, opts, carouselId } = (await c.req.json()) as {
+    /** Preferred. The deck is assembled here rather than shipped in. */
+    plan?: SlidePlan;
+    /** Still accepted for callers that hold HTML and no plan. */
+    html?: string;
     opts?: { pixelRatio?: number; quality?: number };
     /** When set, the uploaded URLs are written straight onto this row. */
     carouselId?: string;
   };
 
+  // A deck is ~1.1 MB of inline fonts and SVG. It used to be assembled here, returned
+  // to the browser for the preview, and then posted back here to be captured — two full
+  // trips across a degraded uplink per export, for bytes this service produced itself.
+  // Next also refuses to encode a string that size as a Server Action argument
+  // ("Maximum array nesting exceeded"), so the round trip was not merely wasteful.
+  let html = rawHtml;
+  if (!html && plan) {
+    await warmUpIllustrations();
+    html = assembleCarousel(plan);
+  }
+
   if (!html?.trim()) {
-    return c.json({ error: "Missing html content" }, 400);
+    return c.json({ error: "Missing plan or html content" }, 400);
   }
 
   try {
@@ -80,6 +100,11 @@ app.post("/", async (c) => {
       }
     });
 
+    // The one line worth logging in this service: a Chromium context plus one
+    // screenshot per slide is the most expensive thing it does, and "why is the VPS
+    // busy" used to have no answer in any log.
+    console.log(`[capture] rendered ${images.length} slides${carouselId ? ` for ${carouselId}` : ""}`);
+
     const { urls, error: uploadError } = await uploadSlides(images);
     if (uploadError) {
       // Not fatal: the caller still has the render. Logged so a persistent
@@ -98,7 +123,11 @@ app.post("/", async (c) => {
       }
     }
 
-    return c.json({ images, urls, uploadError });
+    // Sending both would put a multi-megabyte array inside the response object for no
+    // reason: with URLs in hand the client never touches the base64.
+    return urls.length > 0
+      ? c.json({ urls, images: [] })
+      : c.json({ urls: [], images, uploadError });
   } catch (err: any) {
     console.error("Capture slides error:", err);
     return c.json({ error: err.message || "Failed to capture slides" }, 500);

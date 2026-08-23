@@ -3,12 +3,12 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "tsx watch --env-file-if-exists=.env src/server.ts",
     "build": "esbuild src/server.ts --bundle --platform=node --target=node20 --outfile=dist/server.js --format=esm --external:playwright --external:@libsql/client --external:better-auth --banner:js='import { createRequire } from \"module\"; const require = createRequire(import.meta.url);' && mkdir -p dist/lib/ds/assets && cp -R src/lib/ds/assets/ dist/lib/ds/assets/",
     "start": "node dist/server.js",
-    "test:regression": "tsx scripts/verify-regression.ts",
+    "test:regression": "tsx --env-file-if-exists=.env scripts/verify-regression.ts",
     "test": "vitest run",
-    "seed": "tsx scripts/seed-user.ts",
+    "seed": "tsx --env-file-if-exists=.env scripts/seed-user.ts",
     "check:layout": "tsx scripts/check-hook-position.ts"
   },
   "dependencies": {
