@@ -73114,7 +73114,7 @@ function renderIllustration(raw2, variant) {
 }
 
 // src/lib/ds/templates/point.ts
-var pointTemplate = String.raw`<section class="{{surfaceClass}} layout-{{layout}}" data-screen-label="03 · Point">
+var pointTemplate = String.raw`<section class="slide-point {{surfaceClass}} layout-{{layout}}" data-screen-label="03 · Point">
   <div class="counter">{{counter}}</div>
 
   <div class="eyebrow {{eyebrowClass}} mt-64">{{eyebrow}}</div>
@@ -73541,6 +73541,19 @@ function paperClass(slide, slideIndex) {
 function eyebrowClass(slideIndex) {
   return slideIndex % 2 === 0 ? "chip" : "";
 }
+var NOTE_BEARING_MOCKUPS = /* @__PURE__ */ new Set([
+  "flow",
+  "concept",
+  "hub",
+  "checklist",
+  "browser",
+  "commandlist",
+  "latencycomp",
+  "decision",
+  "pitfalls",
+  "comparison",
+  "illustration"
+]);
 function mockupHasNote(m) {
   if (!m) return false;
   if ("note" in m && typeof m.note === "string" && m.note.trim() !== "") return true;
@@ -74266,6 +74279,12 @@ function scopedChangeSummary(before, after, scope) {
 var ICON_ALLOWLIST = ICON_SLUGS.join(", ");
 var ILLUSTRATION_CATALOG = Object.entries(ILLUSTRATION_CATEGORIES).map(([cat, slugs]) => `${cat} -> ${slugs.join(" | ")}`).join("\n  ");
 var TONES = `"peach" (neutral) | "stone" (loser/warning) | "mint" (success) | "sky" (tooling) | "pink" (design) | "amber" (highlight)`;
+var VARIETY_BUDGET = `- \u2265 5 distinct mockup types per deck.
+- NEVER the same mockup type on two consecutive slides.
+- Dark code mockups (terminal + commandpalette): MAX 1 per 5 slides, combined.
+- browser: MAX 1 per deck. custom: MAX ~1 per deck.
+- Rotate tone colours; never the same tone twice running. Palette: ${TONES}.
+- Surface rhythm: at most ~1 "ink" (dark) slide per 3, and never two in a row.`;
 var HASHTAG_RULE = `Hashtags: EXACTLY 5 \u2014 TikTok accepts at most 5 hashtags, never more, never fewer. This is a HARD schema constraint (an array of any other length is REJECTED, not truncated).
 Fixed shape: "fyp" first, 3 topic-specific tags in the middle, "vourdev" last.
 Each tag: \u2264 30 characters, lowercase, no spaces, no punctuation, no "#" inside array values.
@@ -74328,6 +74347,54 @@ PROPORTION (the caps above are LIMITS, not targets):
 var COPY_CAPS = `- Eyebrow \u2264 3 words (max 30 chars), ALL CAPS.
 - Headline \u2264 7 words (max 60 chars) with exactly ONE accent word.
 - Body/Description 1-2 sentences (max 120 chars) \u2014 zero vertical clipping on the 1080\xD71350 canvas.`;
+var LAYOUT_RULE = `LAYOUT \u2014 the visual composition of a point slide.
+You pick the NAME only; every pixel of the rendering is fixed in CSS.
+
+  "standard"        eyebrow \u2192 headline \u2192 body \u2192 mockup \u2192 note
+  "mockup-forward"  mockup \u2192 eyebrow \u2192 headline \u2192 body \u2192 note
+  "split-content"   copy column left (eyebrow \u2192 headline \u2192 body); mockup + note right
+  "note-emphasis"   same order as "standard"; the note is drawn larger, in an accent box
+
+TWO THINGS HOLD IN ALL FOUR \u2014 no layout choice can change them:
+- The note travels LAST. It is support copy: it lands a conclusion the headline has
+  already made. "note-emphasis" gives the note more VISUAL WEIGHT \u2014 size, accent colour,
+  prominence \u2014 it does NOT move it earlier. So write a note that PAYS OFF the headline,
+  never one that introduces it.
+- At most ONE block sits above the headline, and only "mockup-forward" puts one there.
+  Eyebrow + headline are the HOOK, the reason a thumb stops scrolling; they stay inside
+  the first two blocks a reader sees.
+
+WHEN TO PICK WHICH
+- "standard" \u2014 general purpose: body over ~80 chars, or nothing else fits better.
+  Good for: card, callout, bigstat, steps, comparison, illustration.
+- "mockup-forward" \u2014 the mockup IS the point and the copy is its caption; the reader
+  should look before reading.
+  Good for: terminal, database, gitbranch, foldertree, commandpalette, browser, config,
+  apirequest, architecture, eventqueue, statemachine.
+- "split-content" \u2014 body under ~80 chars and the mockup is compact enough to read at half
+  width; copy and visual are equal partners. ONLY these mockups fit the narrow column,
+  and any other is re-rendered as "standard": ${[...NARROW_SAFE_MOCKUPS].join(" \xB7 ")}.
+- "note-emphasis" \u2014 the note is the single most important sentence on the slide, not a
+  footnote. Needs a mockup that HAS a note, and needs you to actually fill it; on any
+  other mockup it is re-rendered as "standard": ${[...NOTE_BEARING_MOCKUPS].join(" \xB7 ")}.
+
+OMITTING "layout" IS A REAL CHOICE, NOT A DEFAULT. Leave the field off and the renderer
+picks a composition that suits the mockup and alternates against the neighbouring slides.
+Omitting beats guessing. Writing "standard" on every slide is the single surest way to
+produce a deck that looks like a slideshow template.
+
+DIVERSITY, when you do name layouts:
+- \u2265 2 different layouts in a deck with \u2265 4 point slides; \u2265 3 with \u2265 6.
+- Never 3 consecutive point slides on the same layout.
+
+WORKED EXAMPLE (8-slide deck) \u2014 note that every named layout is one the mockup can
+actually carry, and the two that could go either way are left to the renderer:
+  slide 2 (concept)          layout "standard"        // longer explanation, full width
+  slide 3 (terminal)         layout "mockup-forward"  // the code IS the point
+  slide 4 (checklist, +note) layout "split-content"   // short body, narrow-safe mockup
+  slide 5 (hub, +note)       layout "note-emphasis"   // the note carries the insight
+  slide 6 (comparison)       layout "standard"        // before/after needs full width
+  slide 7 (flow)             layout omitted           // renderer alternates it in`;
 var VOICE_TRAINING = `
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
 CRITICAL: You MUST write in Muhammad Adhinugroho's exact voice.
@@ -74616,17 +74683,14 @@ Slide yang TIDAK masuk kriteria di atas (kode konkret, proses teknis, comparison
 \u2192 TETAP pakai mockup teknis yang sesuai \u2014 illustration BUKAN pengganti semua mockup
 
 ANTI-REPETITION (hard rules):
-1. NEVER the same mockup type on two consecutive slides.
-2. If two consecutive slides share a category, change the visual approach
-   (PROCESS twice \u2192 e.g. flow then foldertree, not flow then flow).
-3. Dark code mockups (terminal + commandpalette) \u2014 MAX 1 per 5 slides combined.
-   browser \u2014 MAX 1 per deck. Reach for them only when code/UI is the point.
-4. Rotate tone colors; never the same card/diagram tone twice running.
-5. Surface rhythm: at most ~1 "ink" (dark) slide per 3, never two in a row.
-6. A good 8-slide deck uses \u2265 5 different mockup types ("illustration" dihitung sebagai 1 tipe distinct yang valid; slug berbeda dalam tipe illustration tetap dihitung sebagai 1 tipe "illustration").
-7. custom \u2014 MAX ~1 per deck. It is the escape hatch for a layout the typed
-   mockups genuinely cannot draw, not a shortcut around picking the right type.
-   If a typed mockup fits, use the typed mockup.
+${VARIETY_BUDGET}
+- If two consecutive slides share a category, change the visual approach
+  (PROCESS twice \u2192 e.g. flow then foldertree, not flow then flow).
+- Reach for a dark code mockup only when code/UI is the point.
+- "illustration" counts as ONE distinct type however many slugs it holds; two slides that
+  both use illustration with different slugs are still a repeat.
+- custom is the escape hatch for a layout the typed mockups genuinely cannot draw, not a
+  shortcut around picking the right type. If a typed mockup fits, use the typed mockup.
 
 NO EMOJI IN SLIDE COPY (HARD RULE)
 Emoji are the only thing on a slide that ignores the design system: a font paints \u274C red,
@@ -74939,7 +75003,9 @@ ${TITLE_CAPTION_RULE}
 3. Copy caps:
 ${COPY_CAPS}
 4. EVERY middle slide MUST specify a Mockup Type AND detailed Mockup Details. NEVER leave a slide without a mockup specification.
-5. VARY mockup types across slides \u2014 pick by content fit; NEVER the same type on consecutive slides; \u2265 3 distinct types per deck; Terminal at most ONCE and only for real code/CLI/config.
+5. VARY mockup types across slides \u2014 pick by content fit, and stay inside the
+   ANTI-REPETITION budget above. It is the same budget the slide plan is held to; a brief
+   that breaks it hands the planner an outline the planner then has to fight.
 6. Mockup content budgets:
 ${MOCKUP_BUDGETS}
 7. Caption follows the four-part shape specified in rule 2 above \u2014 hook, blank line,
@@ -74982,10 +75048,9 @@ SLIDE ROLES
                  style attributes, no <style>; classes filtered to the whitelist. Plain
                  semantic HTML, styled automatically to the surface.)
 - "point": { counter (e.g. "02 / 05"), eyebrow, headline, accentWord?, body, surface?: "paper"|"ink", layout?: "standard"|"mockup-forward"|"split-content"|"note-emphasis", mockup: <one of the types below> }
-    layout \u2014 positioning & structure layout flow. Defaults to "standard" (standard sequence: eyebrow \u2192 headline \u2192 body \u2192 mockup at bottom).
-      - Use "mockup-forward" when the mockup itself is the hero element (terminal command, Git diagram, ERD tables) and body copy is just a caption.
-      - Use "split-content" (columns layout: text left, mockup right) for slides with short descriptions to add visual composition variety.
-      - Use "note-emphasis" when the mockup has an important notes box ("note") containing a critical conclusion or key warning that should stand out.
+    layout \u2014 OPTIONAL. The visual composition; see the LAYOUT section below for what each
+      name does and when to pick it. Omitting it hands the choice to the renderer, which
+      is often the right call.
 - "outro": { eyebrow?, headline, accentWord?, body?, cta } \u2014 cta is REQUIRED:
     cta: { strong: "<the action, e.g. Simpan & bagikan>", sub?: "<why/how, 1 short line>" }
     \u2192 strong MUST be a concrete call-to-action (save / share / follow / try). Never omit the cta.
@@ -75007,9 +75072,9 @@ brand row + stamp (top) \u2192 eyebrow \u2192 headline \u2192 anchor centered in
 Headline rules: hook word FIRST (a number, or a negative like "Salah"/"Jangan"/"Bukan", or a question word);
 \u2264 10 words; leave a curiosity gap (don't reveal the solution); stay credible (no misleading clickbait).
 Accent exactly ONE keyword with the brand-accent span. Cover is ALWAYS the Ink surface.
-SURFACE RHYTHM (DESIGN.md \xA713): a point slide defaults to "paper" (a cool off-white). Set surface:"ink"
-(full dark) on AT MOST ~1 slide per 3, and NEVER two ink slides in a row \u2014 it is a rhythm accent,
-not a theme. Do NOT put an always-dark device (terminal, commandpalette) on an ink slide: it is a
+SURFACE (DESIGN.md \xA713): a point slide defaults to "paper" (a cool off-white); surface:"ink" is
+full dark. Ink is a rhythm accent, not a theme \u2014 the frequency is in the ANTI-REPETITION budget
+above. Do NOT put an always-dark device (terminal, commandpalette) on an ink slide: it is a
 near-black panel on a near-black canvas. (The renderer flips such a slide back to paper, but pick
 correctly rather than relying on that.) Every other mockup follows the slide surface automatically.
 Good ink picks: card, flow, concept, hub, checklist, foldertree, database, callout, bigstat.
@@ -75127,10 +75192,10 @@ VARIETY EXAMPLE (a good, non-monotone deck \u2014 mirror this diversity, not the
   stamp "Engineering Notes", ghostNumeral "01"
 - point \u2192 concept (parent + 2-3 children), layout "standard"
 - point \u2192 flow (3-4 steps, one focus), layout "note-emphasis" (its note carries the point)
-- point \u2192 hub (center + 3-4 tool icons), layout "split-content"
+- point \u2192 hub (center + 3-4 tool icons), layout omitted (renderer's pick)
 - point \u2192 terminal (only if a real code scene \u2014 max 1), layout "mockup-forward"
 - point \u2192 comparison (bad vs good), layout "standard"
-- point \u2192 checklist (recap), layout "standard"
+- point \u2192 checklist (recap), layout "split-content"
 - outro \u2192 cta { strong: "Simpan & bagikan" }
 
 SECOND VARIETY EXAMPLE (a backend deck \u2014 same deck shape, a completely different type mix.
@@ -75141,8 +75206,8 @@ and both of these decks are equally correct):
 - point \u2192 architecture (load balancer + 2 instances), layout "standard"
 - point \u2192 latencycomp (cache 0.2ms vs db 15ms vs api 120ms), layout "note-emphasis"
 - point \u2192 statemachine (request lifecycle: PENDING \u2192 PROCESSING \u2192 FAILED), layout "standard"
-- point \u2192 config (the pool setting that was wrong), layout "split-content"
-- point \u2192 eventqueue (retry queue that saved it), layout "standard"
+- point \u2192 config (the pool setting that was wrong), layout "mockup-forward"
+- point \u2192 eventqueue (retry queue that saved it), layout omitted (renderer's pick)
 - outro \u2192 cta { strong: "Simpan buat jaga-jaga" }
 
 THIRD VARIETY EXAMPLE (a "kapan pakai yang mana" deck \u2014 the shape that keeps getting
@@ -75155,8 +75220,9 @@ forced into comparison. Note there is no winner anywhere in it):
 - point \u2192 checklist (recap), layout "note-emphasis"
 - outro \u2192 cta { strong: "Simpan buat rapat stack berikutnya" }
 
-Use \u2265 5 distinct mockup types per deck, rotate tone colors, and do not let any example
-above narrow your choice \u2014 pick by the CATEGORY table, not by which types you have seen most.
+Do not let any example above narrow your choice: they exist to show three different-looking
+decks, not to enumerate the good types. Pick by the CATEGORY table, not by which types you
+have seen most.
 
 STRICT DESIGN & COPY BUDGET RULES
 1. Copy caps (accentWord MUST appear verbatim inside the headline):
@@ -75172,14 +75238,12 @@ ${COPY_CAPS}
    type (or a real example), not a copy.
 3. Mockup copy budgets:
 ${MOCKUP_BUDGETS}
-4. CONTEXT-DRIVEN MOCKUP CHOICE: pick the mockup that best fits the slide's content \u2014
-   flow for pipelines/sequences, hub for one thing wiring to several tools, concept for a
-   term's sub-concepts, comparison for bad-vs-good, steps for how-to, bigstat for a metric,
-   callout for a warning, card for a general point, checklist for a recap. Follow the
-   VISUAL DIRECTOR category map + anti-repetition rules above: dark code mockups
-   (terminal + commandpalette) MAX 1 per 5 slides combined, browser MAX 1 per deck.
-   Every deck MUST use \u2265 5 distinct mockup types and must NEVER repeat a type on
-   consecutive slides (nor the same category-visual twice running).
+4. CONTEXT-DRIVEN MOCKUP CHOICE: classify the slide by its content category, then pick a
+   type the VISUAL DIRECTOR table lists for that category \u2014 not the type that came to mind
+   first, and not one you already used. The per-type "Use for\u2026" line in the catalogue above
+   tells you what each one is for. The ANTI-REPETITION rules in that same section are the
+   binding budget (consecutive types, dark-mockup and browser caps, distinct-type minimum,
+   tone rotation, surface rhythm); they are stated once, there, and they are not advisory.
 5. Title and caption follow this exact spec \u2014 the schema REJECTS empty or oversized
    values, and a rejection burns a retry attempt, so get them right the first time:
 ${TITLE_CAPTION_RULE}
@@ -75187,47 +75251,9 @@ ${TITLE_CAPTION_RULE}
    over into the caption field, reshaped to the four-part structure above \u2014 do not
    invent an unrelated caption, and do not paste the brief's Markdown headings.
 7. ${HASHTAG_RULE}
-8. Rotate tone colors across slides: ${TONES}.
-9. LAYOUT DIVERSITY (MANDATORY \u2014 as important as mockup variety):
-   The "layout" field on each point slide controls the VISUAL COMPOSITION \u2014 where the
-   eyebrow, headline, body and mockup sit relative to each other. A deck where every slide
-   uses the same layout looks like a slideshow template, not editorial content.
-   Four options (all rendering is FIXED in CSS \u2014 you only pick the name):
+8. ${LAYOUT_RULE}
 
-   "standard" (default) \u2014 eyebrow \u2192 headline \u2192 body \u2192 mockup at bottom.
-     WHEN: general-purpose, longer body text (>80 chars), or when no other layout fits better.
-     GOOD FOR: card, callout, bigstat, steps, comparison, illustration.
-
-   "mockup-forward" \u2014 mockup dominates the upper half, headline+body become a caption below.
-     WHEN: the mockup IS the point of the slide (code example, schema, file structure, architecture).
-     GOOD FOR: terminal, database, gitbranch, foldertree, commandpalette, browser, config.
-     SIGNAL: if the reader should look at the mockup FIRST and read the text second.
-
-   "split-content" \u2014 text column left, mockup column right (side-by-side).
-     WHEN: body text is short (<80 chars) and the mockup is a compact diagram.
-     GOOD FOR: flow, concept, hub, checklist, card, eventqueue, statemachine, latencycomp.
-     SIGNAL: the text and mockup are equal partners, neither dominates.
-
-   "note-emphasis" \u2014 the mockup's "note" field gets a large accent box treatment.
-     WHEN: the note contains the KEY INSIGHT or WARNING of the slide, not just a footnote.
-     GOOD FOR: any mockup with a "note" field (flow, hub, concept, checklist, comparison).
-     SIGNAL: the note is the most important sentence on the slide \u2014 without emphasis, readers skip it.
-
-   HARD RULES:
-   - Use \u2265 2 different layouts in any deck with \u2265 4 point slides.
-   - Use \u2265 3 different layouts in any deck with \u2265 6 point slides.
-   - NEVER 3 consecutive point slides with the same layout.
-   - Do NOT default everything to "standard" \u2014 that defeats the purpose.
-
-   LAYOUT VARIETY EXAMPLE (8-slide deck):
-   slide 2 (concept)     \u2192 layout: "standard"         // term breakdown, longer explanation
-   slide 3 (terminal)    \u2192 layout: "mockup-forward"    // code IS the point
-   slide 4 (flow)        \u2192 layout: "split-content"     // short body, compact pipeline
-   slide 5 (hub, +note)  \u2192 layout: "note-emphasis"     // note carries the key insight
-   slide 6 (comparison)  \u2192 layout: "standard"          // before/after needs full width
-   slide 7 (checklist)   \u2192 layout: "split-content"     // recap items beside text
-
-10. FINAL PASS (mandatory): re-read every eyebrow, headline, lede, body, mockup string, the
+9. FINAL PASS (mandatory): re-read every eyebrow, headline, lede, body, mockup string, the
    outro cta, and the caption against the HUMAN VOICE EDITOR rules above. Rewrite anything
    that trips a banned pattern BEFORE returning the plan. Also run the ritme check: no 3+
    consecutive slides with identical sentence structure, and no repeated headline opener
@@ -77818,22 +77844,57 @@ var carouselExtraCss = String.raw`
   section:not(.paper) .lc-bar-wrap.highlight .lc-value { color: #FF7A45; }
 
   /* Point Slide Layout Variations */
-  
-  /* Mockup-Forward layout: orders mockup (diag-wrap/card) to top of content */
-  .layout-mockup-forward { display: flex; flex-direction: column; }
-  .layout-mockup-forward .counter { order: 1; }
-  .layout-mockup-forward .diag-wrap { order: 2; margin-top: 32px !important; }
-  .layout-mockup-forward .card { order: 2; margin-top: 32px !important; }
-  .layout-mockup-forward .eyebrow { order: 3; margin-top: 40px !important; }
-  .layout-mockup-forward h1.compact { order: 4; margin-top: 16px !important; }
-  .layout-mockup-forward .body-text { order: 5; margin-top: 16px !important; margin-bottom: 40px !important; }
-  /* The note annotates the mockup, so it has to travel with it. Mockup templates emit
-     .catatan as a SIBLING of .diag-wrap (see flow.ts), and an unordered flex child
-     defaults to order:0 — which sorted it ahead of even the counter and parked the
-     conclusion at the top of the slide, 230px above the diagram it explains. Same order
-     as .diag-wrap keeps the pair together; equal order falls back to DOM order, and the
-     note already follows the mockup there. */
-  .layout-mockup-forward .catatan { order: 2; margin-top: 24px !important; }
+
+  /* ── Reading-order slots ──────────────────────────────────────────────────
+     Eyebrow + headline are the HOOK: the reason a thumb stops scrolling. They have
+     to land inside the first two blocks a reader sees no matter which composition
+     the plan picked, so the slot numbers live here once rather than being restated
+     per template.
+
+     Slot 20 is the only slot ahead of the hook, and only ONE node can ever sit in
+     it: .card and .diag-wrap are mutually exclusive at render time (a "card"
+     mockup fills the card block, everything else fills the mockup block — see
+     renderSlide's "point" case), and nothing else claims 20.
+
+     .catatan is support copy — it explains a conclusion the headline has already
+     made — so it is pinned last on every composition. It used to be an unordered
+     flex child, which means order:0, which sorted it ahead of even the counter and
+     parked the note at the very top of the slide. Moving it to the mockup's slot
+     fixed that particular symptom and left the real one: mockup AND note both ahead
+     of the hook, headline starting 930px down a 1350px canvas.
+
+     Gaps of ten leave room to slot a block in without renumbering the rest. The
+     child combinator matters: mockups nest their own .catatan (comparison, illustration) and
+     those must stay where their template put them. */
+  section.slide-point > .counter { order: 10; }
+  section.slide-point > .eyebrow { order: 30; }
+  section.slide-point > h1.compact { order: 40; }
+  section.slide-point > .body-text { order: 50; }
+  section.slide-point > .diag-wrap { order: 60; }
+  section.slide-point > .card { order: 60; }
+  section.slide-point > .catatan { order: 70; }
+
+  /* Mockup-Forward: the visual leads, the hook follows it immediately. This is the
+     one composition that uses slot 20, and the note stays in slot 70 with everything
+     else — it is the mockup that moves, not the note that follows it up.
+
+     Both classes are named on the override so it outranks the slot rule above rather
+     than tying with it and losing on source order. Every composition that re-slots a
+     block has to spell the selector out the same way. */
+  /* .diag-wrap keeps its flex:1 here. Tried shrink-only so the visual would hug the
+     counter and the hook follow it straight away: a three-item checklist then ended at
+     y=300 with 470px of empty canvas under the note, which reads as a slide that failed
+     to render. Growing instead centers the visual in the upper half and bottom-anchors
+     the copy block — the gap between them is whitespace rather than a hole. */
+  section.slide-point.layout-mockup-forward > .diag-wrap { order: 20; margin-top: 32px !important; }
+  section.slide-point.layout-mockup-forward > .card { order: 20; margin-top: 32px !important; }
+  section.slide-point.layout-mockup-forward > .eyebrow { margin-top: 40px !important; }
+  section.slide-point.layout-mockup-forward > h1.compact { margin-top: 16px !important; }
+  /* Doubles as the gap to the note and, when there is no note, as the air under the
+     copy — .diag-wrap is flex:1 and eats the slack up top, so whatever ends the stack
+     would otherwise sit flush against the 80px bottom padding. */
+  section.slide-point.layout-mockup-forward > .body-text { margin-top: 16px !important; margin-bottom: 40px !important; }
+  section.slide-point.layout-mockup-forward > .catatan { margin-top: 0 !important; }
 
   /* Split-Content layout: fits columns side-by-side using CSS Grid */
   section.layout-split-content {
@@ -77909,8 +77970,10 @@ var carouselExtraCss = String.raw`
   }
   /* Explicit placement, because auto-placement put the note in the first free cell —
      column 2 row 2, i.e. directly ABOVE the mockup it annotates. Row 4 is the tall 1fr
-     row, so the note sits under the diagram in the same column. */
-  section.layout-split-content .catatan {
+     row, so the note sits under the diagram in the same column, below the headline's
+     row either way. Child combinator: a nested note (comparison, illustration) belongs
+     to its mockup's own layout, not to this grid. */
+  section.layout-split-content > .catatan {
     grid-column: 2;
     grid-row: 4;
     margin-top: 24px !important;
