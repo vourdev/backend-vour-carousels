@@ -72428,9 +72428,16 @@ var mockupBigstat = external_exports.object({
   unit: external_exports.string().max(30).optional(),
   caption: external_exports.string().max(90)
 });
+var FLOW_MAX_STEPS = 3;
+function compressFlowSteps(steps) {
+  if (steps.length <= FLOW_MAX_STEPS) return steps;
+  const middle = steps.slice(1, -1);
+  const pivot = middle.find((s) => s.focus) ?? middle[0];
+  return [steps[0], pivot, steps[steps.length - 1]];
+}
 var mockupFlow = external_exports.object({
   type: external_exports.literal("flow"),
-  steps: external_exports.array(external_exports.object({ label: external_exports.string().max(24), focus: external_exports.boolean().optional() })).min(2).max(5),
+  steps: external_exports.array(external_exports.object({ label: external_exports.string().max(24), focus: external_exports.boolean().optional() })).min(2).transform(compressFlowSteps),
   note: external_exports.string().max(90).optional()
 });
 var mockupConcept = external_exports.object({
@@ -74314,7 +74321,7 @@ var MOCKUP_BUDGETS = `- Terminal: filename + 4-6 code lines max (\u2264 45 chars
 - Callout: single punchy warning/takeaway sentence (\u2264 90 chars).
 - BigStat: number (\u2264 6 chars), unit (\u2264 20 chars), caption (\u2264 70 chars).
 - Card: card title (\u2264 40 chars), card body (\u2264 100 chars).
-- Flow: 2-5 step labels (\u2264 24 chars each), optional note (\u2264 90 chars).
+- Flow: 2-3 step labels (MAX 3 \u2014 a 4th is folded away by the renderer, keeping only the first, the focus and the last; \u2264 24 chars each), optional note (\u2264 90 chars). STRICTLY LINEAR: A \u2192 B \u2192 C, one row, one path. A flow has no fork \u2014 there is no field for a second destination, and a process that genuinely branches must be reduced to its main line (or split across two slides), never listed as extra steps.
 - Hub: center (\u2264 20 chars), MUST have 3-4 tools (never fewer than 2; label \u2264 16 chars), optional note (\u2264 90 chars).
 - Concept: parent (\u2264 20 chars), 2-3 children (MAX 3 \u2014 a 4th is dropped by the renderer; \u2264 18 chars each), optional note (\u2264 90 chars).
 - Checklist: 3-6 items (never fewer than 2; \u2264 48 chars each), optional note (\u2264 90 chars).
@@ -74335,7 +74342,7 @@ Array-count rule (HARD): concept/hub/checklist/flow/steps must meet their minimu
 PROPORTION (the caps above are LIMITS, not targets):
 - A mockup shares one 1080\xD71350 slide with a counter, eyebrow, headline and body.
   It gets roughly the lower half. Fill it, do not overflow it.
-- Aim for the MIDDLE of every range, not the maximum. 3 flow steps beat 5;
+- Aim for the MIDDLE of every range, not the maximum. 3 flow steps is the ceiling;
   4 checklist items beat 6; 4 terminal lines beat 8. Fewer, sharper items read
   better at thumbnail size than a dense list nobody can parse.
 - Keep item text WELL under its cap. A flow label at 24 chars or a checklist item
@@ -74881,7 +74888,7 @@ Grouped by VISUAL DIRECTOR category (pick by the slide's content):
 - LatencyComp \u2014 horizontal bar comparison chart of response times/latencies (e.g., Redis vs Postgres vs Dynamo)
 
 **PROCESS** (flow / step-by-step / structure):
-- Flow \u2014 pipelines, sequences (request \u2192 handler \u2192 db)
+- Flow \u2014 pipelines, sequences, MAX 3 nodes, one straight line (request \u2192 handler \u2192 db). A longer or branching process is not a flow: cut it to its 3 main nodes, or use Steps / EventQueue / Architecture instead.
 - Steps \u2014 2-4 numbered tutorial steps
 - Concept \u2014 parent term broken into 2-3 sub-concepts
 - Hub \u2014 center concept wiring to 3-4 related items
@@ -75099,7 +75106,7 @@ MOCKUP TYPES \u2014 every "point" slide MUST include a "mockup" object with one 
 6. { type: "bigstat", number: "3\xD7", unit?: "faster", caption: "Explanation of the metric" }
    \u2192 Large editorial number. Use for impressive metrics. Keep number \u2264 6 chars.
 
-7. { type: "flow", steps: [{ label: "...", focus?: true }], note?: "..." }
+7. { type: "flow", steps: [{ label: "...", focus?: true }], note?: "..." }  // 2-3 steps, linear only
    \u2192 Sequential nodes with arrows (2-5 steps, one optional "focus"). Use for pipelines / ordered sequences (request \u2192 handler \u2192 db).
 
 8. { type: "hub", center: "...", tools: [{ icon: "<allowlisted-slug>", label: "..." }], note?: "..." }
@@ -75191,7 +75198,7 @@ VARIETY EXAMPLE (a good, non-monotone deck \u2014 mirror this diversity, not the
   (accentWord "tau"), lede "biar lo gak cuma nge-prompt doang tapi ngerti cara kerjanya.",
   stamp "Engineering Notes", ghostNumeral "01"
 - point \u2192 concept (parent + 2-3 children), layout "standard"
-- point \u2192 flow (3-4 steps, one focus), layout "note-emphasis" (its note carries the point)
+- point \u2192 flow (3 steps, one focus), layout "note-emphasis" (its note carries the point)
 - point \u2192 hub (center + 3-4 tool icons), layout omitted (renderer's pick)
 - point \u2192 terminal (only if a real code scene \u2014 max 1), layout "mockup-forward"
 - point \u2192 comparison (bad vs good), layout "standard"
@@ -77242,14 +77249,27 @@ var carouselExtraCss = String.raw`
 
   /* ═══ Mockup fit — surface-independent, applies on Paper and Ink alike ═══ */
 
-  /* Flow chain: the row could not wrap and .node forbids wrapping its own text,
-     so a 4-5 step flow (labels up to 24 chars) overflowed the 920px content box.
-     justify-content:center then split the overflow, clipping the first and last
-     node against section{overflow:hidden}. Wrapping keeps every step on canvas. */
-  .diag-flow { flex-wrap: wrap; row-gap: 16px; max-width: 100%; }
-  .diag-flow .flow-step { display: inline-flex; align-items: center; gap: 20px; max-width: 100%; }
+  /* Flow chain: ONE row, always.
+     The row originally could not wrap and .node forbade wrapping its own text, so a
+     4-5 step flow (labels up to 24 chars) overflowed the 920px content box and
+     justify-content:center clipped the first and last node against
+     section{overflow:hidden}. flex-wrap:wrap fixed the clipping and introduced a worse
+     bug: the overflow moved to a second row, opening with its own arrow, which reads as
+     the chain FORKING. A linear four-step process shipped looking like one node fanning
+     out to two destinations.
+     The chain is capped at three nodes in the schema now (compressFlowSteps), so the only
+     job left here is the long-label case: three 24-char labels still exceed 920px. They
+     shrink instead — min-width:0 lets a flex item go below its content width, and .node
+     already wraps its own text — so the row stays a row and no arrow is ever orphaned. */
+  .diag-flow { flex-wrap: nowrap; max-width: 100%; }
+  .diag-flow .flow-step {
+    display: inline-flex; align-items: center; gap: 20px;
+    max-width: 100%; min-width: 0; flex-shrink: 1;
+  }
+  .diag-flow .flow-step .arrow { flex: none; }
   .diag-flow .node {
     max-width: 100%;
+    min-width: 0;
     white-space: normal;
     text-align: center;
     font-size: 24px;
@@ -77880,7 +77900,14 @@ var carouselExtraCss = String.raw`
   section.slide-point > .body-text { order: 50; }
   section.slide-point > .diag-wrap { order: 60; }
   section.slide-point > .card { order: 60; }
-  section.slide-point > .catatan { order: 70; }
+  /* The note spans the slide, never a column.
+     grid-column is inert in the flex compositions, so this costs nothing there and
+     makes full width the DEFAULT for any grid composition rather than something each
+     one has to remember. split-content placed it in column 2 and the note came out
+     435px of the 920px content width — 47% — which wrapped "Amankan edge cases sebelum
+     lempar traffic asli" onto three lines beside a checklist that had the same problem.
+     A composition that wants the note narrower now has to say so explicitly. */
+  section.slide-point > .catatan { order: 70; grid-column: 1 / -1; }
 
   /* Mockup-Forward: the visual leads, the hook follows it immediately. This is the
      one composition that uses slot 20, and the note stays in slot 70 with everything
@@ -77908,7 +77935,11 @@ var carouselExtraCss = String.raw`
   section.layout-split-content {
     display: grid !important;
     grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto auto auto 1fr;
+    /* Five rows: three for the copy column, one shared by the body text and the bottom of
+       the mockup, and a trailing 1fr that holds the note. The 1fr used to be row 4, which
+       put every pixel of slack BETWEEN the columns and the note once the note stopped
+       being a column child — a 330px hole mid-slide. Slack belongs after the last block. */
+    grid-template-rows: auto auto auto auto 1fr;
     column-gap: 50px;
     row-gap: 0;
     align-content: start;
@@ -77977,13 +78008,18 @@ var carouselExtraCss = String.raw`
     width: 100%;
   }
   /* Explicit placement, because auto-placement put the note in the first free cell —
-     column 2 row 2, i.e. directly ABOVE the mockup it annotates. Row 4 is the tall 1fr
-     row, so the note sits under the diagram in the same column, below the headline's
-     row either way. Child combinator: a nested note (comparison, illustration) belongs
-     to its mockup's own layout, not to this grid. */
+     column 2 row 2, i.e. directly ABOVE the mockup it annotates.
+
+     Row 5 is a new row under BOTH columns; the note inherits the slot rule's
+     grid-column: 1 / -1 and spans them. It used to sit in column 2 row 4, the tall
+     1fr row — under the diagram, but boxed into half the canvas with it. Row 4 keeps the
+     1fr, so it still absorbs the slack and the note is bottom-anchored rather than
+     floating in the middle of a short slide.
+
+     Child combinator: a nested note (comparison, illustration) belongs to its mockup's
+     own layout, not to this grid. */
   section.layout-split-content > .catatan {
-    grid-column: 2;
-    grid-row: 4;
+    grid-row: 5;
     margin-top: 24px !important;
     align-self: start;
   }
@@ -78360,6 +78396,25 @@ function toTikTokSafeUrl(url2) {
 
 // src/lib/publish/upload-slides.ts
 var MAX_PARALLEL = 4;
+var UPLOAD_ATTEMPTS = 3;
+var UPLOAD_RETRY_BASE_MS = 400;
+async function uploadWithRetry(image, slideIndex) {
+  let lastErr;
+  for (let attempt = 1; attempt <= UPLOAD_ATTEMPTS; attempt++) {
+    try {
+      return await uploadImage(image);
+    } catch (err) {
+      lastErr = err;
+      if (attempt === UPLOAD_ATTEMPTS) break;
+      console.warn(
+        `[upload-slides] slide ${slideIndex} attempt ${attempt}/${UPLOAD_ATTEMPTS} failed:`,
+        err instanceof Error ? err.message : err
+      );
+      await new Promise((r) => setTimeout(r, UPLOAD_RETRY_BASE_MS * 2 ** (attempt - 1)));
+    }
+  }
+  throw lastErr;
+}
 async function uploadSlides(images) {
   if (images.length === 0) return { urls: [] };
   if (!process.env.CLOUDINARY_URL) {
@@ -78369,7 +78424,7 @@ async function uploadSlides(images) {
   let next = 0;
   async function worker() {
     for (let i = next++; i < images.length; i = next++) {
-      urls[i] = await uploadImage(images[i]);
+      urls[i] = await uploadWithRetry(images[i], i);
     }
   }
   try {
