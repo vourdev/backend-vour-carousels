@@ -373,6 +373,13 @@ ${ctx.stats
       });
       return enforcePlanInvariants(object);
     } catch (err: any) {
+      // The text fallback exists for a model that answered with JSON the schema
+      // rejects. A transport that never delivered an answer will not answer the
+      // second time either -- it only spends another three SDK attempts on a dead
+      // link, doubling the time before the caller learns anything. That is how
+      // this path crossed Cloudflare's 100s ceiling and surfaced as a bare 524.
+      if (isSdkRetryExhausted(err)) throw err;
+
       console.warn("generateObject failed, trying generateText + JSON parse fallback:", err?.message || err);
       const { text } = await generateText({
         model,
@@ -406,6 +413,13 @@ export async function reviseSlidePlan(
       });
       return object;
     } catch (err: any) {
+      // The text fallback exists for a model that answered with JSON the schema
+      // rejects. A transport that never delivered an answer will not answer the
+      // second time either -- it only spends another three SDK attempts on a dead
+      // link, doubling the time before the caller learns anything. That is how
+      // this path crossed Cloudflare's 100s ceiling and surfaced as a bare 524.
+      if (isSdkRetryExhausted(err)) throw err;
+
       console.warn("reviseObject failed, trying generateText + JSON parse fallback:", err?.message || err);
       const { text } = await generateText({
         model,
@@ -491,6 +505,13 @@ async function reviseTargetSlides(
       });
       return object.slides.map((s) => ({ index: s.index - 1, slide: s.slide }));
     } catch (err: unknown) {
+      // The text fallback exists for a model that answered with JSON the schema
+      // rejects. A transport that never delivered an answer will not answer the
+      // second time either -- it only spends another three SDK attempts on a dead
+      // link, doubling the time before the caller learns anything. That is how
+      // this path crossed Cloudflare's 100s ceiling and surfaced as a bare 524.
+      if (isSdkRetryExhausted(err)) throw err;
+
       console.warn("[revision-scope] scoped slide generateObject failed, retrying as text:", err);
       const { text } = await generateText({
         model,
@@ -529,6 +550,13 @@ async function reviseGlobalFields(
       });
       return object as ScopedPatch;
     } catch (err: unknown) {
+      // The text fallback exists for a model that answered with JSON the schema
+      // rejects. A transport that never delivered an answer will not answer the
+      // second time either -- it only spends another three SDK attempts on a dead
+      // link, doubling the time before the caller learns anything. That is how
+      // this path crossed Cloudflare's 100s ceiling and surfaced as a bare 524.
+      if (isSdkRetryExhausted(err)) throw err;
+
       console.warn("[revision-scope] scoped global generateObject failed, retrying as text:", err);
       const { text } = await generateText({
         model,

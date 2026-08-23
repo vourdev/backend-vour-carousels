@@ -80,6 +80,30 @@ export interface RetryOptions {
 
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+/**
+ * Bound how long optional work is allowed to delay a request.
+ *
+ * Some inputs improve a response without being required for it — the mockup
+ * diversity context on a slide plan, for example, which already falls back to an
+ * empty list on error. On a healthy link those queries cost milliseconds; on a
+ * link dropping half its packets each one can burn the whole retry budget, and
+ * the caller waits on data the answer does not depend on.
+ *
+ * The underlying promise is not cancelled — libsql gives no handle to do that —
+ * so it settles later and is discarded. This unblocks the caller; it does not
+ * free the connection.
+ */
+export function withDeadline<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return new Promise<T>((resolve) => {
+    const timer = setTimeout(() => resolve(fallback), ms);
+    const settle = (value: T) => {
+      clearTimeout(timer);
+      resolve(value);
+    };
+    promise.then(settle, () => settle(fallback));
+  });
+}
+
 export async function withRetry<T>(fn: () => Promise<T>, opts: RetryOptions = {}): Promise<T> {
   const {
     attempts = 3,

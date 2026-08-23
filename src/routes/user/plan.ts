@@ -6,8 +6,12 @@ import { appendRevision, listRevisions } from "../../lib/memory/repo";
 import { summarizePlanDiff } from "../../lib/memory/diff";
 import type { SlidePlan } from "../../lib/ds/schema";
 import { getUnderusedMockupTypes, getRecentMockupStatsWithPercentages, getGlobalMockupStats, getRecentLayoutStats } from "../../lib/history/repo";
+import { withDeadline } from "../../lib/retry";
 
 const app = new Hono<{ Variables: { session: any } }>();
+
+/** How long advisory diversity queries may delay a plan request. */
+const DIVERSITY_DEADLINE_MS = 4000;
 
 app.get("/mockup-stats", async (c) => {
   const session = c.get("session") as { user: { id: string } };
@@ -30,9 +34,18 @@ app.post("/", async (c) => {
   }
   const model = resolveModel(modelId);
   const userId = session?.user?.id;
+  // Diversity context only nudges mockup selection — the plan is generated with
+  // or without it, which is why both already fall back to an empty list. Giving
+  // them a deadline as well keeps a degraded database link from delaying the
+  // work the caller actually asked for; without it these two can consume the
+  // retry budget before the first token is ever requested from the model.
   const [underused, stats] = await Promise.all([
-    userId ? getUnderusedMockupTypes(userId).catch(() => []) : Promise.resolve([]),
-    userId ? getRecentMockupStatsWithPercentages(userId).catch(() => []) : Promise.resolve([]),
+    userId
+      ? withDeadline(getUnderusedMockupTypes(userId), DIVERSITY_DEADLINE_MS, [] as string[])
+      : Promise.resolve([] as string[]),
+    userId
+      ? withDeadline(getRecentMockupStatsWithPercentages(userId), DIVERSITY_DEADLINE_MS, [])
+      : Promise.resolve([]),
   ]);
   const diversity: MockupDiversityContext = { underusedTypes: underused, stats };
   const plan = await generateSlidePlan(brief, model, diversity);

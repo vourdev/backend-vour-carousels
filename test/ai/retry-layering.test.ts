@@ -98,3 +98,31 @@ describe("withRetry layering", () => {
     expect(fn).toHaveBeenCalledTimes(1);
   });
 });
+
+/**
+ * `generateSlidePlan` and the revision paths fall back from `generateObject` to
+ * `generateText` when the first call throws. That fallback is for a model that
+ * answered with JSON the schema rejects — not for a transport that never
+ * delivered an answer, which will fail identically and spend another three SDK
+ * attempts doing it. Together with the outer wrapper that was six HTTP attempts
+ * per request, enough to cross Cloudflare's 100s ceiling and return `524`.
+ */
+describe("generateObject -> generateText fallback guard", () => {
+  it("treats an exhausted transport as not worth a second method", () => {
+    const transport = new RetryError("Failed after 3 attempts. Last error: read ECONNRESET");
+    expect(isSdkRetryExhausted(transport)).toBe(true);
+  });
+
+  it("still allows the fallback for the schema failure it exists for", () => {
+    const schemaFailure = Object.assign(new Error("response did not match schema"), {
+      name: "AI_NoObjectGeneratedError",
+    });
+    expect(isSdkRetryExhausted(schemaFailure)).toBe(false);
+  });
+
+  it("still allows the fallback for unparseable JSON", () => {
+    expect(isSdkRetryExhausted(new SyntaxError("Unexpected token < in JSON at position 0"))).toBe(
+      false
+    );
+  });
+});

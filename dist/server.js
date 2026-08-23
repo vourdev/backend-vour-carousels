@@ -15981,6 +15981,16 @@ function isTransientNetworkError(err) {
   }
   return false;
 }
+function withDeadline(promise2, ms, fallback) {
+  return new Promise((resolve2) => {
+    const timer = setTimeout(() => resolve2(fallback), ms);
+    const settle = (value) => {
+      clearTimeout(timer);
+      resolve2(value);
+    };
+    promise2.then(settle, () => settle(fallback));
+  });
+}
 async function withRetry(fn, opts = {}) {
   const {
     attempts = 3,
@@ -75719,6 +75729,7 @@ ${ctx.stats?.filter((s) => s.percentage >= 12).map((s) => `  \u2717 ${s.type} ($
       });
       return enforcePlanInvariants(object3);
     } catch (err) {
+      if (isSdkRetryExhausted(err)) throw err;
       console.warn("generateObject failed, trying generateText + JSON parse fallback:", err?.message || err);
       const { text: text2 } = await generateText({
         model,
@@ -75743,6 +75754,7 @@ async function reviseSlidePlan(plan, message, model, history = []) {
       });
       return object3;
     } catch (err) {
+      if (isSdkRetryExhausted(err)) throw err;
       console.warn("reviseObject failed, trying generateText + JSON parse fallback:", err?.message || err);
       const { text: text2 } = await generateText({
         model,
@@ -75794,6 +75806,7 @@ async function reviseTargetSlides(plan, scope, message, model, history) {
       });
       return object3.slides.map((s) => ({ index: s.index - 1, slide: s.slide }));
     } catch (err) {
+      if (isSdkRetryExhausted(err)) throw err;
       console.warn("[revision-scope] scoped slide generateObject failed, retrying as text:", err);
       const { text: text2 } = await generateText({
         model,
@@ -75822,6 +75835,7 @@ async function reviseGlobalFields(plan, scope, message, model, history) {
       });
       return object3;
     } catch (err) {
+      if (isSdkRetryExhausted(err)) throw err;
       console.warn("[revision-scope] scoped global generateObject failed, retrying as text:", err);
       const { text: text2 } = await generateText({
         model,
@@ -76433,7 +76447,9 @@ async function getRecentLayoutStats(userId2, limit = 25) {
 }
 
 // src/routes/user/plan.ts
+init_retry();
 var app3 = new Hono2();
+var DIVERSITY_DEADLINE_MS = 4e3;
 app3.get("/mockup-stats", async (c) => {
   const session = c.get("session");
   const userId2 = session?.user?.id;
@@ -76453,8 +76469,8 @@ app3.post("/", async (c) => {
   const model = resolveModel(modelId);
   const userId2 = session?.user?.id;
   const [underused, stats] = await Promise.all([
-    userId2 ? getUnderusedMockupTypes(userId2).catch(() => []) : Promise.resolve([]),
-    userId2 ? getRecentMockupStatsWithPercentages(userId2).catch(() => []) : Promise.resolve([])
+    userId2 ? withDeadline(getUnderusedMockupTypes(userId2), DIVERSITY_DEADLINE_MS, []) : Promise.resolve([]),
+    userId2 ? withDeadline(getRecentMockupStatsWithPercentages(userId2), DIVERSITY_DEADLINE_MS, []) : Promise.resolve([])
   ]);
   const diversity = { underusedTypes: underused, stats };
   const plan = await generateSlidePlan(brief, model, diversity);
