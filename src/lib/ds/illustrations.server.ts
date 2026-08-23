@@ -8,6 +8,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import type { Client } from "@libsql/client";
 import { createRetryingClient, dbConfig } from "../libsql";
+import { withDeadline } from "../retry";
 import {
   FALLBACK_ILLUSTRATION,
   normalizeIllustration,
@@ -39,25 +40,40 @@ let warmUpPromise: Promise<void> | null = null;
  * Pre-warm the cache from database.
  * If database is not ready or has no illustrations table, it degrades gracefully to filesystem loading.
  */
+/**
+ * How long a request may wait on the database warm-up before rendering from disk.
+ *
+ * `SELECT slug, variant, svg FROM illustrations` pulls every SVG body — about
+ * 3.9 MB. On a healthy link that is one quick round trip. On a link dropping
+ * ~47% of its packets it blocked `/api/assemble` long enough that the Vercel
+ * function gave up and closed the connection (nginx logged 499), so the user saw
+ * a slide build that simply never produced anything.
+ *
+ * Waiting buys nothing: the same 312 SVGs ship inside the image, and `read()`
+ * already falls back to them per slug. The query is left running so it still
+ * populates the cache for later requests.
+ */
+const WARM_UP_DEADLINE_MS = 2500;
+
 export async function warmUpIllustrations(): Promise<void> {
-  if (warmUpPromise) return warmUpPromise;
-  
-  warmUpPromise = (async () => {
-    try {
-      const db = getDbClient();
-      const res = await db.execute("SELECT slug, variant, svg FROM illustrations");
-      for (const row of res.rows) {
-        const slug = String(row.slug);
-        const variant = String(row.variant);
-        const svg = String(row.svg);
-        cache.set(`${slug}.${variant}`, svg);
+  if (!warmUpPromise) {
+    warmUpPromise = (async () => {
+      try {
+        const db = getDbClient();
+        const res = await db.execute("SELECT slug, variant, svg FROM illustrations");
+        for (const row of res.rows) {
+          const slug = String(row.slug);
+          const variant = String(row.variant);
+          const svg = String(row.svg);
+          cache.set(`${slug}.${variant}`, svg);
+        }
+      } catch {
+        // Degrade silently to filesystem fallback
       }
-    } catch {
-      // Degrade silently to filesystem fallback
-    }
-  })();
-  
-  return warmUpPromise;
+    })();
+  }
+
+  return withDeadline<void>(warmUpPromise, WARM_UP_DEADLINE_MS, undefined);
 }
 
 function read(slug: IllustrationSlug, variant: IllustrationVariant): string | null {

@@ -73053,6 +73053,7 @@ function sanitizeCustomHtml(html) {
 
 // src/lib/ds/illustrations.server.ts
 init_libsql();
+init_retry();
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 var ASSETS_DIR = existsSync(join(process.cwd(), "src", "lib", "ds", "assets", "illustrations")) ? join(process.cwd(), "src", "lib", "ds", "assets", "illustrations") : join(process.cwd(), "dist", "lib", "ds", "assets", "illustrations");
@@ -73065,22 +73066,24 @@ function getDbClient() {
   return client;
 }
 var warmUpPromise = null;
+var WARM_UP_DEADLINE_MS = 2500;
 async function warmUpIllustrations() {
-  if (warmUpPromise) return warmUpPromise;
-  warmUpPromise = (async () => {
-    try {
-      const db6 = getDbClient();
-      const res = await db6.execute("SELECT slug, variant, svg FROM illustrations");
-      for (const row of res.rows) {
-        const slug = String(row.slug);
-        const variant = String(row.variant);
-        const svg = String(row.svg);
-        cache.set(`${slug}.${variant}`, svg);
+  if (!warmUpPromise) {
+    warmUpPromise = (async () => {
+      try {
+        const db6 = getDbClient();
+        const res = await db6.execute("SELECT slug, variant, svg FROM illustrations");
+        for (const row of res.rows) {
+          const slug = String(row.slug);
+          const variant = String(row.variant);
+          const svg = String(row.svg);
+          cache.set(`${slug}.${variant}`, svg);
+        }
+      } catch {
       }
-    } catch {
-    }
-  })();
-  return warmUpPromise;
+    })();
+  }
+  return withDeadline(warmUpPromise, WARM_UP_DEADLINE_MS, void 0);
 }
 function read(slug, variant) {
   const key = `${slug}.${variant}`;
