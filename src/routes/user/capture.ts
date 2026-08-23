@@ -1,12 +1,29 @@
 import { Hono } from "hono";
 import { captureQueue } from "../../services/capture-queue";
+import { uploadSlides } from "../../lib/publish/upload-slides";
+import { getCarousel, updateCarousel } from "../../lib/history/repo";
 
-const app = new Hono();
+const app = new Hono<{ Variables: { session: any } }>();
 
+/**
+ * Render a deck to images and give them somewhere to live.
+ *
+ * The upload is part of this call rather than of publishing, because capture is the
+ * expensive half and a browser refresh used to throw the result away: the images came
+ * back as base64, became object URLs, and vanished, so the wizard re-ran the whole
+ * capture. Uploading here moves work the publish step was doing anyway, and makes the
+ * result survive.
+ *
+ * The base64 is still returned. The wizard downloads JPEGs straight from it, and a
+ * Cloudinary failure then degrades to exactly the old behaviour instead of throwing
+ * away a render that cost a Chromium context and one screenshot per slide.
+ */
 app.post("/", async (c) => {
-  const { html, opts } = await c.req.json() as {
+  const { html, opts, carouselId } = (await c.req.json()) as {
     html: string;
     opts?: { pixelRatio?: number; quality?: number };
+    /** When set, the uploaded URLs are written straight onto this row. */
+    carouselId?: string;
   };
 
   if (!html?.trim()) {
@@ -63,7 +80,25 @@ app.post("/", async (c) => {
       }
     });
 
-    return c.json({ images });
+    const { urls, error: uploadError } = await uploadSlides(images);
+    if (uploadError) {
+      // Not fatal: the caller still has the render. Logged so a persistent
+      // Cloudinary problem is visible rather than showing up later as a
+      // publish that has to upload from scratch.
+      console.error("Slide upload after capture failed:", uploadError);
+    }
+
+    // Persist against the row when the caller already has one. A re-export of an
+    // existing carousel must not leave the previous run's URLs on it.
+    if (carouselId && urls.length > 0) {
+      const session = c.get("session") as { user: { id: string } };
+      const owned = await getCarousel(carouselId, session.user.id);
+      if (owned) {
+        await updateCarousel(carouselId, { imageUrls: urls, status: "exported" });
+      }
+    }
+
+    return c.json({ images, urls, uploadError });
   } catch (err: any) {
     console.error("Capture slides error:", err);
     return c.json({ error: err.message || "Failed to capture slides" }, 500);
