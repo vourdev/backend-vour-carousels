@@ -4,7 +4,7 @@ import { generateBrief, generateSlidePlan, stripUnfulfillableEvidence, type Mock
 import { assembleCarousel } from "../../lib/ds/assemble";
 import { warmUpIllustrations } from "../../lib/ds/illustrations.server";
 import { captureQueue } from "../../services/capture-queue";
-import { uploadImage } from "../../lib/publish/cloudinary";
+import { uploadSlides } from "../../lib/publish/upload-slides";
 import { scheduleBufferPost } from "../../lib/publish/buffer";
 import { buildPostText } from "../../lib/publish/caption";
 import { nextWibSlot, POST_HOUR_WIB } from "../../lib/publish/schedule";
@@ -120,12 +120,15 @@ async function createAndPublishCarousel({
     }
   });
 
-  // 5. Upload screenshots to Cloudinary
-  const imageUrls: string[] = [];
-  for (const base64 of imageBase64s) {
-    const secureUrl = await uploadImage(base64);
-    imageUrls.push(secureUrl);
-  }
+  // 5. Upload screenshots to Cloudinary.
+  //
+  // Through uploadSlides rather than uploadImage directly: the cron runs on the same
+  // uplink as everything else, where more than half of first attempts fail, and a bare
+  // sequential loop had no retry at all — one dropped packet ended the whole nightly
+  // deck. Still all-or-nothing, so the throw below keeps the caller's existing
+  // partial-success handling intact.
+  const { urls: imageUrls, error: uploadError } = await uploadSlides(imageBase64s);
+  if (uploadError) throw new Error(`Slide upload failed: ${uploadError}`);
 
   // 6. Save initial Carousel draft to Database
   const dbItem = await createCarousel({

@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { getCarousel, listCarousels } from "../../lib/history/repo";
+import { cleanupCarouselImages, cleanupPostedCarousels } from "../../lib/history/cleanup";
 
 const app = new Hono<{ Variables: { session: any } }>();
 
@@ -29,6 +30,31 @@ app.get("/:id", async (c) => {
   const carousel = await getCarousel(c.req.param("id"), userId(c));
   if (!carousel) return c.json({ error: "Carousel not found" }, 404);
   return c.json({ carousel });
+});
+
+/**
+ * Free the Cloudinary assets of every deck already posted.
+ *
+ * Declared before the per-id route so `cleanup-images` is never read as an id. Restricted
+ * to `posted` inside cleanupPostedCarousels: a bulk action that could reach a draft would
+ * be one misclick from deleting work in progress.
+ */
+app.post("/cleanup-images", async (c) => {
+  return c.json(await cleanupPostedCarousels(userId(c)));
+});
+
+/**
+ * Free one deck's slides, keeping its thumbnail so the calendar still renders.
+ *
+ * Refused while a deck is scheduled — Buffer fetches the image when the post goes out, so
+ * deleting early publishes a hole and the failure only surfaces later, on the account.
+ */
+app.post("/:id/cleanup-images", async (c) => {
+  const result = await cleanupCarouselImages(c.req.param("id"), userId(c));
+  if ("error" in result) {
+    return c.json({ error: result.error }, result.error === "Carousel not found" ? 404 : 409);
+  }
+  return c.json(result);
 });
 
 export default app;

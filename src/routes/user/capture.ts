@@ -7,7 +7,8 @@ import {
   readCaptureJob,
   type CaptureSuccess,
 } from "../../services/capture-jobs";
-import { uploadSlides } from "../../lib/publish/upload-slides";
+import { orphanedUrls, uploadSlides } from "../../lib/publish/upload-slides";
+import { destroyImage } from "../../lib/publish/cloudinary";
 import { getCarousel, updateCarousel } from "../../lib/history/repo";
 import { assembleCarousel } from "../../lib/ds/assemble";
 import { warmUpIllustrations } from "../../lib/ds/illustrations.server";
@@ -91,7 +92,14 @@ async function runCapture(
   // busy" used to have no answer in any log.
   console.log(`[capture] rendered ${images.length} slides${carouselId ? ` for ${carouselId}` : ""}`);
 
-  const { urls, error: uploadError } = await uploadSlides(images);
+  // What this deck already has on Cloudinary, so a revision does not pay for the slides
+  // it did not touch. Reading it is one row; getting it wrong only costs a re-upload.
+  const owned = carouselId ? await getCarousel(carouselId, userId) : null;
+  const previous = owned
+    ? { urls: owned.imageUrls, hashes: owned.imageHashes }
+    : { urls: [], hashes: [] };
+
+  const { urls, hashes, error: uploadError } = await uploadSlides(images, previous);
   if (uploadError) {
     // Not fatal: the caller still has the render. Logged so a persistent
     // Cloudinary problem is visible rather than showing up later as a
@@ -101,10 +109,23 @@ async function runCapture(
 
   // Persist against the row when the caller already has one. A re-export of an
   // existing carousel must not leave the previous run's URLs on it.
-  if (carouselId && urls.length > 0) {
-    const owned = await getCarousel(carouselId, userId);
-    if (owned) {
-      await updateCarousel(carouselId, { imageUrls: urls, status: "exported" });
+  if (owned && urls.length > 0) {
+    await updateCarousel(owned.id, { imageUrls: urls, imageHashes: hashes, status: "exported" });
+
+    // The slides this export replaced. Left alone they stayed in Cloudinary forever —
+    // three exports of one deck meant two abandoned sets. Deliberately skipped once the
+    // deck is scheduled or posted: Buffer fetches the asset at post time, so deleting
+    // what a pending post still points at would publish a hole.
+    if (owned.status !== "scheduled" && owned.status !== "posted") {
+      const stale = orphanedUrls(previous, urls);
+      if (stale.length > 0) {
+        const removed = await Promise.all(
+          stale.map((u) => destroyImage(u).catch(() => false))
+        );
+        console.log(
+          `[capture] cleaned ${removed.filter(Boolean).length}/${stale.length} replaced slides`
+        );
+      }
     }
   }
 

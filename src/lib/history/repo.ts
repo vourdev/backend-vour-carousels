@@ -22,6 +22,14 @@ export interface Carousel {
   createdAt: number;
   updatedAt: number;
   imageUrls: string[];
+  /**
+   * Content hash per slide, positionally parallel to imageUrls.
+   *
+   * A re-export used to upload every slide again and leave the previous run's assets in
+   * Cloudinary forever. With the hashes on the row, a slide whose bytes did not change
+   * keeps the URL it already has.
+   */
+  imageHashes: string[];
   slidePlan?: SlidePlan | null;
 }
 
@@ -56,6 +64,7 @@ function ensureSchema(): Promise<void> {
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
         image_urls TEXT DEFAULT '[]',
+        image_hashes TEXT DEFAULT '[]',
         slide_plan TEXT
       )`);
       
@@ -69,6 +78,15 @@ function ensureSchema(): Promise<void> {
       // Safe dynamic migration to add slide_plan for existing databases
       try {
         await db().execute(`ALTER TABLE carousels ADD COLUMN slide_plan TEXT`);
+      } catch (e) {
+        // Ignored if column already exists
+      }
+
+      // Content hash per uploaded slide, positionally parallel to image_urls. A re-export
+      // uploads only the slides whose bytes actually changed; without this every export
+      // paid for the whole deck again and orphaned the previous run's assets.
+      try {
+        await db().execute(`ALTER TABLE carousels ADD COLUMN image_hashes TEXT DEFAULT '[]'`);
       } catch (e) {
         // Ignored if column already exists
       }
@@ -100,6 +118,7 @@ function rowToCarousel(r: any): Carousel {
     createdAt: Number(r.created_at),
     updatedAt: Number(r.updated_at),
     imageUrls: JSON.parse(String(r.image_urls ?? "[]")),
+    imageHashes: JSON.parse(String(r.image_hashes ?? "[]")),
     slidePlan: r.slide_plan ? JSON.parse(String(r.slide_plan)) : null,
   };
 }
@@ -158,13 +177,25 @@ const PATCH_COLUMNS: Record<string, string> = {
   title: "title",
   caption: "caption",
   imageUrls: "image_urls",
+  imageHashes: "image_hashes",
   slidePlan: "slide_plan",
 };
 
 export async function updateCarousel(
   id: string,
   patch: Partial<
-    Pick<Carousel, "status" | "thumbnail" | "bufferIgId" | "bufferTtId" | "dueAt" | "title" | "caption" | "imageUrls">
+    Pick<
+      Carousel,
+      | "status"
+      | "thumbnail"
+      | "bufferIgId"
+      | "bufferTtId"
+      | "dueAt"
+      | "title"
+      | "caption"
+      | "imageUrls"
+      | "imageHashes"
+    >
   >
 ): Promise<void> {
   await ensureSchema();

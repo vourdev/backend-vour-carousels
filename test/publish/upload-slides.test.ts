@@ -95,8 +95,84 @@ describe("uploadSlides", () => {
     expect(res.urls).toEqual([]);
     expect(res.error).toContain("socket hang up");
     // Bounded: a retry loop with no ceiling would hold the request open indefinitely
-    // while Chromium's output sits in memory waiting on it.
-    expect(uploadImage).toHaveBeenCalledTimes(3);
+    // while Chromium's output sits in memory waiting on it. Four attempts, because
+    // uploadImage caps a single try at 20s — the whole budget is smaller than three
+    // attempts were when a stalled connection could hang for 108 seconds.
+    expect(uploadImage).toHaveBeenCalledTimes(4);
+  });
+
+  /**
+   * A revision touches one or two slides of eight. Re-uploading the other six cost minutes
+   * on this uplink and abandoned the previous run's assets in Cloudinary, where nothing
+   * ever deleted them — three exports of one deck left two full sets behind.
+   */
+  describe("re-export", () => {
+    it("uploads only the slides whose bytes changed", async () => {
+      const { uploadSlides, slideHash } = await import("@/lib/publish/upload-slides");
+      uploadImage.mockImplementation(async (b64: string) => `https://cdn/${b64}-new`);
+
+      const first = await uploadSlides(["a", "b", "c"]);
+      expect(uploadImage).toHaveBeenCalledTimes(3);
+      uploadImage.mockClear();
+
+      // Slide 1 revised; 0 and 2 are byte-identical.
+      const second = await uploadSlides(["a", "B", "c"], first);
+      expect(uploadImage).toHaveBeenCalledTimes(1);
+      expect(uploadImage).toHaveBeenCalledWith("B");
+      expect(second.urls[0]).toBe(first.urls[0]);
+      expect(second.urls[2]).toBe(first.urls[2]);
+      expect(second.urls[1]).not.toBe(first.urls[1]);
+      expect(second.hashes[0]).toBe(slideHash("a"));
+    });
+
+    it("uploads nothing at all when the deck is unchanged", async () => {
+      const { uploadSlides } = await import("@/lib/publish/upload-slides");
+      uploadImage.mockImplementation(async (b64: string) => `https://cdn/${b64}`);
+
+      const first = await uploadSlides(["a", "b"]);
+      uploadImage.mockClear();
+
+      const second = await uploadSlides(["a", "b"], first);
+      expect(uploadImage).not.toHaveBeenCalled();
+      expect(second.urls).toEqual(first.urls);
+    });
+
+    it("matches by content, so reordering the deck re-uploads nothing", async () => {
+      const { uploadSlides } = await import("@/lib/publish/upload-slides");
+      uploadImage.mockImplementation(async (b64: string) => `https://cdn/${b64}`);
+
+      const first = await uploadSlides(["a", "b", "c"]);
+      uploadImage.mockClear();
+
+      // Index-based matching would consider all three changed and pay for the whole deck.
+      const second = await uploadSlides(["c", "a", "b"], first);
+      expect(uploadImage).not.toHaveBeenCalled();
+      expect(second.urls).toEqual([first.urls[2], first.urls[0], first.urls[1]]);
+    });
+
+    it("ignores a previous entry whose url is missing", async () => {
+      const { uploadSlides, slideHash } = await import("@/lib/publish/upload-slides");
+      uploadImage.mockImplementation(async (b64: string) => `https://cdn/${b64}`);
+
+      // A row written before the hashes existed, or a half-failed run.
+      const second = await uploadSlides(["a"], { urls: [], hashes: [slideHash("a")] });
+      expect(uploadImage).toHaveBeenCalledTimes(1);
+      expect(second.urls).toEqual(["https://cdn/a"]);
+    });
+  });
+
+  describe("orphanedUrls", () => {
+    it("names exactly what the new export no longer points at", async () => {
+      const { orphanedUrls } = await import("@/lib/publish/upload-slides");
+      const previous = { urls: ["u0", "u1", "u2"], hashes: ["h0", "h1", "h2"] };
+      expect(orphanedUrls(previous, ["u0", "NEW", "u2"])).toEqual(["u1"]);
+    });
+
+    it("is empty when everything was reused", async () => {
+      const { orphanedUrls } = await import("@/lib/publish/upload-slides");
+      const previous = { urls: ["u0", "u1"], hashes: ["h0", "h1"] };
+      expect(orphanedUrls(previous, ["u1", "u0"])).toEqual([]);
+    });
   });
 
   it("reports the missing configuration instead of throwing", async () => {
@@ -111,7 +187,7 @@ describe("uploadSlides", () => {
 
   it("does nothing for an empty deck", async () => {
     const { uploadSlides } = await import("@/lib/publish/upload-slides");
-    expect(await uploadSlides([])).toEqual({ urls: [] });
+    expect(await uploadSlides([])).toEqual({ urls: [], hashes: [] });
     expect(uploadImage).not.toHaveBeenCalled();
   });
 });

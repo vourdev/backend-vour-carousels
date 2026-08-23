@@ -76268,6 +76268,7 @@ function ensureSchema2() {
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
         image_urls TEXT DEFAULT '[]',
+        image_hashes TEXT DEFAULT '[]',
         slide_plan TEXT
       )`);
       try {
@@ -76276,6 +76277,10 @@ function ensureSchema2() {
       }
       try {
         await db2().execute(`ALTER TABLE carousels ADD COLUMN slide_plan TEXT`);
+      } catch (e) {
+      }
+      try {
+        await db2().execute(`ALTER TABLE carousels ADD COLUMN image_hashes TEXT DEFAULT '[]'`);
       } catch (e) {
       }
       await db2().execute(
@@ -76303,6 +76308,7 @@ function rowToCarousel(r) {
     createdAt: Number(r.created_at),
     updatedAt: Number(r.updated_at),
     imageUrls: JSON.parse(String(r.image_urls ?? "[]")),
+    imageHashes: JSON.parse(String(r.image_hashes ?? "[]")),
     slidePlan: r.slide_plan ? JSON.parse(String(r.slide_plan)) : null
   };
 }
@@ -76344,6 +76350,7 @@ var PATCH_COLUMNS = {
   title: "title",
   caption: "caption",
   imageUrls: "image_urls",
+  imageHashes: "image_hashes",
   slidePlan: "slide_plan"
 };
 async function updateCarousel(id, patch) {
@@ -78406,18 +78413,56 @@ function readCaptureJob(id, userId3) {
   return job;
 }
 
+// src/lib/publish/upload-slides.ts
+import { createHash } from "node:crypto";
+
 // src/lib/publish/cloudinary.ts
 var import_cloudinary = __toESM(require_cloudinary2(), 1);
+var UPLOAD_TIMEOUT_MS = 2e4;
 async function uploadImage(base64Data) {
   if (!process.env.CLOUDINARY_URL) {
     throw new Error("CLOUDINARY_URL environment variable is not configured");
   }
-  const uploadStr = base64Data.startsWith("data:") ? base64Data : `data:image/jpeg;base64,${base64Data}`;
-  const response = await import_cloudinary.v2.uploader.upload(uploadStr, {
-    folder: "vourdev-carousels",
-    resource_type: "image"
+  const body = base64Data.startsWith("data:") ? Buffer.from(base64Data.slice(base64Data.indexOf(",") + 1), "base64") : Buffer.from(base64Data, "base64");
+  return new Promise((resolve2, reject) => {
+    const stream = import_cloudinary.v2.uploader.upload_stream(
+      { folder: "vourdev-carousels", resource_type: "image", timeout: UPLOAD_TIMEOUT_MS },
+      (err, result) => {
+        if (err) return reject(err);
+        if (!result?.secure_url) return reject(new Error("Cloudinary returned no secure_url"));
+        resolve2(result.secure_url);
+      }
+    );
+    stream.on("error", reject);
+    stream.end(body);
   });
-  return response.secure_url;
+}
+function publicIdFromUrl(url2) {
+  const marker25 = "/upload/";
+  const idx = url2.indexOf(marker25);
+  if (idx === -1 || !url2.includes("res.cloudinary.com")) return null;
+  const segments = url2.slice(idx + marker25.length).split("/").filter(Boolean);
+  while (segments.length > 1 && (/^v\d+$/.test(segments[0]) || /^[a-z]+_[^/]*$/.test(segments[0]))) {
+    segments.shift();
+  }
+  if (segments.length === 0) return null;
+  const path = segments.join("/");
+  const dot = path.lastIndexOf(".");
+  const id = dot > path.lastIndexOf("/") ? path.slice(0, dot) : path;
+  return id || null;
+}
+async function destroyImage(url2) {
+  if (!process.env.CLOUDINARY_URL) {
+    throw new Error("CLOUDINARY_URL environment variable is not configured");
+  }
+  const publicId = publicIdFromUrl(url2);
+  if (!publicId) return false;
+  const res = await import_cloudinary.v2.uploader.destroy(publicId, {
+    resource_type: "image",
+    invalidate: true,
+    timeout: UPLOAD_TIMEOUT_MS
+  });
+  return res?.result === "ok";
 }
 function toTikTokSafeUrl(url2) {
   const marker25 = "/upload/";
@@ -78429,7 +78474,7 @@ function toTikTokSafeUrl(url2) {
 
 // src/lib/publish/upload-slides.ts
 var MAX_PARALLEL = 4;
-var UPLOAD_ATTEMPTS = 3;
+var UPLOAD_ATTEMPTS = 4;
 var UPLOAD_RETRY_BASE_MS = 400;
 async function uploadWithRetry(image, slideIndex) {
   let lastErr;
@@ -78448,25 +78493,58 @@ async function uploadWithRetry(image, slideIndex) {
   }
   throw lastErr;
 }
-async function uploadSlides(images) {
-  if (images.length === 0) return { urls: [] };
+function slideHash(base643) {
+  return createHash("sha256").update(base643).digest("hex");
+}
+function orphanedUrls(previous, keptUrls) {
+  const kept = new Set(keptUrls);
+  return previous.urls.filter((u) => u && !kept.has(u));
+}
+async function uploadSlides(images, previous = { urls: [], hashes: [] }) {
+  if (images.length === 0) return { urls: [], hashes: [] };
   if (!process.env.CLOUDINARY_URL) {
-    return { urls: [], error: "CLOUDINARY_URL is not configured" };
+    return { urls: [], hashes: [], error: "CLOUDINARY_URL is not configured" };
   }
+  const hashes = images.map(slideHash);
+  const known = /* @__PURE__ */ new Map();
+  previous.hashes.forEach((h, i) => {
+    const url2 = previous.urls[i];
+    if (h && url2) known.set(h, url2);
+  });
   const urls = new Array(images.length);
+  const todo = [];
+  hashes.forEach((h, i) => {
+    const hit = known.get(h);
+    if (hit) urls[i] = hit;
+    else todo.push(i);
+  });
   let next = 0;
   async function worker() {
-    for (let i = next++; i < images.length; i = next++) {
+    for (let k = next++; k < todo.length; k = next++) {
+      const i = todo[k];
       urls[i] = await uploadWithRetry(images[i], i);
     }
   }
+  const startedAt = Date.now();
+  const bytes = todo.reduce((n, i) => n + Math.floor(images[i].length * 3 / 4), 0);
+  if (todo.length === 0) {
+    console.log(`[upload-slides] ${images.length} slides unchanged, nothing to upload`);
+    return { urls, hashes };
+  }
   try {
     await Promise.all(
-      Array.from({ length: Math.min(MAX_PARALLEL, images.length) }, worker)
+      Array.from({ length: Math.min(MAX_PARALLEL, todo.length) }, worker)
     );
-    return { urls };
+    const reused = images.length - todo.length;
+    console.log(
+      `[upload-slides] ${todo.length}/${images.length} slides uploaded` + (reused ? `, ${reused} reused` : "") + `, ${(bytes / 1024 / 1024).toFixed(1)} MB in ${((Date.now() - startedAt) / 1e3).toFixed(1)}s`
+    );
+    return { urls, hashes };
   } catch (err) {
-    return { urls: [], error: err instanceof Error ? err.message : String(err) };
+    console.error(
+      `[upload-slides] gave up after ${((Date.now() - startedAt) / 1e3).toFixed(1)}s`
+    );
+    return { urls: [], hashes: [], error: err instanceof Error ? err.message : String(err) };
   }
 }
 
@@ -78513,14 +78591,24 @@ async function runCapture(html, opts, carouselId, userId3) {
     }
   });
   console.log(`[capture] rendered ${images.length} slides${carouselId ? ` for ${carouselId}` : ""}`);
-  const { urls, error: uploadError } = await uploadSlides(images);
+  const owned = carouselId ? await getCarousel(carouselId, userId3) : null;
+  const previous = owned ? { urls: owned.imageUrls, hashes: owned.imageHashes } : { urls: [], hashes: [] };
+  const { urls, hashes, error: uploadError } = await uploadSlides(images, previous);
   if (uploadError) {
     console.error("Slide upload after capture failed:", uploadError);
   }
-  if (carouselId && urls.length > 0) {
-    const owned = await getCarousel(carouselId, userId3);
-    if (owned) {
-      await updateCarousel(carouselId, { imageUrls: urls, status: "exported" });
+  if (owned && urls.length > 0) {
+    await updateCarousel(owned.id, { imageUrls: urls, imageHashes: hashes, status: "exported" });
+    if (owned.status !== "scheduled" && owned.status !== "posted") {
+      const stale = orphanedUrls(previous, urls);
+      if (stale.length > 0) {
+        const removed = await Promise.all(
+          stale.map((u) => destroyImage(u).catch(() => false))
+        );
+        console.log(
+          `[capture] cleaned ${removed.filter(Boolean).length}/${stale.length} replaced slides`
+        );
+      }
     }
   }
   return urls.length > 0 ? { urls, images: [] } : { urls: [], images, uploadError };
@@ -78560,6 +78648,49 @@ app5.get("/:jobId", (c) => {
 });
 var capture_default = app5;
 
+// src/lib/history/cleanup.ts
+function cleanupBlockedReason(c) {
+  if (c.status === "scheduled") {
+    return "Deck ini masih terjadwal. Buffer mengambil gambarnya saat posting, jadi asetnya belum boleh dihapus.";
+  }
+  if (c.imageUrls.length === 0) return "Tidak ada gambar tersimpan untuk deck ini.";
+  return null;
+}
+function assetToKeep(c) {
+  if (!c.thumbnail) return null;
+  return c.imageUrls.includes(c.thumbnail) ? c.thumbnail : null;
+}
+async function cleanupCarouselImages(id, userId3) {
+  const c = await getCarousel(id, userId3);
+  if (!c) return { error: "Carousel not found" };
+  const blocked = cleanupBlockedReason(c);
+  if (blocked) return { error: blocked };
+  const keep = assetToKeep(c);
+  const doomed = c.imageUrls.filter((u) => u !== keep);
+  let deleted = 0;
+  for (const url2 of doomed) {
+    const ok = await destroyImage(url2).catch(() => false);
+    if (ok) deleted++;
+  }
+  const keptUrls = keep ? [keep] : [];
+  const keptHashes = keep ? [c.imageHashes[c.imageUrls.indexOf(keep)] ?? ""].filter(Boolean) : [];
+  await updateCarousel(c.id, { imageUrls: keptUrls, imageHashes: keptHashes });
+  console.log(
+    `[cleanup] ${c.id}: deleted ${deleted}/${doomed.length}, kept ${keptUrls.length}`
+  );
+  return { carouselId: c.id, deleted, missed: doomed.length - deleted, kept: keptUrls.length };
+}
+async function cleanupPostedCarousels(userId3, limit = 200) {
+  const all = await listCarousels(userId3, limit);
+  const done = all.filter((c) => c.status === "posted" && c.imageUrls.length > 0);
+  const results = [];
+  for (const c of done) {
+    const r = await cleanupCarouselImages(c.id, userId3);
+    if ("carouselId" in r) results.push(r);
+  }
+  return { results, deleted: results.reduce((n, r) => n + r.deleted, 0) };
+}
+
 // src/routes/user/carousels.ts
 var app6 = new Hono2();
 function userId(c) {
@@ -78573,6 +78704,16 @@ app6.get("/:id", async (c) => {
   const carousel = await getCarousel(c.req.param("id"), userId(c));
   if (!carousel) return c.json({ error: "Carousel not found" }, 404);
   return c.json({ carousel });
+});
+app6.post("/cleanup-images", async (c) => {
+  return c.json(await cleanupPostedCarousels(userId(c)));
+});
+app6.post("/:id/cleanup-images", async (c) => {
+  const result = await cleanupCarouselImages(c.req.param("id"), userId(c));
+  if ("error" in result) {
+    return c.json({ error: result.error }, result.error === "Carousel not found" ? 404 : 409);
+  }
+  return c.json(result);
 });
 var carousels_default = app6;
 
@@ -79724,11 +79865,8 @@ async function createAndPublishCarousel({
       await context.close();
     }
   });
-  const imageUrls = [];
-  for (const base643 of imageBase64s) {
-    const secureUrl = await uploadImage(base643);
-    imageUrls.push(secureUrl);
-  }
+  const { urls: imageUrls, error: uploadError } = await uploadSlides(imageBase64s);
+  if (uploadError) throw new Error(`Slide upload failed: ${uploadError}`);
   const dbItem = await createCarousel({
     userId: userId3,
     source: "ai",

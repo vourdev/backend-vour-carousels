@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { uploadImage } from "./cloudinary";
 
 /**
@@ -14,8 +15,15 @@ import { uploadImage } from "./cloudinary";
 /** Cloudinary is fine with parallel uploads; this only stops a 10-slide deck opening 10 sockets at once. */
 const MAX_PARALLEL = 4;
 
-/** Attempts per slide, including the first. */
-const UPLOAD_ATTEMPTS = 3;
+/**
+ * Attempts per slide, including the first.
+ *
+ * Four rather than three because an attempt is cheap now: uploadImage caps a single try
+ * at 20 seconds, where the SDK default let a stalled connection hang for 108. The whole
+ * budget is smaller than three attempts used to be, and a link this lossy needs the extra
+ * roll of the dice more than it needs the shorter ceiling.
+ */
+const UPLOAD_ATTEMPTS = 4;
 const UPLOAD_RETRY_BASE_MS = 400;
 
 /**
@@ -50,8 +58,33 @@ async function uploadWithRetry(image: string, slideIndex: number): Promise<strin
 
 export interface UploadedSlides {
   urls: string[];
+  /** Content hash per slide, positionally parallel to `urls`. Empty when the upload failed. */
+  hashes: string[];
   /** Set when one or more slides could not be uploaded; `urls` is empty in that case. */
   error?: string;
+}
+
+/** What the carousel row already holds, so an unchanged slide is not sent again. */
+export interface PreviousUpload {
+  urls: string[];
+  hashes: string[];
+}
+
+/** Identity of a slide is its bytes. Same pixels, same asset — no reason to send it twice. */
+export function slideHash(base64: string): string {
+  return createHash("sha256").update(base64).digest("hex");
+}
+
+/**
+ * URLs from a previous export that this one no longer references.
+ *
+ * These are the assets a re-export used to abandon in Cloudinary: the row was overwritten
+ * with the new URLs and nothing ever deleted the old ones, so three exports of one deck
+ * left two full sets behind forever.
+ */
+export function orphanedUrls(previous: PreviousUpload, keptUrls: string[]): string[] {
+  const kept = new Set(keptUrls);
+  return previous.urls.filter((u) => u && !kept.has(u));
 }
 
 /**
@@ -62,27 +95,67 @@ export interface UploadedSlides {
  * loudly. Capture itself still succeeds — the base64 goes back either way — so a
  * Cloudinary outage degrades to the old behaviour instead of losing the render.
  */
-export async function uploadSlides(images: string[]): Promise<UploadedSlides> {
-  if (images.length === 0) return { urls: [] };
+export async function uploadSlides(
+  images: string[],
+  previous: PreviousUpload = { urls: [], hashes: [] }
+): Promise<UploadedSlides> {
+  if (images.length === 0) return { urls: [], hashes: [] };
   if (!process.env.CLOUDINARY_URL) {
-    return { urls: [], error: "CLOUDINARY_URL is not configured" };
+    return { urls: [], hashes: [], error: "CLOUDINARY_URL is not configured" };
   }
 
-  const urls = new Array<string>(images.length);
-  let next = 0;
+  const hashes = images.map(slideHash);
 
+  // Matched by content, not by position: revising slide 2 shifts nothing, but reordering
+  // the deck would, and an index-based lookup would then re-upload every slide after the
+  // move for no reason.
+  const known = new Map<string, string>();
+  previous.hashes.forEach((h, i) => {
+    const url = previous.urls[i];
+    if (h && url) known.set(h, url);
+  });
+
+  const urls = new Array<string>(images.length);
+  const todo: number[] = [];
+  hashes.forEach((h, i) => {
+    const hit = known.get(h);
+    if (hit) urls[i] = hit;
+    else todo.push(i);
+  });
+
+  let next = 0;
   async function worker(): Promise<void> {
-    for (let i = next++; i < images.length; i = next++) {
+    for (let k = next++; k < todo.length; k = next++) {
+      const i = todo[k];
       urls[i] = await uploadWithRetry(images[i], i);
     }
   }
 
+  // "Why was that export slow" had no answer in any log: the render is timed, the upload
+  // was not, and the upload is where the minutes go on this link. One line per deck.
+  const startedAt = Date.now();
+  const bytes = todo.reduce((n, i) => n + Math.floor((images[i].length * 3) / 4), 0);
+
+  if (todo.length === 0) {
+    console.log(`[upload-slides] ${images.length} slides unchanged, nothing to upload`);
+    return { urls, hashes };
+  }
+
   try {
     await Promise.all(
-      Array.from({ length: Math.min(MAX_PARALLEL, images.length) }, worker)
+      Array.from({ length: Math.min(MAX_PARALLEL, todo.length) }, worker)
     );
-    return { urls };
+    const reused = images.length - todo.length;
+    console.log(
+      `[upload-slides] ${todo.length}/${images.length} slides uploaded` +
+        (reused ? `, ${reused} reused` : "") +
+        `, ${(bytes / 1024 / 1024).toFixed(1)} MB in ${((Date.now() - startedAt) / 1000).toFixed(1)}s`
+    );
+    return { urls, hashes };
   } catch (err) {
-    return { urls: [], error: err instanceof Error ? err.message : String(err) };
+    console.error(
+      `[upload-slides] gave up after ${((Date.now() - startedAt) / 1000).toFixed(1)}s`
+    );
+    return { urls: [], hashes: [], error: err instanceof Error ? err.message : String(err) };
   }
 }
