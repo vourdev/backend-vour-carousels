@@ -1,4 +1,5 @@
 import type { Slide, Mockup, CoverHook } from "../ds/schema";
+import { compressFlowSteps } from "../ds/schema";
 import { fillTemplate, escapeHtml } from "../ds/fill";
 import { brandMarkDataUri } from "../ds/brand";
 import { coverEditorialTemplate } from "../ds/templates/cover-editorial";
@@ -304,7 +305,11 @@ function renderFlowMockup(m: Extract<Mockup, { type: "flow" }>): string {
   // than breaking (see compressFlowSteps and the .diag-flow rules) — but the grouping
   // still earns its keep: it is what lets a node shrink and carry its own arrow with
   // it, so the arrow can never end up separated from the step it points at.
-  const nodes = m.steps
+  // Enforced here, not only in the schema. /api/assemble and /api/capture cast their
+  // JSON to SlidePlan without parsing it, so the transform never runs on a plan that
+  // was stored before the cap existed or edited in the wizard — and those are exactly
+  // the plans carrying four nodes. The renderer is the one point every path crosses.
+  const nodes = compressFlowSteps(m.steps)
     .map((s, i) => {
       const node = `<div class="node${s.focus ? " filled" : ""}">${escapeHtml(s.label)}</div>`;
       return i === 0 ? node : `<div class="flow-step"><span class="arrow">→</span>${node}</div>`;

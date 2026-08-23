@@ -86,6 +86,36 @@ describe("flow mockup through the schema", () => {
     expect(() => slidePlanSchema.parse(planWith([{ label: "only" }]))).toThrow();
   });
 
+  /**
+   * /api/assemble and /api/capture cast their JSON to SlidePlan without parsing it, so a
+   * plan that never went through the schema — one stored before the cap existed, or edited
+   * in the wizard — reaches the renderer with its fourth node intact. Production shipped
+   * exactly that: the note fix was live and the flow still drew four.
+   */
+  it("caps a plan that never went through the schema", () => {
+    const unparsed: any = {
+      role: "point",
+      counter: "04",
+      eyebrow: "E",
+      headline: "H",
+      body: "B",
+      mockup: {
+        type: "flow",
+        steps: [
+          { label: "Next.js Webhook" },
+          { label: "Redis Queue", focus: true },
+          { label: "Worker Process" },
+          { label: "n8n Trigger" },
+        ],
+      },
+    };
+    const html = renderSlide(unparsed, 1);
+    expect((html.match(/class="node/g) ?? [])).toHaveLength(FLOW_MAX_STEPS);
+    expect(html).toContain("Next.js Webhook");
+    expect(html).toContain("n8n Trigger");
+    expect(html).not.toContain("Worker Process");
+  });
+
   it("renders one arrow per node after the first, and no orphan", () => {
     const parsed = slidePlanSchema.parse(
       planWith([{ label: "A" }, { label: "B" }, { label: "C" }, { label: "D" }])

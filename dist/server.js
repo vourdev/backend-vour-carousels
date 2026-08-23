@@ -73649,7 +73649,7 @@ function renderBigstatMockup(m) {
   });
 }
 function renderFlowMockup(m) {
-  const nodes = m.steps.map((s, i) => {
+  const nodes = compressFlowSteps(m.steps).map((s, i) => {
     const node = `<div class="node${s.focus ? " filled" : ""}">${escapeHtml(s.label)}</div>`;
     return i === 0 ? node : `<div class="flow-step"><span class="arrow">\u2192</span>${node}</div>`;
   }).join("");
