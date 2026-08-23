@@ -61960,6 +61960,11 @@ function resolveModel(id) {
     }
   }
 }
+var NO_STRUCTURED_OUTPUT_PROVIDERS = ["vour-high", "vour-lite", "omniroute"];
+function supportsStructuredOutput(model) {
+  const provider = typeof model === "string" ? model : String(model?.provider ?? "");
+  return !NO_STRUCTURED_OUTPUT_PROVIDERS.some((p) => provider.startsWith(p));
+}
 
 // src/services/capture-queue.ts
 var CaptureQueue = class {
@@ -75720,50 +75725,54 @@ ${ctx.stats?.filter((s) => s.percentage >= 12).map((s) => `  \u2717 ${s.type} ($
   }
   const systemPrompt = planSystem + underusedInstruction;
   return withRetry2(async () => {
-    try {
-      const { object: object3 } = await generateObject({
-        model,
-        schema: slidePlanSchema,
-        system: systemPrompt,
-        prompt: planUserPrompt(brief)
-      });
-      return enforcePlanInvariants(object3);
-    } catch (err) {
-      if (isSdkRetryExhausted(err)) throw err;
-      console.warn("generateObject failed, trying generateText + JSON parse fallback:", err?.message || err);
-      const { text: text2 } = await generateText({
-        model,
-        system: systemPrompt + "\nIMPORTANT: Return ONLY valid JSON matching the schema. No markdown codeblocks or extra text.",
-        prompt: planUserPrompt(brief)
-      });
-      const parsed = extractAndParseJson(text2);
-      const repaired = repairSlidePlan(parsed);
-      return enforcePlanInvariants(repaired);
+    if (supportsStructuredOutput(model)) {
+      try {
+        const { object: object3 } = await generateObject({
+          model,
+          schema: slidePlanSchema,
+          system: systemPrompt,
+          prompt: planUserPrompt(brief)
+        });
+        return enforcePlanInvariants(object3);
+      } catch (err) {
+        if (isSdkRetryExhausted(err)) throw err;
+        console.warn("generateObject failed, falling back to generateText:", err?.message || err);
+      }
     }
+    const { text: text2 } = await generateText({
+      model,
+      system: systemPrompt + "\nIMPORTANT: Return ONLY valid JSON matching the schema. No markdown codeblocks or extra text.",
+      prompt: planUserPrompt(brief)
+    });
+    const parsed = extractAndParseJson(text2);
+    const repaired = repairSlidePlan(parsed);
+    return enforcePlanInvariants(repaired);
   });
 }
 async function reviseSlidePlan(plan, message, model, history = []) {
   const prompt = reviseUserPrompt(JSON.stringify(plan), message, history);
   return withRetry2(async () => {
-    try {
-      const { object: object3 } = await generateObject({
-        model,
-        schema: slidePlanSchema,
-        system: reviseSystem,
-        prompt
-      });
-      return object3;
-    } catch (err) {
-      if (isSdkRetryExhausted(err)) throw err;
-      console.warn("reviseObject failed, trying generateText + JSON parse fallback:", err?.message || err);
-      const { text: text2 } = await generateText({
-        model,
-        system: reviseSystem + "\nIMPORTANT: Return ONLY valid JSON matching the schema. No markdown codeblocks or extra text.",
-        prompt
-      });
-      const parsed = extractAndParseJson(text2);
-      return repairSlidePlan(parsed);
+    if (supportsStructuredOutput(model)) {
+      try {
+        const { object: object3 } = await generateObject({
+          model,
+          schema: slidePlanSchema,
+          system: reviseSystem,
+          prompt
+        });
+        return object3;
+      } catch (err) {
+        if (isSdkRetryExhausted(err)) throw err;
+        console.warn("reviseObject failed, falling back to generateText:", err?.message || err);
+      }
     }
+    const { text: text2 } = await generateText({
+      model,
+      system: reviseSystem + "\nIMPORTANT: Return ONLY valid JSON matching the schema. No markdown codeblocks or extra text.",
+      prompt
+    });
+    const parsed = extractAndParseJson(text2);
+    return repairSlidePlan(parsed);
   });
 }
 var scopeClassificationSchema = external_exports.object({
@@ -75797,25 +75806,27 @@ async function reviseTargetSlides(plan, scope, message, model, history) {
   }));
   const prompt = scopedSlideRevisePrompt(JSON.stringify(plan), targets, message, history);
   return withRetry2(async () => {
-    try {
-      const { object: object3 } = await generateObject({
-        model,
-        schema: slidePatchSchema,
-        system: scopedSlideReviseSystem,
-        prompt
-      });
-      return object3.slides.map((s) => ({ index: s.index - 1, slide: s.slide }));
-    } catch (err) {
-      if (isSdkRetryExhausted(err)) throw err;
-      console.warn("[revision-scope] scoped slide generateObject failed, retrying as text:", err);
-      const { text: text2 } = await generateText({
-        model,
-        system: scopedSlideReviseSystem + "\nIMPORTANT: Return ONLY valid JSON matching the schema. No markdown codeblocks or extra text.",
-        prompt
-      });
-      const parsed = slidePatchSchema.parse(extractAndParseJson(text2));
-      return parsed.slides.map((s) => ({ index: s.index - 1, slide: s.slide }));
+    if (supportsStructuredOutput(model)) {
+      try {
+        const { object: object3 } = await generateObject({
+          model,
+          schema: slidePatchSchema,
+          system: scopedSlideReviseSystem,
+          prompt
+        });
+        return object3.slides.map((s) => ({ index: s.index - 1, slide: s.slide }));
+      } catch (err) {
+        if (isSdkRetryExhausted(err)) throw err;
+        console.warn("[revision-scope] scoped slide generateObject failed, using text:", err);
+      }
     }
+    const { text: text2 } = await generateText({
+      model,
+      system: scopedSlideReviseSystem + "\nIMPORTANT: Return ONLY valid JSON matching the schema. No markdown codeblocks or extra text.",
+      prompt
+    });
+    const parsed = slidePatchSchema.parse(extractAndParseJson(text2));
+    return parsed.slides.map((s) => ({ index: s.index - 1, slide: s.slide }));
   });
 }
 async function reviseGlobalFields(plan, scope, message, model, history) {
@@ -75826,24 +75837,26 @@ async function reviseGlobalFields(plan, scope, message, model, history) {
   const schema = external_exports.object(shape);
   const prompt = scopedGlobalRevisePrompt(JSON.stringify(plan), scope.globals, message, history);
   return withRetry2(async () => {
-    try {
-      const { object: object3 } = await generateObject({
-        model,
-        schema,
-        system: scopedGlobalReviseSystem,
-        prompt
-      });
-      return object3;
-    } catch (err) {
-      if (isSdkRetryExhausted(err)) throw err;
-      console.warn("[revision-scope] scoped global generateObject failed, retrying as text:", err);
-      const { text: text2 } = await generateText({
-        model,
-        system: scopedGlobalReviseSystem + "\nIMPORTANT: Return ONLY valid JSON matching the schema. No markdown codeblocks or extra text.",
-        prompt
-      });
-      return schema.parse(extractAndParseJson(text2));
+    if (supportsStructuredOutput(model)) {
+      try {
+        const { object: object3 } = await generateObject({
+          model,
+          schema,
+          system: scopedGlobalReviseSystem,
+          prompt
+        });
+        return object3;
+      } catch (err) {
+        if (isSdkRetryExhausted(err)) throw err;
+        console.warn("[revision-scope] scoped global generateObject failed, using text:", err);
+      }
     }
+    const { text: text2 } = await generateText({
+      model,
+      system: scopedGlobalReviseSystem + "\nIMPORTANT: Return ONLY valid JSON matching the schema. No markdown codeblocks or extra text.",
+      prompt
+    });
+    return schema.parse(extractAndParseJson(text2));
   });
 }
 async function reviseSlidePlanScoped(plan, message, model, history = []) {

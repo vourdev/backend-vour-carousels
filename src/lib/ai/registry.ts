@@ -171,3 +171,27 @@ export function resolveModel(id: ModelId): LanguageModel {
     }
   }
 }
+
+/**
+ * Providers whose upstream rejects `responseFormat`, so `generateObject` can
+ * never succeed against them.
+ *
+ * Everything routed through omniroute lands on a combo that does not implement
+ * structured outputs. The SDK says so plainly at runtime —
+ * `AI SDK Warning (vour-high.chat / vour-combos): The feature "responseFormat"
+ * is not supported` — and the call then fails with "No object generated: could
+ * not parse the response", every single time.
+ *
+ * The text path that follows works fine, so nothing looked broken: the plan was
+ * still produced, just after paying for one full model call that had no chance
+ * of succeeding. On a healthy link that is a doubling nobody notices. On a link
+ * dropping half its packets it is the difference between answering and being cut
+ * off at Cloudflare's 100s ceiling with a bare 524.
+ */
+const NO_STRUCTURED_OUTPUT_PROVIDERS = ["vour-high", "vour-lite", "omniroute"];
+
+export function supportsStructuredOutput(model: LanguageModel): boolean {
+  const provider =
+    typeof model === "string" ? model : String((model as { provider?: string })?.provider ?? "");
+  return !NO_STRUCTURED_OUTPUT_PROVIDERS.some((p) => provider.startsWith(p));
+}

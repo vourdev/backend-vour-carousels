@@ -1,4 +1,5 @@
 import { generateText, generateObject, type LanguageModel } from "ai";
+import { supportsStructuredOutput } from "./registry";
 import { z } from "zod";
 import { slidePlanSchema, slideSchema, type SlidePlan } from "../ds/schema";
 import { repairSlidePlan } from "../ds/repair";
@@ -364,32 +365,37 @@ ${ctx.stats
   const systemPrompt = planSystem + underusedInstruction;
 
   return withRetry(async () => {
-    try {
-      const { object } = await generateObject({
-        model,
-        schema: slidePlanSchema,
-        system: systemPrompt,
-        prompt: planUserPrompt(brief),
-      });
-      return enforcePlanInvariants(object);
-    } catch (err: any) {
-      // The text fallback exists for a model that answered with JSON the schema
-      // rejects. A transport that never delivered an answer will not answer the
-      // second time either -- it only spends another three SDK attempts on a dead
-      // link, doubling the time before the caller learns anything. That is how
-      // this path crossed Cloudflare's 100s ceiling and surfaced as a bare 524.
-      if (isSdkRetryExhausted(err)) throw err;
-
-      console.warn("generateObject failed, trying generateText + JSON parse fallback:", err?.message || err);
-      const { text } = await generateText({
-        model,
-        system: systemPrompt + "\nIMPORTANT: Return ONLY valid JSON matching the schema. No markdown codeblocks or extra text.",
-        prompt: planUserPrompt(brief),
-      });
-      const parsed = extractAndParseJson(text);
-      const repaired = repairSlidePlan(parsed);
-      return enforcePlanInvariants(repaired);
+    // Skipped entirely for providers that reject responseFormat: the call cannot
+    // succeed there, and paying for it doubles the latency of every plan.
+    if (supportsStructuredOutput(model)) {
+      try {
+        const { object } = await generateObject({
+          model,
+          schema: slidePlanSchema,
+          system: systemPrompt,
+          prompt: planUserPrompt(brief),
+        });
+        return enforcePlanInvariants(object);
+      } catch (err: any) {
+        // The text path below exists for a model that answered with JSON the
+        // schema rejects. A transport that never delivered an answer will not
+        // answer the second time either -- it only spends another three SDK
+        // attempts on a dead link, doubling the time before the caller learns
+        // anything. That is how this crossed Cloudflare's 100s ceiling and
+        // surfaced as a bare 524.
+        if (isSdkRetryExhausted(err)) throw err;
+        console.warn("generateObject failed, falling back to generateText:", err?.message || err);
+      }
     }
+
+    const { text } = await generateText({
+      model,
+      system: systemPrompt + "\nIMPORTANT: Return ONLY valid JSON matching the schema. No markdown codeblocks or extra text.",
+      prompt: planUserPrompt(brief),
+    });
+    const parsed = extractAndParseJson(text);
+    const repaired = repairSlidePlan(parsed);
+    return enforcePlanInvariants(repaired);
   });
 }
 
@@ -404,31 +410,28 @@ export async function reviseSlidePlan(
 ): Promise<SlidePlan> {
   const prompt = reviseUserPrompt(JSON.stringify(plan), message, history);
   return withRetry(async () => {
-    try {
-      const { object } = await generateObject({
-        model,
-        schema: slidePlanSchema,
-        system: reviseSystem,
-        prompt,
-      });
-      return object;
-    } catch (err: any) {
-      // The text fallback exists for a model that answered with JSON the schema
-      // rejects. A transport that never delivered an answer will not answer the
-      // second time either -- it only spends another three SDK attempts on a dead
-      // link, doubling the time before the caller learns anything. That is how
-      // this path crossed Cloudflare's 100s ceiling and surfaced as a bare 524.
-      if (isSdkRetryExhausted(err)) throw err;
-
-      console.warn("reviseObject failed, trying generateText + JSON parse fallback:", err?.message || err);
-      const { text } = await generateText({
-        model,
-        system: reviseSystem + "\nIMPORTANT: Return ONLY valid JSON matching the schema. No markdown codeblocks or extra text.",
-        prompt,
-      });
-      const parsed = extractAndParseJson(text);
-      return repairSlidePlan(parsed);
+    if (supportsStructuredOutput(model)) {
+      try {
+        const { object } = await generateObject({
+          model,
+          schema: slidePlanSchema,
+          system: reviseSystem,
+          prompt,
+        });
+        return object;
+      } catch (err: any) {
+        if (isSdkRetryExhausted(err)) throw err;
+        console.warn("reviseObject failed, falling back to generateText:", err?.message || err);
+      }
     }
+
+    const { text } = await generateText({
+      model,
+      system: reviseSystem + "\nIMPORTANT: Return ONLY valid JSON matching the schema. No markdown codeblocks or extra text.",
+      prompt,
+    });
+    const parsed = extractAndParseJson(text);
+    return repairSlidePlan(parsed);
   });
 }
 
@@ -496,31 +499,28 @@ async function reviseTargetSlides(
   const prompt = scopedSlideRevisePrompt(JSON.stringify(plan), targets, message, history);
 
   return withRetry(async () => {
-    try {
-      const { object } = await generateObject({
-        model,
-        schema: slidePatchSchema,
-        system: scopedSlideReviseSystem,
-        prompt,
-      });
-      return object.slides.map((s) => ({ index: s.index - 1, slide: s.slide }));
-    } catch (err: unknown) {
-      // The text fallback exists for a model that answered with JSON the schema
-      // rejects. A transport that never delivered an answer will not answer the
-      // second time either -- it only spends another three SDK attempts on a dead
-      // link, doubling the time before the caller learns anything. That is how
-      // this path crossed Cloudflare's 100s ceiling and surfaced as a bare 524.
-      if (isSdkRetryExhausted(err)) throw err;
-
-      console.warn("[revision-scope] scoped slide generateObject failed, retrying as text:", err);
-      const { text } = await generateText({
-        model,
-        system: scopedSlideReviseSystem + "\nIMPORTANT: Return ONLY valid JSON matching the schema. No markdown codeblocks or extra text.",
-        prompt,
-      });
-      const parsed = slidePatchSchema.parse(extractAndParseJson(text));
-      return parsed.slides.map((s) => ({ index: s.index - 1, slide: s.slide }));
+    if (supportsStructuredOutput(model)) {
+      try {
+        const { object } = await generateObject({
+          model,
+          schema: slidePatchSchema,
+          system: scopedSlideReviseSystem,
+          prompt,
+        });
+        return object.slides.map((s) => ({ index: s.index - 1, slide: s.slide }));
+      } catch (err: unknown) {
+        if (isSdkRetryExhausted(err)) throw err;
+        console.warn("[revision-scope] scoped slide generateObject failed, using text:", err);
+      }
     }
+
+    const { text } = await generateText({
+      model,
+      system: scopedSlideReviseSystem + "\nIMPORTANT: Return ONLY valid JSON matching the schema. No markdown codeblocks or extra text.",
+      prompt,
+    });
+    const parsed = slidePatchSchema.parse(extractAndParseJson(text));
+    return parsed.slides.map((s) => ({ index: s.index - 1, slide: s.slide }));
   });
 }
 
@@ -541,30 +541,27 @@ async function reviseGlobalFields(
   const prompt = scopedGlobalRevisePrompt(JSON.stringify(plan), scope.globals, message, history);
 
   return withRetry(async () => {
-    try {
-      const { object } = await generateObject({
-        model,
-        schema,
-        system: scopedGlobalReviseSystem,
-        prompt,
-      });
-      return object as ScopedPatch;
-    } catch (err: unknown) {
-      // The text fallback exists for a model that answered with JSON the schema
-      // rejects. A transport that never delivered an answer will not answer the
-      // second time either -- it only spends another three SDK attempts on a dead
-      // link, doubling the time before the caller learns anything. That is how
-      // this path crossed Cloudflare's 100s ceiling and surfaced as a bare 524.
-      if (isSdkRetryExhausted(err)) throw err;
-
-      console.warn("[revision-scope] scoped global generateObject failed, retrying as text:", err);
-      const { text } = await generateText({
-        model,
-        system: scopedGlobalReviseSystem + "\nIMPORTANT: Return ONLY valid JSON matching the schema. No markdown codeblocks or extra text.",
-        prompt,
-      });
-      return schema.parse(extractAndParseJson(text)) as ScopedPatch;
+    if (supportsStructuredOutput(model)) {
+      try {
+        const { object } = await generateObject({
+          model,
+          schema,
+          system: scopedGlobalReviseSystem,
+          prompt,
+        });
+        return object as ScopedPatch;
+      } catch (err: unknown) {
+        if (isSdkRetryExhausted(err)) throw err;
+        console.warn("[revision-scope] scoped global generateObject failed, using text:", err);
+      }
     }
+
+    const { text } = await generateText({
+      model,
+      system: scopedGlobalReviseSystem + "\nIMPORTANT: Return ONLY valid JSON matching the schema. No markdown codeblocks or extra text.",
+      prompt,
+    });
+    return schema.parse(extractAndParseJson(text)) as ScopedPatch;
   });
 }
 
