@@ -161,6 +161,27 @@ one composition. `resolveLayout` in `render-slide.ts` rotates one in, and degrad
 `note-emphasis` to `standard` on the 20 of 32 types that cannot emit a `.catatan`, and
 `split-content` for any mockup too wide for a 435px column. Do not reintroduce the default.
 
+**The headline is the hook, and CSS is the only thing keeping it near the top.** Eyebrow +
+headline must land inside the first two blocks a reader sees, in every composition. That is
+enforced by the reading-order slots in `carousel-css-extra.ts` — `section.slide-point > *`,
+numbered in tens — not by DOM order, which the compositions reshuffle. Two rules follow:
+`.catatan` is pinned to the last slot on every layout (`note-emphasis` means the note is
+drawn *bigger*, never moved earlier), and slot 20 is the only slot ahead of the hook, taken
+only by `.diag-wrap`/`.card`, which are mutually exclusive at render time. A composition
+override must name both classes (`section.slide-point.layout-x > …`) or it ties with the
+slot rule and loses on source order — the layout then silently renders as `standard`.
+`npm test` checks the authored CSS; `npm run check:layout` measures real geometry in a
+browser across every note-bearing mockup × every composition, which is the only thing that
+catches a specificity or grid-placement mistake. This shipped broken twice with the markup
+correct both times.
+
+**A mockup list in the prompt is read from the renderer, never typed out.** `LAYOUT_RULE`
+in `lib/ai/prompts.ts` interpolates `NARROW_SAFE_MOCKUPS` and `NOTE_BEARING_MOCKUPS` from
+`render-slide.ts`. The hand-written copy had drifted to recommending `split-content` for
+five types `resolveLayout` degrades on sight, so the model followed the prompt and the deck
+came out monotone anyway. Same rule as `TITLE_CAPTION_RULE`: if the renderer decides it,
+the prompt reads it.
+
 **The cron path strips `screenshot` mockups.** With no image uploaded they render a
 "BUTUH SCREENSHOT ASLI" placeholder — a brief addressed to a human. In the wizard that is the
 feature; in the unattended cron it would be captured, uploaded and scheduled to Instagram as

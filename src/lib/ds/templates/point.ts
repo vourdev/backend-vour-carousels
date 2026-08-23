@@ -3,7 +3,15 @@
 // [bracket] placeholders rewritten as {{slot}} markers matching Slide["point"] fields.
 // The info card is always present in the source markup; it is wrapped in
 // {{#card}}…{{/card}} here so slides without a `card` field omit it entirely.
-export const pointTemplate = String.raw`<section class="{{surfaceClass}} layout-{{layout}}" data-screen-label="03 · Point">
+//
+// `.slide-point` is what scopes the shared reading-order slots in
+// carousel-css-extra.ts. Those slots are the only thing keeping the headline near the
+// top whichever composition the plan picks, so the class is not decorative — a point
+// section without it falls back to raw DOM order and every layout- rule stops applying.
+//
+// DOM order here is the reading order of the "standard" composition. The alternative
+// compositions re-slot these same nodes; none of them adds or removes one.
+export const pointTemplate = String.raw`<section class="slide-point {{surfaceClass}} layout-{{layout}}" data-screen-label="03 · Point">
   <div class="counter">{{counter}}</div>
 
   <div class="eyebrow {{eyebrowClass}} mt-64">{{eyebrow}}</div>
