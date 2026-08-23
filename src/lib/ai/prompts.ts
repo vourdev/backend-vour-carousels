@@ -68,7 +68,7 @@ const MOCKUP_BUDGETS = `- Terminal: filename + 4-6 code lines max (≤ 45 chars 
 - Callout: single punchy warning/takeaway sentence (≤ 90 chars).
 - BigStat: number (≤ 6 chars), unit (≤ 20 chars), caption (≤ 70 chars).
 - Card: card title (≤ 40 chars), card body (≤ 100 chars).
-- Flow: 2-5 step labels (≤ 24 chars each), optional note (≤ 90 chars).
+- Flow: 2-3 step labels (MAX 3 — a 4th is folded away by the renderer, keeping only the first, the focus and the last; ≤ 24 chars each), optional note (≤ 90 chars). STRICTLY LINEAR: A → B → C, one row, one path. A flow has no fork — there is no field for a second destination, and a process that genuinely branches must be reduced to its main line (or split across two slides), never listed as extra steps.
 - Hub: center (≤ 20 chars), MUST have 3-4 tools (never fewer than 2; label ≤ 16 chars), optional note (≤ 90 chars).
 - Concept: parent (≤ 20 chars), 2-3 children (MAX 3 — a 4th is dropped by the renderer; ≤ 18 chars each), optional note (≤ 90 chars).
 - Checklist: 3-6 items (never fewer than 2; ≤ 48 chars each), optional note (≤ 90 chars).
@@ -89,7 +89,7 @@ Array-count rule (HARD): concept/hub/checklist/flow/steps must meet their minimu
 PROPORTION (the caps above are LIMITS, not targets):
 - A mockup shares one 1080×1350 slide with a counter, eyebrow, headline and body.
   It gets roughly the lower half. Fill it, do not overflow it.
-- Aim for the MIDDLE of every range, not the maximum. 3 flow steps beat 5;
+- Aim for the MIDDLE of every range, not the maximum. 3 flow steps is the ceiling;
   4 checklist items beat 6; 4 terminal lines beat 8. Fewer, sharper items read
   better at thumbnail size than a dense list nobody can parse.
 - Keep item text WELL under its cap. A flow label at 24 chars or a checklist item
@@ -657,7 +657,7 @@ Grouped by VISUAL DIRECTOR category (pick by the slide's content):
 - LatencyComp — horizontal bar comparison chart of response times/latencies (e.g., Redis vs Postgres vs Dynamo)
 
 **PROCESS** (flow / step-by-step / structure):
-- Flow — pipelines, sequences (request → handler → db)
+- Flow — pipelines, sequences, MAX 3 nodes, one straight line (request → handler → db). A longer or branching process is not a flow: cut it to its 3 main nodes, or use Steps / EventQueue / Architecture instead.
 - Steps — 2-4 numbered tutorial steps
 - Concept — parent term broken into 2-3 sub-concepts
 - Hub — center concept wiring to 3-4 related items
@@ -876,7 +876,7 @@ MOCKUP TYPES — every "point" slide MUST include a "mockup" object with one of 
 6. { type: "bigstat", number: "3×", unit?: "faster", caption: "Explanation of the metric" }
    → Large editorial number. Use for impressive metrics. Keep number ≤ 6 chars.
 
-7. { type: "flow", steps: [{ label: "...", focus?: true }], note?: "..." }
+7. { type: "flow", steps: [{ label: "...", focus?: true }], note?: "..." }  // 2-3 steps, linear only
    → Sequential nodes with arrows (2-5 steps, one optional "focus"). Use for pipelines / ordered sequences (request → handler → db).
 
 8. { type: "hub", center: "...", tools: [{ icon: "<allowlisted-slug>", label: "..." }], note?: "..." }
@@ -968,7 +968,7 @@ VARIETY EXAMPLE (a good, non-monotone deck — mirror this diversity, not the co
   (accentWord "tau"), lede "biar lo gak cuma nge-prompt doang tapi ngerti cara kerjanya.",
   stamp "Engineering Notes", ghostNumeral "01"
 - point → concept (parent + 2-3 children), layout "standard"
-- point → flow (3-4 steps, one focus), layout "note-emphasis" (its note carries the point)
+- point → flow (3 steps, one focus), layout "note-emphasis" (its note carries the point)
 - point → hub (center + 3-4 tool icons), layout omitted (renderer's pick)
 - point → terminal (only if a real code scene — max 1), layout "mockup-forward"
 - point → comparison (bad vs good), layout "standard"

@@ -67,12 +67,53 @@ const mockupBigstat = z.object({
 });
 
 /** Flow chain — sequential nodes joined by arrows (pipelines/sequences) */
+/** One row, three nodes. See compressFlowSteps. */
+export const FLOW_MAX_STEPS = 3;
+
+/**
+ * Squeeze a chain down to what one row can hold, without dropping its payoff.
+ *
+ * `.diag-flow` is `flex-wrap: wrap`, so a 4th node does not overflow — it lands on a
+ * second row under the third, opening with its own arrow. That reads as a BRANCH: the
+ * deck shipped "Next.js Webhook → Redis Queue → Worker Process" with "→ n8n Trigger"
+ * beneath it, which looks like Redis Queue fanning out to two destinations. The data was
+ * a plain linear chain the whole time; the wrap invented the fork.
+ *
+ * Every flow slide in the history came back with exactly four steps — 4 of 4 — so this
+ * is the normal output, not an edge case.
+ *
+ * Trimming is first · pivot · last rather than `slice(0, 3)`. A chain's last node is its
+ * conclusion ("n8n Trigger" is the point of putting a queue in front of it), and slicing
+ * from the end deletes exactly that. The pivot is the step the model marked `focus`, or
+ * the first middle step when it marked none. No copy is invented: every surviving label
+ * is one the model wrote.
+ */
+export function compressFlowSteps<T extends { label: string; focus?: boolean }>(
+  steps: T[]
+): T[] {
+  if (steps.length <= FLOW_MAX_STEPS) return steps;
+  const middle = steps.slice(1, -1);
+  const pivot = middle.find((s) => s.focus) ?? middle[0];
+  return [steps[0], pivot, steps[steps.length - 1]];
+}
+
+/**
+ * Sequential chain — 2–3 nodes, LINEAR.
+ *
+ * Linearity is not validated because it cannot be violated: `steps` is a flat array, so
+ * there is no way for a node to carry a second destination. Anything that looked like a
+ * branch was the row wrapping (see compressFlowSteps).
+ *
+ * Capped by transform rather than `.max()` for the same reason as mockupConcept: a fifth
+ * step should cost the model its fourth node, not the whole deck, and the carousels
+ * history holds plans written when the cap was 5.
+ */
 const mockupFlow = z.object({
   type: z.literal("flow"),
   steps: z
     .array(z.object({ label: z.string().max(24), focus: z.boolean().optional() }))
     .min(2)
-    .max(5),
+    .transform(compressFlowSteps),
   note: z.string().max(90).optional(),
 });
 

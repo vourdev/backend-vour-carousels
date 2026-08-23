@@ -14,6 +14,40 @@ import { uploadImage } from "./cloudinary";
 /** Cloudinary is fine with parallel uploads; this only stops a 10-slide deck opening 10 sockets at once. */
 const MAX_PARALLEL = 4;
 
+/** Attempts per slide, including the first. */
+const UPLOAD_ATTEMPTS = 3;
+const UPLOAD_RETRY_BASE_MS = 400;
+
+/**
+ * Retry an upload on ANY failure, unlike `withRetry` in lib/retry.
+ *
+ * That helper only retries errors it can prove are the network, which is right for a
+ * database statement: SQLite rejects a bad query identically every time, so retrying
+ * multiplies latency for nothing. An upload is the opposite case. The Cloudinary SDK
+ * rejects a dropped connection with a plain object — `{ message: "socket hang up",
+ * http_code: 499 }` — carrying no `code` and no `cause`, so `isTransientNetworkError`
+ * reads it as permanent and gives up on the first lost packet. On this VPS's uplink
+ * that is the common case, not the rare one, and the cost of being wrong is one
+ * wasted POST against losing the whole deck.
+ */
+async function uploadWithRetry(image: string, slideIndex: number): Promise<string> {
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= UPLOAD_ATTEMPTS; attempt++) {
+    try {
+      return await uploadImage(image);
+    } catch (err) {
+      lastErr = err;
+      if (attempt === UPLOAD_ATTEMPTS) break;
+      console.warn(
+        `[upload-slides] slide ${slideIndex} attempt ${attempt}/${UPLOAD_ATTEMPTS} failed:`,
+        err instanceof Error ? err.message : err
+      );
+      await new Promise((r) => setTimeout(r, UPLOAD_RETRY_BASE_MS * 2 ** (attempt - 1)));
+    }
+  }
+  throw lastErr;
+}
+
 export interface UploadedSlides {
   urls: string[];
   /** Set when one or more slides could not be uploaded; `urls` is empty in that case. */
@@ -39,7 +73,7 @@ export async function uploadSlides(images: string[]): Promise<UploadedSlides> {
 
   async function worker(): Promise<void> {
     for (let i = next++; i < images.length; i = next++) {
-      urls[i] = await uploadImage(images[i]);
+      urls[i] = await uploadWithRetry(images[i], i);
     }
   }
 

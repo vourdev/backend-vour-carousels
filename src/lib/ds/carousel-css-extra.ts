@@ -329,14 +329,27 @@ export const carouselExtraCss = String.raw`
 
   /* ═══ Mockup fit — surface-independent, applies on Paper and Ink alike ═══ */
 
-  /* Flow chain: the row could not wrap and .node forbids wrapping its own text,
-     so a 4-5 step flow (labels up to 24 chars) overflowed the 920px content box.
-     justify-content:center then split the overflow, clipping the first and last
-     node against section{overflow:hidden}. Wrapping keeps every step on canvas. */
-  .diag-flow { flex-wrap: wrap; row-gap: 16px; max-width: 100%; }
-  .diag-flow .flow-step { display: inline-flex; align-items: center; gap: 20px; max-width: 100%; }
+  /* Flow chain: ONE row, always.
+     The row originally could not wrap and .node forbade wrapping its own text, so a
+     4-5 step flow (labels up to 24 chars) overflowed the 920px content box and
+     justify-content:center clipped the first and last node against
+     section{overflow:hidden}. flex-wrap:wrap fixed the clipping and introduced a worse
+     bug: the overflow moved to a second row, opening with its own arrow, which reads as
+     the chain FORKING. A linear four-step process shipped looking like one node fanning
+     out to two destinations.
+     The chain is capped at three nodes in the schema now (compressFlowSteps), so the only
+     job left here is the long-label case: three 24-char labels still exceed 920px. They
+     shrink instead — min-width:0 lets a flex item go below its content width, and .node
+     already wraps its own text — so the row stays a row and no arrow is ever orphaned. */
+  .diag-flow { flex-wrap: nowrap; max-width: 100%; }
+  .diag-flow .flow-step {
+    display: inline-flex; align-items: center; gap: 20px;
+    max-width: 100%; min-width: 0; flex-shrink: 1;
+  }
+  .diag-flow .flow-step .arrow { flex: none; }
   .diag-flow .node {
     max-width: 100%;
+    min-width: 0;
     white-space: normal;
     text-align: center;
     font-size: 24px;
@@ -967,7 +980,14 @@ export const carouselExtraCss = String.raw`
   section.slide-point > .body-text { order: 50; }
   section.slide-point > .diag-wrap { order: 60; }
   section.slide-point > .card { order: 60; }
-  section.slide-point > .catatan { order: 70; }
+  /* The note spans the slide, never a column.
+     grid-column is inert in the flex compositions, so this costs nothing there and
+     makes full width the DEFAULT for any grid composition rather than something each
+     one has to remember. split-content placed it in column 2 and the note came out
+     435px of the 920px content width — 47% — which wrapped "Amankan edge cases sebelum
+     lempar traffic asli" onto three lines beside a checklist that had the same problem.
+     A composition that wants the note narrower now has to say so explicitly. */
+  section.slide-point > .catatan { order: 70; grid-column: 1 / -1; }
 
   /* Mockup-Forward: the visual leads, the hook follows it immediately. This is the
      one composition that uses slot 20, and the note stays in slot 70 with everything
@@ -995,7 +1015,11 @@ export const carouselExtraCss = String.raw`
   section.layout-split-content {
     display: grid !important;
     grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto auto auto 1fr;
+    /* Five rows: three for the copy column, one shared by the body text and the bottom of
+       the mockup, and a trailing 1fr that holds the note. The 1fr used to be row 4, which
+       put every pixel of slack BETWEEN the columns and the note once the note stopped
+       being a column child — a 330px hole mid-slide. Slack belongs after the last block. */
+    grid-template-rows: auto auto auto auto 1fr;
     column-gap: 50px;
     row-gap: 0;
     align-content: start;
@@ -1064,13 +1088,18 @@ export const carouselExtraCss = String.raw`
     width: 100%;
   }
   /* Explicit placement, because auto-placement put the note in the first free cell —
-     column 2 row 2, i.e. directly ABOVE the mockup it annotates. Row 4 is the tall 1fr
-     row, so the note sits under the diagram in the same column, below the headline's
-     row either way. Child combinator: a nested note (comparison, illustration) belongs
-     to its mockup's own layout, not to this grid. */
+     column 2 row 2, i.e. directly ABOVE the mockup it annotates.
+
+     Row 5 is a new row under BOTH columns; the note inherits the slot rule's
+     grid-column: 1 / -1 and spans them. It used to sit in column 2 row 4, the tall
+     1fr row — under the diagram, but boxed into half the canvas with it. Row 4 keeps the
+     1fr, so it still absorbs the slack and the note is bottom-anchored rather than
+     floating in the middle of a short slide.
+
+     Child combinator: a nested note (comparison, illustration) belongs to its mockup's
+     own layout, not to this grid. */
   section.layout-split-content > .catatan {
-    grid-column: 2;
-    grid-row: 4;
+    grid-row: 5;
     margin-top: 24px !important;
     align-self: start;
   }

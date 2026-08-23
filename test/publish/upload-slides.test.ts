@@ -59,6 +59,46 @@ describe("uploadSlides", () => {
     expect(res.error).toContain("Cloudinary 500");
   });
 
+  /**
+   * The whole deck used to be lost to one dropped packet.
+   *
+   * `uploadSlides` is all-or-nothing by design, so a single slide erroring empties the
+   * result — and the wizard then advanced to step 4 holding object URLs, wrote a carousel
+   * row with no imageUrls, and stranded the user there after a refresh. On this VPS's
+   * uplink a lost connection is routine, so the first attempt has to not be the only one.
+   */
+  it("retries a slide that failed transiently instead of losing the deck", async () => {
+    const { uploadSlides } = await import("@/lib/publish/upload-slides");
+    let cAttempts = 0;
+    uploadImage.mockImplementation(async (b64: string) => {
+      if (b64 === "c" && ++cAttempts === 1) {
+        // The shape the Cloudinary SDK actually rejects with on a dropped connection:
+        // a plain object with no `code` and no `cause`, which lib/retry reads as permanent.
+        throw Object.assign(new Error("socket hang up"), { http_code: 499 });
+      }
+      return `https://cdn/${b64}`;
+    });
+
+    const res = await uploadSlides(["a", "b", "c", "d"]);
+    expect(res.error).toBeUndefined();
+    expect(res.urls).toEqual(["https://cdn/a", "https://cdn/b", "https://cdn/c", "https://cdn/d"]);
+    expect(cAttempts).toBe(2);
+  });
+
+  it("gives up after a bounded number of attempts per slide", async () => {
+    const { uploadSlides } = await import("@/lib/publish/upload-slides");
+    uploadImage.mockImplementation(async () => {
+      throw new Error("socket hang up");
+    });
+
+    const res = await uploadSlides(["only"]);
+    expect(res.urls).toEqual([]);
+    expect(res.error).toContain("socket hang up");
+    // Bounded: a retry loop with no ceiling would hold the request open indefinitely
+    // while Chromium's output sits in memory waiting on it.
+    expect(uploadImage).toHaveBeenCalledTimes(3);
+  });
+
   it("reports the missing configuration instead of throwing", async () => {
     delete process.env.CLOUDINARY_URL;
     const { uploadSlides } = await import("@/lib/publish/upload-slides");
