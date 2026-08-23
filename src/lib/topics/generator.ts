@@ -1,6 +1,7 @@
 import { generateObject, generateText, type LanguageModel } from "ai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { generateBrief } from "../ai/generate";
+import { generateBrief, isSdkRetryExhausted } from "../ai/generate";
+import { supportsStructuredOutput } from "../ai/registry";
 import { generatedTopicListSchema, type GeneratedTopic } from "./schema";
 import type { PlanMode } from "./schedule";
 import type { TopicCategory } from "./bank";
@@ -208,16 +209,25 @@ export async function generateTopicBatch(
 
   let topics: GeneratedTopic[] = [];
 
-  try {
-    const { object } = await generateObject({
-      model,
-      schema: generatedTopicListSchema,
-      system: TOPIC_GENERATION_SYSTEM,
-      prompt: sections.join("\n\n"),
-    });
-    topics = object.topics;
-  } catch (err: any) {
-    console.warn("[generator] generateObject failed, trying generateText fallback:", err?.message || err);
+  // Skipped for providers that reject responseFormat: the call cannot succeed
+  // there, and paying for it doubles the cost of every batch. See
+  // supportsStructuredOutput in lib/ai/registry.
+  if (supportsStructuredOutput(model)) {
+    try {
+      const { object } = await generateObject({
+        model,
+        schema: generatedTopicListSchema,
+        system: TOPIC_GENERATION_SYSTEM,
+        prompt: sections.join("\n\n"),
+      });
+      topics = object.topics;
+    } catch (err: any) {
+      if (isSdkRetryExhausted(err)) throw err;
+      console.warn("[generator] generateObject failed, falling back to generateText:", err?.message || err);
+    }
+  }
+
+  if (topics.length === 0) {
     const { text } = await generateText({
       model,
       system:

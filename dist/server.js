@@ -79056,16 +79056,21 @@ ${options.directives}` : "",
     `Every title must be catchy & clickable in Indonesian. No duplicate or near-duplicate topics.`
   ].filter(Boolean);
   let topics = [];
-  try {
-    const { object: object3 } = await generateObject({
-      model,
-      schema: generatedTopicListSchema,
-      system: TOPIC_GENERATION_SYSTEM,
-      prompt: sections.join("\n\n")
-    });
-    topics = object3.topics;
-  } catch (err) {
-    console.warn("[generator] generateObject failed, trying generateText fallback:", err?.message || err);
+  if (supportsStructuredOutput(model)) {
+    try {
+      const { object: object3 } = await generateObject({
+        model,
+        schema: generatedTopicListSchema,
+        system: TOPIC_GENERATION_SYSTEM,
+        prompt: sections.join("\n\n")
+      });
+      topics = object3.topics;
+    } catch (err) {
+      if (isSdkRetryExhausted(err)) throw err;
+      console.warn("[generator] generateObject failed, falling back to generateText:", err?.message || err);
+    }
+  }
+  if (topics.length === 0) {
     const { text: text2 } = await generateText({
       model,
       system: TOPIC_GENERATION_SYSTEM + '\nIMPORTANT: Return ONLY valid JSON matching schema: { "topics": [ { "title": "...", "category": "...", "description": "...", "keywords": ["..."], "angle": "...", "priority": 5 } ] }',
