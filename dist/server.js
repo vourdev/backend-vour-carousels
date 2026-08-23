@@ -78373,6 +78373,39 @@ app4.post("/", async (c) => {
 });
 var assemble_default = app4;
 
+// src/services/capture-jobs.ts
+var DONE_TTL_MS = 10 * 60 * 1e3;
+var PENDING_TTL_MS = 30 * 60 * 1e3;
+var jobs = /* @__PURE__ */ new Map();
+function sweep(now2) {
+  for (const [id, job] of jobs) {
+    const age = now2 - (job.status === "pending" ? job.startedAt : job.finishedAt);
+    if (age > (job.status === "pending" ? PENDING_TTL_MS : DONE_TTL_MS)) jobs.delete(id);
+  }
+}
+function createCaptureJob(userId3) {
+  const now2 = Date.now();
+  sweep(now2);
+  const id = crypto.randomUUID();
+  jobs.set(id, { status: "pending", userId: userId3, startedAt: now2 });
+  return id;
+}
+function finishCaptureJob(id, result) {
+  const job = jobs.get(id);
+  if (!job) return;
+  jobs.set(id, { status: "done", userId: job.userId, finishedAt: Date.now(), ...result });
+}
+function failCaptureJob(id, error51) {
+  const job = jobs.get(id);
+  if (!job) return;
+  jobs.set(id, { status: "error", userId: job.userId, finishedAt: Date.now(), error: error51 });
+}
+function readCaptureJob(id, userId3) {
+  const job = jobs.get(id);
+  if (!job || job.userId !== userId3) return null;
+  return job;
+}
+
 // src/lib/publish/cloudinary.ts
 var import_cloudinary = __toESM(require_cloudinary2(), 1);
 async function uploadImage(base64Data) {
@@ -78439,6 +78472,59 @@ async function uploadSlides(images) {
 
 // src/routes/user/capture.ts
 var app5 = new Hono2();
+async function runCapture(html, opts, carouselId, userId3) {
+  const images = await captureQueue.capture(async (browser) => {
+    const pixelRatio = opts?.pixelRatio ?? 2;
+    const quality = opts?.quality ?? 92;
+    const SLIDE_W = 1080;
+    const SLIDE_H = 1350;
+    const READY_TIMEOUT_MS = 6e3;
+    const context = await browser.newContext({
+      viewport: { width: SLIDE_W, height: SLIDE_H },
+      deviceScaleFactor: pixelRatio
+    });
+    try {
+      const page = await context.newPage();
+      await page.setContent(html, { waitUntil: "networkidle" });
+      try {
+        await Promise.race([
+          page.evaluate(() => document.fonts.ready),
+          new Promise((resolve2) => setTimeout(resolve2, READY_TIMEOUT_MS))
+        ]);
+      } catch (e) {
+        console.warn("Waiting for fonts timed out or failed:", e);
+      }
+      await page.waitForTimeout(500);
+      const sections = await page.$$("section");
+      if (sections.length === 0) {
+        throw new Error("No slide <section> elements found to export");
+      }
+      const buffers = [];
+      for (const section of sections) {
+        const buffer = await section.screenshot({
+          type: "jpeg",
+          quality
+        });
+        buffers.push(buffer.toString("base64"));
+      }
+      return buffers;
+    } finally {
+      await context.close();
+    }
+  });
+  console.log(`[capture] rendered ${images.length} slides${carouselId ? ` for ${carouselId}` : ""}`);
+  const { urls, error: uploadError } = await uploadSlides(images);
+  if (uploadError) {
+    console.error("Slide upload after capture failed:", uploadError);
+  }
+  if (carouselId && urls.length > 0) {
+    const owned = await getCarousel(carouselId, userId3);
+    if (owned) {
+      await updateCarousel(carouselId, { imageUrls: urls, status: "exported" });
+    }
+  }
+  return urls.length > 0 ? { urls, images: [] } : { urls: [], images, uploadError };
+}
 app5.post("/", async (c) => {
   const { plan, html: rawHtml, opts, carouselId } = await c.req.json();
   let html = rawHtml;
@@ -78449,63 +78535,28 @@ app5.post("/", async (c) => {
   if (!html?.trim()) {
     return c.json({ error: "Missing plan or html content" }, 400);
   }
-  try {
-    const images = await captureQueue.capture(async (browser) => {
-      const pixelRatio = opts?.pixelRatio ?? 2;
-      const quality = opts?.quality ?? 92;
-      const SLIDE_W = 1080;
-      const SLIDE_H = 1350;
-      const READY_TIMEOUT_MS = 6e3;
-      const context = await browser.newContext({
-        viewport: { width: SLIDE_W, height: SLIDE_H },
-        deviceScaleFactor: pixelRatio
-      });
-      try {
-        const page = await context.newPage();
-        await page.setContent(html, { waitUntil: "networkidle" });
-        try {
-          await Promise.race([
-            page.evaluate(() => document.fonts.ready),
-            new Promise((resolve2) => setTimeout(resolve2, READY_TIMEOUT_MS))
-          ]);
-        } catch (e) {
-          console.warn("Waiting for fonts timed out or failed:", e);
-        }
-        await page.waitForTimeout(500);
-        const sections = await page.$$("section");
-        if (sections.length === 0) {
-          throw new Error("No slide <section> elements found to export");
-        }
-        const buffers = [];
-        for (const section of sections) {
-          const buffer = await section.screenshot({
-            type: "jpeg",
-            quality
-          });
-          buffers.push(buffer.toString("base64"));
-        }
-        return buffers;
-      } finally {
-        await context.close();
-      }
-    });
-    console.log(`[capture] rendered ${images.length} slides${carouselId ? ` for ${carouselId}` : ""}`);
-    const { urls, error: uploadError } = await uploadSlides(images);
-    if (uploadError) {
-      console.error("Slide upload after capture failed:", uploadError);
-    }
-    if (carouselId && urls.length > 0) {
-      const session = c.get("session");
-      const owned = await getCarousel(carouselId, session.user.id);
-      if (owned) {
-        await updateCarousel(carouselId, { imageUrls: urls, status: "exported" });
-      }
-    }
-    return urls.length > 0 ? c.json({ urls, images: [] }) : c.json({ urls: [], images, uploadError });
-  } catch (err) {
+  const session = c.get("session");
+  const jobId = createCaptureJob(session.user.id);
+  void runCapture(html, opts, carouselId, session.user.id).then((result) => finishCaptureJob(jobId, result)).catch((err) => {
     console.error("Capture slides error:", err);
-    return c.json({ error: err.message || "Failed to capture slides" }, 500);
+    failCaptureJob(jobId, err?.message || "Failed to capture slides");
+  });
+  return c.json({ jobId }, 202);
+});
+app5.get("/:jobId", (c) => {
+  const session = c.get("session");
+  const job = readCaptureJob(c.req.param("jobId"), session.user.id);
+  if (!job) return c.json({ status: "unknown" }, 404);
+  if (job.status === "done") {
+    return c.json({
+      status: "done",
+      urls: job.urls,
+      images: job.images,
+      uploadError: job.uploadError
+    });
   }
+  if (job.status === "error") return c.json({ status: "error", error: job.error });
+  return c.json({ status: "pending" });
 });
 var capture_default = app5;
 
