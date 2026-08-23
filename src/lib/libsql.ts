@@ -47,10 +47,32 @@ export function createRetryingClient(config: Config, opts: RetryOptions = {}): C
   return withRetryingClient(createClient(config), opts);
 }
 
+/**
+ * Ceiling on a single database round trip.
+ *
+ * undici waits 10s to open a connection, so on a degraded link one lost SYN
+ * costs ten seconds before the retry above even starts — and better-auth looks
+ * up a session on every authenticated request. Measured 23 Aug 2026: ten
+ * sequential queries came back in 120ms-12.1s, so most are fast and the tail is
+ * very long. Cutting the tail short and retrying beats waiting it out: a fresh
+ * connection usually lands in well under a second.
+ */
+const DB_REQUEST_TIMEOUT_MS = Number(process.env.DB_REQUEST_TIMEOUT_MS ?? 5000);
+
 /** The connection settings every store in this app shares. */
 export function dbConfig(): Config {
-  return {
-    url: process.env.DATABASE_URL ?? "file:local-auth.db",
-    authToken: process.env.DATABASE_AUTH_TOKEN,
-  };
+  const url = process.env.DATABASE_URL ?? "file:local-auth.db";
+  const config: Config = { url, authToken: process.env.DATABASE_AUTH_TOKEN };
+
+  // A `file:` database never touches the network, so a deadline there would only
+  // add a way to fail.
+  if (!url.startsWith("file:")) {
+    config.fetch = (input: RequestInfo | URL, init: RequestInit = {}) => {
+      const deadline = AbortSignal.timeout(DB_REQUEST_TIMEOUT_MS);
+      const signal = init.signal ? AbortSignal.any([init.signal, deadline]) : deadline;
+      return fetch(input, { ...init, signal });
+    };
+  }
+
+  return config;
 }

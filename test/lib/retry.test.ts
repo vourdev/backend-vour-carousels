@@ -152,3 +152,29 @@ describe("withRetry", () => {
     expect(onRetry.mock.calls[0][1]).toBe(1);
   });
 });
+
+/**
+ * The libsql client carries a per-request deadline (see dbConfig). When it
+ * fires, undici raises a DOMException named "TimeoutError" rather than one of
+ * the socket codes above — so without this the retry would treat our own
+ * deadline as a permanent failure and give up on the first slow query.
+ */
+describe("per-request deadline", () => {
+  it("treats AbortSignal.timeout as transient", () => {
+    const err = new DOMException("The operation was aborted due to timeout", "TimeoutError");
+    expect(isTransientNetworkError(err)).toBe(true);
+  });
+
+  it("leaves a deliberate caller abort alone", () => {
+    const err = new DOMException("This operation was aborted", "AbortError");
+    expect(isTransientNetworkError(err)).toBe(false);
+  });
+
+  it("retries a timed-out query and returns the later success", async () => {
+    const timeout = new DOMException("timed out", "TimeoutError");
+    const fn = vi.fn().mockRejectedValueOnce(timeout).mockResolvedValue("row");
+
+    await expect(withRetry(fn, { sleep: () => Promise.resolve() })).resolves.toBe("row");
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
+});

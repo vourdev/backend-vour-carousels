@@ -15975,6 +15975,7 @@ function isTransientNetworkError(err) {
     seen.add(current);
     const code = current.code;
     if (typeof code === "string" && TRANSIENT_CODES.has(code)) return true;
+    if (current.name === "TimeoutError") return true;
     if (typeof current.message === "string" && current.message.includes("fetch failed")) return true;
     if (!("cause" in current)) return false;
     current = current.cause;
@@ -16066,17 +16067,24 @@ function createRetryingClient(config2, opts = {}) {
   return withRetryingClient(createClient2(config2), opts);
 }
 function dbConfig() {
-  return {
-    url: process.env.DATABASE_URL ?? "file:local-auth.db",
-    authToken: process.env.DATABASE_AUTH_TOKEN
-  };
+  const url2 = process.env.DATABASE_URL ?? "file:local-auth.db";
+  const config2 = { url: url2, authToken: process.env.DATABASE_AUTH_TOKEN };
+  if (!url2.startsWith("file:")) {
+    config2.fetch = (input, init = {}) => {
+      const deadline = AbortSignal.timeout(DB_REQUEST_TIMEOUT_MS);
+      const signal = init.signal ? AbortSignal.any([init.signal, deadline]) : deadline;
+      return fetch(input, { ...init, signal });
+    };
+  }
+  return config2;
 }
-var RETRYABLE;
+var RETRYABLE, DB_REQUEST_TIMEOUT_MS;
 var init_libsql = __esm({
   "src/lib/libsql.ts"() {
     "use strict";
     init_retry();
     RETRYABLE = /* @__PURE__ */ new Set(["execute", "batch", "executeMultiple", "migrate"]);
+    DB_REQUEST_TIMEOUT_MS = Number(process.env.DB_REQUEST_TIMEOUT_MS ?? 5e3);
   }
 });
 

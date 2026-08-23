@@ -93,3 +93,23 @@ describe("withRetryingClient", () => {
     expect(transaction).toHaveBeenCalledTimes(1);
   });
 });
+
+/**
+ * A `file:` database is local, so a network deadline there would only add a new
+ * way to fail. Remote URLs get one, because undici's 10s connect timeout is far
+ * longer than this link's healthy round trip and better-auth pays it on every
+ * authenticated request.
+ */
+describe("dbConfig deadline", () => {
+  it("attaches a fetch deadline for remote databases", async () => {
+    const { dbConfig } = await import("@/lib/libsql");
+    process.env.DATABASE_URL = "libsql://example.turso.io";
+    expect(typeof dbConfig().fetch).toBe("function");
+  });
+
+  it("leaves a local file database alone", async () => {
+    const { dbConfig } = await import("@/lib/libsql");
+    process.env.DATABASE_URL = "file:local-auth.db";
+    expect(dbConfig().fetch).toBeUndefined();
+  });
+});

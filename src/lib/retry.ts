@@ -55,6 +55,11 @@ export function isTransientNetworkError(err: unknown): boolean {
     const code = current.code;
     if (typeof code === "string" && TRANSIENT_CODES.has(code)) return true;
 
+    // AbortSignal.timeout — our own per-request deadline firing, which is a slow
+    // link rather than a bad request. A caller-initiated AbortError is left
+    // alone: that one means someone deliberately gave up.
+    if (current.name === "TimeoutError") return true;
+
     // undici's outermost error carries no code at all.
     if (typeof current.message === "string" && current.message.includes("fetch failed")) return true;
 
