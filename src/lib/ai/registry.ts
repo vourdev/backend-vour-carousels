@@ -2,6 +2,7 @@ import type { LanguageModel } from "ai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createDeepSeek } from "@ai-sdk/deepseek";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { omnirouteGate } from "../../services/omniroute-gate";
 
 export type ModelId = "gemini" | "deepseek" | "mimo" | "openrouter" | "omniroute" | "vour-high" | "vour-lite";
 
@@ -45,7 +46,19 @@ function cleanBaseUrl(url: string | undefined): string {
   return cleaned;
 }
 
+/**
+ * Every OmniRoute request, funnelled through `omnirouteGate`.
+ *
+ * The gate is here rather than around `generateBrief`/`generateSlidePlan` because the AI
+ * SDK's own transport retries never surface at that level, and they are part of the load
+ * OmniRoute sees. Wrapping `fetch` also means a caller cannot opt out by accident: the
+ * topic generator and the research agent get the same spacing without importing anything.
+ */
 async function omnirouteFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  return omnirouteGate.run(() => omnirouteRequest(input, init));
+}
+
+async function omnirouteRequest(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const response = await fetch(input, init);
   const contentType = response.headers.get("content-type") || "";
 
@@ -188,6 +201,30 @@ export function resolveModel(id: ModelId): LanguageModel {
  * dropping half its packets it is the difference between answering and being cut
  * off at Cloudflare's 100s ceiling with a bare 524.
  */
+/**
+ * Options every model call spreads in. Currently one thing: how many times the AI SDK's
+ * transport may retry on its own.
+ *
+ * The SDK defaults to 2 retries, so one "buat brief" click is up to THREE requests as far
+ * as OmniRoute is concerned, and its logs show exactly that. Against an upstream that is
+ * merely slow, retrying is right. Against OmniRoute it is actively harmful: a request that
+ * fails there has usually sat in its queue until the budget ran out
+ * (`Request dropped after exceeding the local rate-limit queue budget maxWaitMs (120000ms)`),
+ * and the retry immediately books another 120-second slot in the queue that just proved to
+ * be full. Three of those is six minutes spent making the saturation worse.
+ *
+ * So the transport gets zero retries and `withRetry` in lib/ai/generate.ts is the only
+ * retry authority: three attempts, real backoff between them, and every attempt passes
+ * through the concurrency gate. One layer, spaced, visible in the logs.
+ *
+ * `OMNIROUTE_SDK_RETRIES` raises it again without a deploy if a link ever needs it.
+ */
+export function aiCallDefaults(): { maxRetries: number } {
+  const raw = process.env.OMNIROUTE_SDK_RETRIES;
+  const n = raw ? parseInt(raw, 10) : NaN;
+  return { maxRetries: Number.isFinite(n) && n >= 0 ? n : 0 };
+}
+
 const NO_STRUCTURED_OUTPUT_PROVIDERS = ["vour-high", "vour-lite", "omniroute"];
 
 export function supportsStructuredOutput(model: LanguageModel): boolean {

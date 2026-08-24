@@ -15998,7 +15998,7 @@ async function withRetry(fn, opts = {}) {
     baseDelayMs = 200,
     maxDelayMs = 2e3,
     onRetry,
-    sleep = defaultSleep
+    sleep: sleep2 = defaultSleep
   } = opts;
   let lastErr;
   for (let attempt = 1; attempt <= attempts; attempt++) {
@@ -16009,7 +16009,7 @@ async function withRetry(fn, opts = {}) {
       if (!isTransientNetworkError(err)) throw err;
       if (attempt === attempts) break;
       onRetry?.(err, attempt);
-      await sleep(Math.min(baseDelayMs * 2 ** (attempt - 1), maxDelayMs));
+      await sleep2(Math.min(baseDelayMs * 2 ** (attempt - 1), maxDelayMs));
     }
   }
   throw lastErr;
@@ -61823,6 +61823,75 @@ function createOpenAICompatible(options) {
   return provider;
 }
 
+// src/services/omniroute-gate.ts
+function envInt(name25, fallback) {
+  const raw2 = process.env[name25];
+  if (!raw2) return fallback;
+  const n = parseInt(raw2, 10);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+var sleep = (ms) => new Promise((resolve2) => setTimeout(resolve2, ms));
+var OmniRouteGate = class {
+  active = 0;
+  waiters = [];
+  lastStart = 0;
+  peakQueued = 0;
+  admitted = 0;
+  /** Read per-call, not cached: the env is set by the swarm service, not by a build. */
+  get maxConcurrent() {
+    return envInt("OMNIROUTE_MAX_CONCURRENT", 1);
+  }
+  get minIntervalMs() {
+    return envInt("OMNIROUTE_MIN_INTERVAL_MS", 1e3);
+  }
+  async acquire() {
+    let waited = 0;
+    while (this.active >= this.maxConcurrent) {
+      this.peakQueued = Math.max(this.peakQueued, this.waiters.length + 1);
+      if (!waited) waited = Date.now();
+      await new Promise((resolve2) => this.waiters.push(resolve2));
+    }
+    if (waited) console.log(`[omniroute] request waited ${Date.now() - waited}ms for a slot`);
+    this.active++;
+    const now2 = Date.now();
+    const startAt = Math.max(now2, this.lastStart + this.minIntervalMs);
+    this.lastStart = startAt;
+    if (startAt > now2) await sleep(startAt - now2);
+    this.admitted++;
+  }
+  release() {
+    this.active--;
+    this.waiters.shift()?.();
+  }
+  async run(fn) {
+    await this.acquire();
+    try {
+      return await fn();
+    } finally {
+      this.release();
+    }
+  }
+  get stats() {
+    return {
+      active: this.active,
+      queued: this.waiters.length,
+      peakQueued: this.peakQueued,
+      admitted: this.admitted,
+      maxConcurrent: this.maxConcurrent,
+      minIntervalMs: this.minIntervalMs
+    };
+  }
+  /** Tests only: drop accumulated counters and spacing so cases do not leak into each other. */
+  resetForTests() {
+    this.active = 0;
+    this.waiters = [];
+    this.lastStart = 0;
+    this.peakQueued = 0;
+    this.admitted = 0;
+  }
+};
+var omnirouteGate = new OmniRouteGate();
+
 // src/lib/ai/registry.ts
 function has(env, ...keys) {
   return keys.every((k) => Boolean(env[k]));
@@ -61853,6 +61922,9 @@ function cleanBaseUrl(url2) {
   return cleaned;
 }
 async function omnirouteFetch(input, init) {
+  return omnirouteGate.run(() => omnirouteRequest(input, init));
+}
+async function omnirouteRequest(input, init) {
   const response = await fetch(input, init);
   const contentType = response.headers.get("content-type") || "";
   if (contentType.includes("text/event-stream")) {
@@ -61967,6 +62039,11 @@ function resolveModel(id) {
       return omniroute(target);
     }
   }
+}
+function aiCallDefaults() {
+  const raw2 = process.env.OMNIROUTE_SDK_RETRIES;
+  const n = raw2 ? parseInt(raw2, 10) : NaN;
+  return { maxRetries: Number.isFinite(n) && n >= 0 ? n : 0 };
 }
 var NO_STRUCTURED_OUTPUT_PROVIDERS = ["vour-high", "vour-lite", "omniroute"];
 function supportsStructuredOutput(model) {
@@ -75675,6 +75752,10 @@ var delay2 = (ms) => new Promise((resolve2) => setTimeout(resolve2, ms));
 function isSdkRetryExhausted(err) {
   return err?.name === "AI_RetryError" || err?.constructor?.name === "RetryError";
 }
+function isQueueSaturation(err) {
+  const haystack = `${err?.message ?? ""} ${err?.responseBody ?? ""} ${err?.cause?.message ?? ""}`;
+  return /queue budget|maxWaitMs|requestQueue/i.test(haystack);
+}
 async function withRetry2(fn, attempts = 3) {
   let lastError = null;
   for (let i = 0; i < attempts; i++) {
@@ -75685,7 +75766,9 @@ async function withRetry2(fn, attempts = 3) {
       lastError = err;
       if (isSdkRetryExhausted(err)) throw err;
       if (i < attempts - 1) {
-        await delay2((i + 1) * 2500);
+        const saturated = isQueueSaturation(err);
+        if (saturated) console.warn("[omniroute] queue saturated, backing off before retry");
+        await delay2((i + 1) * (saturated ? 2e4 : 2500));
       }
     }
   }
@@ -75716,7 +75799,8 @@ async function generateBrief(idea, model) {
     const { text: text2 } = await generateText({
       model,
       system: briefSystem,
-      prompt: briefUserPrompt(idea)
+      prompt: briefUserPrompt(idea),
+      ...aiCallDefaults()
     });
     return text2;
   });
@@ -75887,7 +75971,8 @@ ${ctx.stats?.filter((s) => s.percentage >= 12).map((s) => `  \u2717 ${s.type} ($
           model,
           schema: slidePlanSchema,
           system: systemPrompt,
-          prompt: planUserPrompt(brief)
+          prompt: planUserPrompt(brief),
+          ...aiCallDefaults()
         });
         return enforcePlanInvariants(object3);
       } catch (err) {
@@ -75898,7 +75983,8 @@ ${ctx.stats?.filter((s) => s.percentage >= 12).map((s) => `  \u2717 ${s.type} ($
     const { text: text2 } = await generateText({
       model,
       system: systemPrompt + "\nIMPORTANT: Return ONLY valid JSON matching the schema. No markdown codeblocks or extra text.",
-      prompt: planUserPrompt(brief)
+      prompt: planUserPrompt(brief),
+      ...aiCallDefaults()
     });
     const parsed = extractAndParseJson(text2);
     const repaired = repairSlidePlan(parsed);
@@ -75914,7 +76000,8 @@ async function reviseSlidePlan(plan, message, model, history = []) {
           model,
           schema: slidePlanSchema,
           system: reviseSystem,
-          prompt
+          prompt,
+          ...aiCallDefaults()
         });
         return object3;
       } catch (err) {
@@ -75925,7 +76012,8 @@ async function reviseSlidePlan(plan, message, model, history = []) {
     const { text: text2 } = await generateText({
       model,
       system: reviseSystem + "\nIMPORTANT: Return ONLY valid JSON matching the schema. No markdown codeblocks or extra text.",
-      prompt
+      prompt,
+      ...aiCallDefaults()
     });
     const parsed = extractAndParseJson(text2);
     return repairSlidePlan(parsed);
@@ -75942,14 +76030,27 @@ var slidePatchSchema = external_exports.object({
 async function resolveRevisionScope(plan, message, model) {
   const parsed = parseRevisionScope(message, plan.slides.length);
   if (parsed.resolved || parsed.reasonCode !== "no-target") return parsed;
+  const prompt = scopeClassifierPrompt(message, plan);
   try {
-    const { object: object3 } = await generateObject({
-      model,
-      schema: scopeClassificationSchema,
-      system: scopeClassifierSystem,
-      prompt: scopeClassifierPrompt(message, plan)
-    });
-    return scopeFromClassifier(object3, plan.slides.length, message);
+    let raw2;
+    if (supportsStructuredOutput(model)) {
+      raw2 = (await generateObject({
+        model,
+        schema: scopeClassificationSchema,
+        system: scopeClassifierSystem,
+        prompt,
+        ...aiCallDefaults()
+      })).object;
+    } else {
+      const { text: text2 } = await generateText({
+        model,
+        system: scopeClassifierSystem + "\nIMPORTANT: Return ONLY valid JSON matching the schema. No markdown codeblocks or extra text.",
+        prompt,
+        ...aiCallDefaults()
+      });
+      raw2 = scopeClassificationSchema.parse(extractAndParseJson(text2));
+    }
+    return scopeFromClassifier(raw2, plan.slides.length, message);
   } catch (err) {
     console.warn("[revision-scope] classifier failed, falling back to whole-plan revision:", err);
     return parsed;
@@ -75968,7 +76069,8 @@ async function reviseTargetSlides(plan, scope, message, model, history) {
           model,
           schema: slidePatchSchema,
           system: scopedSlideReviseSystem,
-          prompt
+          prompt,
+          ...aiCallDefaults()
         });
         return object3.slides.map((s) => ({ index: s.index - 1, slide: s.slide }));
       } catch (err) {
@@ -75979,7 +76081,8 @@ async function reviseTargetSlides(plan, scope, message, model, history) {
     const { text: text2 } = await generateText({
       model,
       system: scopedSlideReviseSystem + "\nIMPORTANT: Return ONLY valid JSON matching the schema. No markdown codeblocks or extra text.",
-      prompt
+      prompt,
+      ...aiCallDefaults()
     });
     const parsed = slidePatchSchema.parse(extractAndParseJson(text2));
     return parsed.slides.map((s) => ({ index: s.index - 1, slide: s.slide }));
@@ -75999,7 +76102,8 @@ async function reviseGlobalFields(plan, scope, message, model, history) {
           model,
           schema,
           system: scopedGlobalReviseSystem,
-          prompt
+          prompt,
+          ...aiCallDefaults()
         });
         return object3;
       } catch (err) {
@@ -76010,7 +76114,8 @@ async function reviseGlobalFields(plan, scope, message, model, history) {
     const { text: text2 } = await generateText({
       model,
       system: scopedGlobalReviseSystem + "\nIMPORTANT: Return ONLY valid JSON matching the schema. No markdown codeblocks or extra text.",
-      prompt
+      prompt,
+      ...aiCallDefaults()
     });
     return schema.parse(extractAndParseJson(text2));
   });
@@ -76034,7 +76139,8 @@ async function polishBriefVoice(brief, model) {
     const { text: text2 } = await generateText({
       model,
       system: humanVoiceEditorSystem,
-      prompt: humanVoiceEditorUserPrompt(brief)
+      prompt: humanVoiceEditorUserPrompt(brief),
+      ...aiCallDefaults()
     });
     return text2;
   });
@@ -79574,7 +79680,8 @@ ${options.directives}` : "",
         model,
         schema: generatedTopicListSchema,
         system: TOPIC_GENERATION_SYSTEM,
-        prompt: sections.join("\n\n")
+        prompt: sections.join("\n\n"),
+        ...aiCallDefaults()
       });
       topics = object3.topics;
     } catch (err) {
@@ -79586,7 +79693,8 @@ ${options.directives}` : "",
     const { text: text2 } = await generateText({
       model,
       system: TOPIC_GENERATION_SYSTEM + '\nIMPORTANT: Return ONLY valid JSON matching schema: { "topics": [ { "title": "...", "category": "...", "description": "...", "keywords": ["..."], "angle": "...", "priority": 5 } ] }',
-      prompt: sections.join("\n\n")
+      prompt: sections.join("\n\n"),
+      ...aiCallDefaults()
     });
     const parsed = extractAndParseJson2(text2);
     const validated = generatedTopicListSchema.parse(parsed);
@@ -79765,7 +79873,7 @@ Ekstrak kandidat topik carousel dari catatan di atas. Return JSON saja.`;
   let lastError = null;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const { text: text2 } = await generateText({ model, system, prompt });
+      const { text: text2 } = await generateText({ ...aiCallDefaults(), model, system, prompt });
       const parsed = extractAndParseJson3(text2);
       const validated = researchOutputSchema.parse(parsed);
       const productIds = new Set(products.map((p) => p.id));

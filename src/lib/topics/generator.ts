@@ -1,7 +1,7 @@
 import { generateObject, generateText, type LanguageModel } from "ai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { generateBrief, isSdkRetryExhausted } from "../ai/generate";
-import { supportsStructuredOutput } from "../ai/registry";
+import { supportsStructuredOutput, aiCallDefaults } from "../ai/registry";
 import { generatedTopicListSchema, type GeneratedTopic } from "./schema";
 import type { PlanMode } from "./schedule";
 import type { TopicCategory } from "./bank";
@@ -219,6 +219,7 @@ export async function generateTopicBatch(
         schema: generatedTopicListSchema,
         system: TOPIC_GENERATION_SYSTEM,
         prompt: sections.join("\n\n"),
+        ...aiCallDefaults(),
       });
       topics = object.topics;
     } catch (err: any) {
@@ -234,6 +235,7 @@ export async function generateTopicBatch(
         TOPIC_GENERATION_SYSTEM +
         '\nIMPORTANT: Return ONLY valid JSON matching schema: { "topics": [ { "title": "...", "category": "...", "description": "...", "keywords": ["..."], "angle": "...", "priority": 5 } ] }',
       prompt: sections.join("\n\n"),
+      ...aiCallDefaults(),
     });
     const parsed = extractAndParseJson(text);
     const validated = generatedTopicListSchema.parse(parsed);

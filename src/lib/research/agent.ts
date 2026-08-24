@@ -1,5 +1,6 @@
 import { generateText, type LanguageModel } from "ai";
 import { z } from "zod";
+import { aiCallDefaults } from "../ai/registry";
 import { getActiveProducts, type Product } from "../products/repo";
 import { createTopic, getTopics, type Topic, type TopicStatus } from "../topics/bank";
 import { isDuplicateTopic } from "../topics/dedup";
@@ -105,7 +106,7 @@ export async function extractTopics(
   let lastError: any = null;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const { text } = await generateText({ model, system, prompt });
+      const { text } = await generateText({ ...aiCallDefaults(), model, system, prompt });
       const parsed = extractAndParseJson(text);
       const validated = researchOutputSchema.parse(parsed);
 

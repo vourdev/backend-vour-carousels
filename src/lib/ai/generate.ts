@@ -1,5 +1,5 @@
 import { generateText, generateObject, type LanguageModel } from "ai";
-import { supportsStructuredOutput } from "./registry";
+import { supportsStructuredOutput, aiCallDefaults } from "./registry";
 import { z } from "zod";
 import { slidePlanSchema, slideSchema, type SlidePlan } from "../ds/schema";
 import { repairSlidePlan } from "../ds/repair";
@@ -49,6 +49,30 @@ export function isSdkRetryExhausted(err: any): boolean {
   return err?.name === "AI_RetryError" || err?.constructor?.name === "RetryError";
 }
 
+/**
+ * OmniRoute answering "your request waited in my queue until the budget ran out".
+ *
+ *   [502] Request dropped after exceeding the local rate-limit queue budget
+ *   maxWaitMs (120000ms) for agy/gemini-3.5-flash-high
+ *
+ * This is not a slow provider and not a dead link — it is back-pressure, and the one
+ * response that makes it worse is an immediate retry, which books another 120-second slot
+ * in the queue that just overflowed. Backing off for longer than a normal transport blip
+ * is the only retry that has a chance of finding room.
+ */
+export function isQueueSaturation(err: any): boolean {
+  const haystack = `${err?.message ?? ""} ${err?.responseBody ?? ""} ${err?.cause?.message ?? ""}`;
+  return /queue budget|maxWaitMs|requestQueue/i.test(haystack);
+}
+
+/**
+ * The only place an AI call is retried.
+ *
+ * The transport used to retry too (`maxRetries` defaults to 2), so a single user action
+ * arrived at OmniRoute as three requests. That layer is off now — see `aiCallDefaults` in
+ * lib/ai/registry.ts — which leaves this as the sole authority: three attempts, spaced,
+ * each one passing through the concurrency gate like any other request.
+ */
 export async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
   let lastError: any = null;
   for (let i = 0; i < attempts; i++) {
@@ -58,13 +82,16 @@ export async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<
       console.error(`AI call attempt ${i + 1} failed:`, err);
       lastError = err;
 
-      // The transport already had its three shots; rethrow untouched so the
-      // message stays single-level and names the real cause.
+      // Only reachable when OMNIROUTE_SDK_RETRIES has been raised back above zero: the
+      // transport had its shots, so rethrow untouched and keep the message single-level.
       if (isSdkRetryExhausted(err)) throw err;
 
       if (i < attempts - 1) {
-        // Exponential backoff: 2.5s, 5s
-        await delay((i + 1) * 2500);
+        // 2.5s, 5s for an ordinary failure. Saturation gets 20s, 40s instead — the queue
+        // needs time to drain, and coming back in two and a half seconds just rejoins it.
+        const saturated = isQueueSaturation(err);
+        if (saturated) console.warn("[omniroute] queue saturated, backing off before retry");
+        await delay((i + 1) * (saturated ? 20_000 : 2500));
       }
     }
   }
@@ -100,6 +127,7 @@ export async function generateBrief(idea: string, model: LanguageModel): Promise
       model,
       system: briefSystem,
       prompt: briefUserPrompt(idea),
+      ...aiCallDefaults(),
     });
     return text;
   });
@@ -374,6 +402,7 @@ ${ctx.stats
           schema: slidePlanSchema,
           system: systemPrompt,
           prompt: planUserPrompt(brief),
+          ...aiCallDefaults(),
         });
         return enforcePlanInvariants(object);
       } catch (err: any) {
@@ -392,6 +421,7 @@ ${ctx.stats
       model,
       system: systemPrompt + "\nIMPORTANT: Return ONLY valid JSON matching the schema. No markdown codeblocks or extra text.",
       prompt: planUserPrompt(brief),
+      ...aiCallDefaults(),
     });
     const parsed = extractAndParseJson(text);
     const repaired = repairSlidePlan(parsed);
@@ -417,6 +447,7 @@ export async function reviseSlidePlan(
           schema: slidePlanSchema,
           system: reviseSystem,
           prompt,
+          ...aiCallDefaults(),
         });
         return object;
       } catch (err: any) {
@@ -429,6 +460,7 @@ export async function reviseSlidePlan(
       model,
       system: reviseSystem + "\nIMPORTANT: Return ONLY valid JSON matching the schema. No markdown codeblocks or extra text.",
       prompt,
+      ...aiCallDefaults(),
     });
     const parsed = extractAndParseJson(text);
     return repairSlidePlan(parsed);
@@ -471,14 +503,37 @@ export async function resolveRevisionScope(
   const parsed = parseRevisionScope(message, plan.slides.length);
   if (parsed.resolved || parsed.reasonCode !== "no-target") return parsed;
 
+  const prompt = scopeClassifierPrompt(message, plan);
+
   try {
-    const { object } = await generateObject({
-      model,
-      schema: scopeClassificationSchema,
-      system: scopeClassifierSystem,
-      prompt: scopeClassifierPrompt(message, plan),
-    });
-    return scopeFromClassifier(object, plan.slides.length, message);
+    // The structured-output guard every other call site already had. Without it this asked
+    // OmniRoute for a responseFormat it does not implement, which fails 100% of the time —
+    // so on the only provider in production, the classifier never once returned an answer.
+    // It cost a full model call and then degraded to whole-plan revision, which is why a
+    // request to change a few words came back with the slide's layout and mockup replaced.
+    let raw: z.infer<typeof scopeClassificationSchema>;
+    if (supportsStructuredOutput(model)) {
+      raw = (
+        await generateObject({
+          model,
+          schema: scopeClassificationSchema,
+          system: scopeClassifierSystem,
+          prompt,
+          ...aiCallDefaults(),
+        })
+      ).object;
+    } else {
+      const { text } = await generateText({
+        model,
+        system:
+          scopeClassifierSystem +
+          "\nIMPORTANT: Return ONLY valid JSON matching the schema. No markdown codeblocks or extra text.",
+        prompt,
+        ...aiCallDefaults(),
+      });
+      raw = scopeClassificationSchema.parse(extractAndParseJson(text));
+    }
+    return scopeFromClassifier(raw, plan.slides.length, message);
   } catch (err: unknown) {
     console.warn("[revision-scope] classifier failed, falling back to whole-plan revision:", err);
     return parsed;
@@ -506,6 +561,7 @@ async function reviseTargetSlides(
           schema: slidePatchSchema,
           system: scopedSlideReviseSystem,
           prompt,
+          ...aiCallDefaults(),
         });
         return object.slides.map((s) => ({ index: s.index - 1, slide: s.slide }));
       } catch (err: unknown) {
@@ -518,6 +574,7 @@ async function reviseTargetSlides(
       model,
       system: scopedSlideReviseSystem + "\nIMPORTANT: Return ONLY valid JSON matching the schema. No markdown codeblocks or extra text.",
       prompt,
+      ...aiCallDefaults(),
     });
     const parsed = slidePatchSchema.parse(extractAndParseJson(text));
     return parsed.slides.map((s) => ({ index: s.index - 1, slide: s.slide }));
@@ -548,6 +605,7 @@ async function reviseGlobalFields(
           schema,
           system: scopedGlobalReviseSystem,
           prompt,
+          ...aiCallDefaults(),
         });
         return object as ScopedPatch;
       } catch (err: unknown) {
@@ -560,6 +618,7 @@ async function reviseGlobalFields(
       model,
       system: scopedGlobalReviseSystem + "\nIMPORTANT: Return ONLY valid JSON matching the schema. No markdown codeblocks or extra text.",
       prompt,
+      ...aiCallDefaults(),
     });
     return schema.parse(extractAndParseJson(text)) as ScopedPatch;
   });
@@ -604,6 +663,7 @@ export async function polishBriefVoice(brief: string, model: LanguageModel): Pro
       model,
       system: humanVoiceEditorSystem,
       prompt: humanVoiceEditorUserPrompt(brief),
+      ...aiCallDefaults(),
     });
     return text;
   });
