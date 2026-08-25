@@ -1,3 +1,10 @@
+# NOT the deploy path any more -- kept for building and running the app locally, and as
+# the recipe the runtime base image on the VPS was originally derived from.
+# CI stopped building images for deployment on 25 Aug 2026: this image is 2.6 GB because
+# of the Playwright browsers, and the VPS link sustains 36 KB/s. Deploys now rsync dist/
+# plus the pruned node_modules and assemble the image on the box. See
+# .github/workflows/deploy-vps.yml and deploy/ci-deploy-backend.sh.
+
 FROM mcr.microsoft.com/playwright:v1.62.1-jammy
 
 WORKDIR /app

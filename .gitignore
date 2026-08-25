@@ -48,3 +48,6 @@ next-env.d.ts
 graphify-out/
 # Output of npm run check:evidence
 scratch/
+
+# staged by CI before rsync, never committed
+deploy-out/

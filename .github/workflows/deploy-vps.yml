@@ -1,0 +1,120 @@
+# Build here, ship into the VPS -- and ship as little as possible.
+#
+# This box cannot reach the npm registry (a single metadata request burns the full 30s
+# timeout), so it cannot build itself. It also cannot receive a 2.6 GB image: the uplink
+# drops 12-60% of its outbound packets, which collapses transfers in BOTH directions
+# because an inbound stream still needs the box to ACK. Measured 25 Aug 2026: 36 KB/s.
+#
+# So the runner builds, rsyncs the *runtime tree* -- dist/ plus the pruned node_modules --
+# and the box assembles the image from a base that already holds the Playwright browsers.
+# rsync sends only what changed, so a steady-state deploy moves a few MB rather than 2.6 GB.
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One deploy at a time, and never cancel one midway: a half-applied rsync would leave the
+# app directory mixing two builds.
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # 24, because that is what the runtime image actually runs (the Playwright base
+      # ships its own node ahead of the nodesource install on PATH). Matching majors keeps
+      # the node_modules that gets rsynced identical to one built on the box.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      # The browsers are baked into the runtime base image and the tests never launch one,
+      # so downloading ~400 MB of them onto the runner would be pure waiting.
+      - name: Install
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # Drop devDeps *after* the build, which needed esbuild. What remains is what the
+      # container actually loads: esbuild bundles the app but leaves playwright,
+      # @libsql/client and better-auth external.
+      - name: Prune to runtime dependencies
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+        run: npm prune --omit=dev
+
+      - name: Stage the deploy tree
+        run: |
+          rm -rf deploy-out
+          mkdir -p deploy-out
+          cp -r dist deploy-out/dist
+          cp -r node_modules deploy-out/node_modules
+          cp package.json package-lock.json healthcheck.js deploy-out/
+          test -f deploy-out/dist/server.js || { echo "no dist/server.js in the build output"; exit 1; }
+          test -d deploy-out/node_modules/playwright-core || { echo "playwright-core missing after prune"; exit 1; }
+          du -sh deploy-out
+
+      - name: Ship and deploy
+        env:
+          SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+          HOST: ${{ secrets.VPS_HOST }}
+          PORT: ${{ secrets.VPS_PORT }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
+
+          SSH="ssh -i $HOME/.ssh/id_ed25519 -p $PORT -o BatchMode=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=8 -o ConnectTimeout=30"
+
+          # --checksum, not the default size+mtime: npm ci stamps every file with a fresh
+          # timestamp, so by mtime the whole 163 MB of node_modules looks new on every run
+          # when its contents are identical.
+          # --partial so a run that dies mid-file resumes instead of restarting, and
+          # --timeout so a stalled link fails the attempt in three minutes rather than
+          # hanging until the job timeout.
+          for attempt in 1 2 3 4 5; do
+            echo "::group::rsync attempt $attempt"
+            if rsync -az --checksum --delete --partial --timeout=180 \
+                     --info=stats2 -e "$SSH" \
+                     deploy-out/ "root@$HOST:/"; then
+              echo "::endgroup::"
+              echo "synced on attempt $attempt"
+              SYNCED=1
+              break
+            fi
+            echo "::endgroup::"
+            echo "attempt $attempt failed"
+            sleep 20
+          done
+          [ "${SYNCED:-}" = 1 ] || { echo "rsync failed five times -- see the uplink notes in deploy/ci-deploy-backend.sh"; exit 1; }
+
+          $SSH "root@$HOST" "deploy ${{ github.sha }}"
+
+      - name: Verify it answers
+        env:
+          URL: https://api-automation.vour.dev
+        run: |
+          for i in $(seq 1 20); do
+            code=$(curl -so /dev/null -w '%{http_code}' --max-time 20 "$URL/health" || true)
+            echo "attempt $i: $code"
+            [ "$code" = 200 ] && { echo "up"; exit 0; }
+            sleep 10
+          done
+          echo "did not come up"; exit 1
