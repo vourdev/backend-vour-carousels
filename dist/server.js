@@ -2224,10 +2224,10 @@ var init_query_node = __esm({
           where: node.where ? WhereNode.cloneWithOperation(node.where, "And", operation) : WhereNode.create(operation)
         });
       },
-      cloneWithJoin(node, join2) {
+      cloneWithJoin(node, join3) {
         return freeze({
           ...node,
-          joins: node.joins ? freeze([...node.joins, join2]) : freeze([join2])
+          joins: node.joins ? freeze([...node.joins, join3]) : freeze([join3])
         });
       },
       cloneWithReturning(node, selections) {
@@ -6090,8 +6090,8 @@ var init_with_schema_transformer = __esm({
           this.#collectSchemableIdsFromTableExpr(node.table, schemableIds);
         }
         if ("joins" in node && node.joins) {
-          for (const join2 of node.joins) {
-            this.#collectSchemableIdsFromTableExpr(join2.table, schemableIds);
+          for (const join3 of node.joins) {
+            this.#collectSchemableIdsFromTableExpr(join3.table, schemableIds);
           }
         }
         if ("using" in node && node.using) {
@@ -20163,7 +20163,7 @@ var require_lodash = __commonJS({
           }
           return mapped.length && mapped[0] === arrays[0] ? baseIntersection(mapped, undefined2, comparator) : [];
         });
-        function join2(array3, separator) {
+        function join3(array3, separator) {
           return array3 == null ? "" : nativeJoin.call(array3, separator);
         }
         function last(array3) {
@@ -22087,7 +22087,7 @@ var require_lodash = __commonJS({
         lodash.isUndefined = isUndefined2;
         lodash.isWeakMap = isWeakMap;
         lodash.isWeakSet = isWeakSet;
-        lodash.join = join2;
+        lodash.join = join3;
         lodash.kebabCase = kebabCase;
         lodash.last = last;
         lodash.lastIndexOf = lastIndexOf;
@@ -28316,7 +28316,7 @@ var require_uploader = __commonJS({
         ];
       });
     };
-    exports.rename = function rename(from_public_id, to_public_id, callback, options = {}) {
+    exports.rename = function rename2(from_public_id, to_public_id, callback, options = {}) {
       return call_api("rename", callback, options, function() {
         return [
           {
@@ -71681,27 +71681,98 @@ function readCaptureJob(id, userId3) {
 // src/lib/publish/upload-slides.ts
 import { createHash } from "node:crypto";
 
+// src/lib/publish/local-store.ts
+import { randomUUID } from "node:crypto";
+import { mkdir, rename, stat, unlink, writeFile } from "node:fs/promises";
+import { join as join2 } from "node:path";
+function slideDir() {
+  return process.env.SLIDE_STORE_DIR ?? "/data/slides";
+}
+function publicBase() {
+  return (process.env.PUBLIC_SLIDE_BASE ?? "https://cdn.vour.dev/slides").replace(/\/+$/, "");
+}
+function slideUrl(hash2) {
+  return `${publicBase()}/${hash2}.jpg`;
+}
+var HASH_RE = /^[a-f0-9]{64}$/;
+function isLocalSlideUrl(url2) {
+  return url2.startsWith(`${publicBase()}/`) && HASH_RE.test(hashFromUrl(url2) ?? "");
+}
+function hashFromUrl(url2) {
+  const name25 = url2.split("/").pop() ?? "";
+  const hash2 = name25.endsWith(".jpg") ? name25.slice(0, -4) : "";
+  return HASH_RE.test(hash2) ? hash2 : null;
+}
+function decode3(base64Data) {
+  return base64Data.startsWith("data:") ? Buffer.from(base64Data.slice(base64Data.indexOf(",") + 1), "base64") : Buffer.from(base64Data, "base64");
+}
+async function storeSlide(base64Data, hash2) {
+  const dir = slideDir();
+  const target = join2(dir, `${hash2}.jpg`);
+  if (await exists(target)) return slideUrl(hash2);
+  await mkdir(dir, { recursive: true });
+  const tmp = `${target}.${randomUUID()}.tmp`;
+  try {
+    await writeFile(tmp, decode3(base64Data));
+    await rename(tmp, target);
+  } catch (err) {
+    await unlink(tmp).catch(() => {
+    });
+    throw err;
+  }
+  return slideUrl(hash2);
+}
+async function deleteSlide(url2) {
+  const hash2 = hashFromUrl(url2);
+  if (!hash2) return false;
+  try {
+    await unlink(join2(slideDir(), `${hash2}.jpg`));
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function exists(path) {
+  try {
+    await stat(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// src/lib/publish/upload-slides.ts
+function slideHash(base643) {
+  return createHash("sha256").update(base643).digest("hex");
+}
+function orphanedUrls(previous, keptUrls) {
+  const kept = new Set(keptUrls);
+  return previous.urls.filter((u) => u && !kept.has(u));
+}
+async function uploadSlides(images) {
+  if (images.length === 0) return { urls: [], hashes: [] };
+  const hashes = images.map(slideHash);
+  const urls = hashes.map(slideUrl);
+  const startedAt = Date.now();
+  const bytes = images.reduce((n, img) => n + Math.floor(img.length * 3 / 4), 0);
+  try {
+    await Promise.all(images.map((img, i) => storeSlide(img, hashes[i])));
+    console.log(
+      `[upload-slides] ${images.length} slides stored, ${(bytes / 1024 / 1024).toFixed(1)} MB in ${((Date.now() - startedAt) / 1e3).toFixed(1)}s`
+    );
+    return { urls, hashes };
+  } catch (err) {
+    console.error(
+      `[upload-slides] failed after ${((Date.now() - startedAt) / 1e3).toFixed(1)}s:`,
+      err instanceof Error ? err.message : err
+    );
+    return { urls: [], hashes: [], error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 // src/lib/publish/cloudinary.ts
 var import_cloudinary = __toESM(require_cloudinary2(), 1);
-var UPLOAD_TIMEOUT_MS = 2e4;
-async function uploadImage(base64Data) {
-  if (!process.env.CLOUDINARY_URL) {
-    throw new Error("CLOUDINARY_URL environment variable is not configured");
-  }
-  const body = base64Data.startsWith("data:") ? Buffer.from(base64Data.slice(base64Data.indexOf(",") + 1), "base64") : Buffer.from(base64Data, "base64");
-  return new Promise((resolve2, reject) => {
-    const stream = import_cloudinary.v2.uploader.upload_stream(
-      { folder: "vourdev-carousels", resource_type: "image", timeout: UPLOAD_TIMEOUT_MS },
-      (err, result) => {
-        if (err) return reject(err);
-        if (!result?.secure_url) return reject(new Error("Cloudinary returned no secure_url"));
-        resolve2(result.secure_url);
-      }
-    );
-    stream.on("error", reject);
-    stream.end(body);
-  });
-}
+var REQUEST_TIMEOUT_MS = 2e4;
 function publicIdFromUrl(url2) {
   const marker25 = "/upload/";
   const idx = url2.indexOf(marker25);
@@ -71725,7 +71796,7 @@ async function destroyImage(url2) {
   const res = await import_cloudinary.v2.uploader.destroy(publicId, {
     resource_type: "image",
     invalidate: true,
-    timeout: UPLOAD_TIMEOUT_MS
+    timeout: REQUEST_TIMEOUT_MS
   });
   return res?.result === "ok";
 }
@@ -71737,91 +71808,24 @@ function toTikTokSafeUrl(url2) {
   return `${url2.slice(0, insertAt)}c_limit,w_1280,h_1600/${url2.slice(insertAt)}`;
 }
 
-// src/lib/publish/upload-slides.ts
-var MAX_PARALLEL = 4;
-var UPLOAD_ATTEMPTS = 4;
-var UPLOAD_RETRY_BASE_MS = 400;
-async function uploadWithRetry(image, slideIndex) {
-  let lastErr;
-  for (let attempt = 1; attempt <= UPLOAD_ATTEMPTS; attempt++) {
-    try {
-      return await uploadImage(image);
-    } catch (err) {
-      lastErr = err;
-      if (attempt === UPLOAD_ATTEMPTS) break;
-      console.warn(
-        `[upload-slides] slide ${slideIndex} attempt ${attempt}/${UPLOAD_ATTEMPTS} failed:`,
-        err instanceof Error ? err.message : err
-      );
-      await new Promise((r) => setTimeout(r, UPLOAD_RETRY_BASE_MS * 2 ** (attempt - 1)));
-    }
-  }
-  throw lastErr;
+// src/lib/publish/assets.ts
+async function deleteAsset(url2) {
+  return isLocalSlideUrl(url2) ? deleteSlide(url2) : destroyImage(url2);
 }
-function slideHash(base643) {
-  return createHash("sha256").update(base643).digest("hex");
-}
-function orphanedUrls(previous, keptUrls) {
-  const kept = new Set(keptUrls);
-  return previous.urls.filter((u) => u && !kept.has(u));
-}
-async function uploadSlides(images, previous = { urls: [], hashes: [] }) {
-  if (images.length === 0) return { urls: [], hashes: [] };
-  if (!process.env.CLOUDINARY_URL) {
-    return { urls: [], hashes: [], error: "CLOUDINARY_URL is not configured" };
-  }
-  const hashes = images.map(slideHash);
-  const known = /* @__PURE__ */ new Map();
-  previous.hashes.forEach((h, i) => {
-    const url2 = previous.urls[i];
-    if (h && url2) known.set(h, url2);
-  });
-  const urls = new Array(images.length);
-  const todo = [];
-  hashes.forEach((h, i) => {
-    const hit = known.get(h);
-    if (hit) urls[i] = hit;
-    else todo.push(i);
-  });
-  let next = 0;
-  async function worker() {
-    for (let k = next++; k < todo.length; k = next++) {
-      const i = todo[k];
-      urls[i] = await uploadWithRetry(images[i], i);
-    }
-  }
-  const startedAt = Date.now();
-  const bytes = todo.reduce((n, i) => n + Math.floor(images[i].length * 3 / 4), 0);
-  if (todo.length === 0) {
-    console.log(`[upload-slides] ${images.length} slides unchanged, nothing to upload`);
-    return { urls, hashes };
-  }
-  try {
-    await Promise.all(
-      Array.from({ length: Math.min(MAX_PARALLEL, todo.length) }, worker)
-    );
-    const reused = images.length - todo.length;
-    console.log(
-      `[upload-slides] ${todo.length}/${images.length} slides uploaded` + (reused ? `, ${reused} reused` : "") + `, ${(bytes / 1024 / 1024).toFixed(1)} MB in ${((Date.now() - startedAt) / 1e3).toFixed(1)}s`
-    );
-    return { urls, hashes };
-  } catch (err) {
-    console.error(
-      `[upload-slides] gave up after ${((Date.now() - startedAt) / 1e3).toFixed(1)}s`
-    );
-    return { urls: [], hashes: [], error: err instanceof Error ? err.message : String(err) };
-  }
-}
+
+// src/lib/export/slide-format.ts
+var SLIDE_W = 1080;
+var SLIDE_H = 1350;
+var SLIDE_PIXEL_RATIO = 1;
+var SLIDE_QUALITY = 92;
+var READY_TIMEOUT_MS = 6e3;
 
 // src/routes/user/capture.ts
 var app5 = new Hono2();
 async function runCapture(html, opts, carouselId, userId3) {
   const images = await captureQueue.capture(async (browser) => {
-    const pixelRatio = opts?.pixelRatio ?? 2;
-    const quality = opts?.quality ?? 92;
-    const SLIDE_W = 1080;
-    const SLIDE_H = 1350;
-    const READY_TIMEOUT_MS = 6e3;
+    const pixelRatio = opts?.pixelRatio ?? SLIDE_PIXEL_RATIO;
+    const quality = opts?.quality ?? SLIDE_QUALITY;
     const context = await browser.newContext({
       viewport: { width: SLIDE_W, height: SLIDE_H },
       deviceScaleFactor: pixelRatio
@@ -71858,7 +71862,7 @@ async function runCapture(html, opts, carouselId, userId3) {
   console.log(`[capture] rendered ${images.length} slides${carouselId ? ` for ${carouselId}` : ""}`);
   const owned = carouselId ? await getCarousel(carouselId, userId3) : null;
   const previous = owned ? { urls: owned.imageUrls, hashes: owned.imageHashes } : { urls: [], hashes: [] };
-  const { urls, hashes, error: uploadError } = await uploadSlides(images, previous);
+  const { urls, hashes, error: uploadError } = await uploadSlides(images);
   if (uploadError) {
     console.error("Slide upload after capture failed:", uploadError);
   }
@@ -71868,7 +71872,7 @@ async function runCapture(html, opts, carouselId, userId3) {
       const stale = orphanedUrls(previous, urls);
       if (stale.length > 0) {
         const removed = await Promise.all(
-          stale.map((u) => destroyImage(u).catch(() => false))
+          stale.map((u) => deleteAsset(u).catch(() => false))
         );
         console.log(
           `[capture] cleaned ${removed.filter(Boolean).length}/${stale.length} replaced slides`
@@ -72046,7 +72050,7 @@ async function cleanupCarouselImages(id, userId3) {
   const doomed = c.imageUrls.filter((u) => u !== keep);
   let deleted = 0;
   for (const url2 of doomed) {
-    const ok = await destroyImage(url2).catch(() => false);
+    const ok = await deleteAsset(url2).catch(() => false);
     if (ok) deleted++;
   }
   const keptUrls = keep ? [keep] : [];
@@ -72219,8 +72223,8 @@ app8.post("/upload", async (c) => {
   if (!image) {
     return c.json({ error: "Missing image base64" }, 400);
   }
-  const secureUrl = await uploadImage(image);
-  return c.json({ url: secureUrl });
+  const url2 = await storeSlide(image, slideHash(image));
+  return c.json({ url: url2 });
 });
 app8.post("/schedule", async (c) => {
   const { urls, plan, dueAt } = await c.req.json();
@@ -73197,11 +73201,8 @@ async function createAndPublishCarousel({
   await warmUpIllustrations();
   const html = assembleCarousel(plan);
   const imageBase64s = await captureQueue.capture(async (browser) => {
-    const pixelRatio = 2;
-    const quality = 92;
-    const SLIDE_W = 1080;
-    const SLIDE_H = 1350;
-    const READY_TIMEOUT_MS = 6e3;
+    const pixelRatio = SLIDE_PIXEL_RATIO;
+    const quality = SLIDE_QUALITY;
     const context = await browser.newContext({
       viewport: { width: SLIDE_W, height: SLIDE_H },
       deviceScaleFactor: pixelRatio

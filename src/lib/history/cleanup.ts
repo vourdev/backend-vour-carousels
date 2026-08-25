@@ -1,8 +1,8 @@
-import { destroyImage } from "../publish/cloudinary";
+import { deleteAsset } from "../publish/assets";
 import { getCarousel, listCarousels, updateCarousel, type Carousel } from "./repo";
 
 /**
- * Free the Cloudinary assets a finished deck no longer needs.
+ * Free the stored slides a finished deck no longer needs.
  *
  * Slides accumulate: every export uploads a set, every re-export used to abandon the
  * previous one, and nothing ever deleted anything. A deck that has already been posted is
@@ -39,7 +39,7 @@ function assetToKeep(c: Carousel): string | null {
 export interface CleanupResult {
   carouselId: string;
   deleted: number;
-  /** Assets Cloudinary had already forgotten, or that could not be parsed. */
+  /** Assets the store had already forgotten, or that could not be parsed. */
   missed: number;
   kept: number;
 }
@@ -63,11 +63,12 @@ export async function cleanupCarouselImages(
   const keep = assetToKeep(c);
   const doomed = c.imageUrls.filter((u) => u !== keep);
 
-  // Sequential rather than parallel: this runs on a link where four concurrent uploads
-  // already contend, and a cleanup is never the thing the operator is waiting on.
+  // Sequential rather than parallel: a deck cleaned today is local unlinks, but one
+  // written before 25 Aug 2026 still holds Cloudinary URLs, and those go out over a
+  // link that punishes concurrency. A cleanup is never what the operator waits on.
   let deleted = 0;
   for (const url of doomed) {
-    const ok = await destroyImage(url).catch(() => false);
+    const ok = await deleteAsset(url).catch(() => false);
     if (ok) deleted++;
   }
 

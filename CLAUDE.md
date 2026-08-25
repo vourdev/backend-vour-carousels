@@ -2,7 +2,7 @@
 
 Generates Instagram/TikTok carousel decks for **@vourdev** — an Indonesian backend-engineering
 education brand — and schedules them to Buffer. A deck goes: idea → Markdown brief → structured
-slide plan → HTML → PNG/JPEG screenshots → Cloudinary → Buffer.
+slide plan → HTML → PNG/JPEG screenshots → local slide store → Buffer.
 
 This service owns **all** of that. The Next.js frontend (`vour-carousels`, deployed on Vercel)
 is a display layer that proxies here; it holds no prompts, no model config, and no publishing
@@ -62,7 +62,7 @@ POST /api/brief · /polish · /revise
 POST /api/plan · /revise
 POST /api/assemble                slide plan -> standalone HTML
 POST /api/capture                 HTML -> base64 images (Playwright)
-POST /api/publish/upload          base64 -> Cloudinary URL
+POST /api/publish/upload          base64 -> cdn.vour.dev URL
 POST /api/publish/schedule        explicit plan + urls -> Buffer
 POST /api/publish/carousel        saved carousel id -> Buffer (builds text server-side)
 POST /api/evidence/upload         human upload for a screenshot auto-capture missed
@@ -129,10 +129,25 @@ empty defaults turn the salvage path into a second way to lose the deck.
 and scoped-revision prompts. Change the schema, change the rule, or the model gets rejected for
 a limit nobody told it about.
 
-**TikTok caps photo posts at 2,073,600 px.** Slides capture at 1080×1350 with
-`deviceScaleFactor: 2` = 5.8M px, which Buffer rejects for TikTok only. `toTikTokSafeUrl()`
-inserts a Cloudinary `c_limit,w_1280,h_1600` transform on the way out. Instagram keeps the
-full-resolution asset.
+**Slides are served from this box, not Cloudinary.** Measured 25 Aug 2026, this VPS's uplink
+loses 12-60% of outbound packets: pushing a 1.8 MB deck to Cloudinary took **85.9s** and logged
+six `499 Request Timeout` retries, all of it blocking the generation response. `publish/
+local-store.ts` writes each slide to `SLIDE_STORE_DIR` instead, named `<sha256>.jpg`, and nginx
+serves it at `PUBLIC_SLIDE_BASE` (`cdn.vour.dev/slides`) behind Cloudflare. The bytes still
+reach Instagram, but as a *pull* Cloudflare caches once — same 300 KB payload that day: 0.54s
+cold, 0.24s warm.
+
+Two consequences worth knowing before touching it. The file name is the hash of the contents,
+so a URL can never mean different bytes — that is what lets nginx promise `immutable` for a
+year, and why a re-export of an unchanged deck rewrites nothing. And rows written before that
+date still hold Cloudinary URLs: `publish/assets.ts` routes a delete to whichever store owns
+the URL, so `cloudinary.ts` survives as delete-only. Never write to it again.
+
+**TikTok caps photo posts at 2,073,600 px.** Slides now capture at 1080×1350 with
+`deviceScaleFactor: 1` = 1.46M px, under the cap, so one asset serves both platforms.
+`lib/export/slide-format.ts` is the only place that decides this. It used to be
+`deviceScaleFactor: 2` = 5.8M px, which Buffer rejected for TikTok and Instagram downsampled
+anyway; `toTikTokSafeUrl()` remains only to fix up the legacy Cloudinary URLs from then.
 
 **Never build post text by hand.** `buildPostText(caption, hashtags)` is the only place caption
 and hashtags become the posted string. It existed in three copies before and they drifted — one
@@ -318,7 +333,8 @@ src/
     evidence/            automatic screenshot evidence: resolve-url · verify-identity ·
                          capture-web · validate · fulfill · log · normalize
                          (the only networked browser in the service)
-    publish/             cloudinary · buffer · caption · schedule
+    publish/             local-store · assets · buffer · caption · schedule
+                         (cloudinary.ts is delete-only, for pre-25-Aug-2026 rows)
     topics/              the topic bank (bank/service/generator/schedule)
     history/repo.ts      saved carousels
     memory/repo.ts       revision history per draft

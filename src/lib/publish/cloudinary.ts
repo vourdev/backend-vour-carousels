@@ -1,48 +1,17 @@
 import { v2 as cloudinary } from "cloudinary";
 
 /**
- * How long one attempt may hang before we give up on it and try again.
+ * Legacy store. Nothing is written here any more — slides have been stored on this VPS's
+ * own disk since 25 Aug 2026, because pushing them out took 85.9s for a 1.8 MB deck on
+ * this uplink. What remains is the read-and-delete side, for the rows written before that
+ * change: they hold Cloudinary URLs, and the decks they belong to are still cleaned up
+ * from the History screen.
  *
- * The SDK's default is 60 seconds, and a stalled upload on this VPS's uplink was measured
- * taking 108 seconds to surface as `499 Request Timeout` — nearly two minutes spent
- * learning that a connection was already dead, before the retry could even start. A
- * healthy upload of a ~240 KB slide finishes in a couple of seconds, so anything past 20
- * is not slow, it is stuck: failing fast and reconnecting is strictly quicker than waiting
- * out a socket that is not coming back.
+ * How long one call may hang before we give it up. The SDK's default is 60 seconds, and a
+ * stalled request on this link was measured taking 108 seconds to surface as
+ * `499 Request Timeout` — nearly two minutes spent learning a connection was already dead.
  */
-const UPLOAD_TIMEOUT_MS = 20_000;
-
-/**
- * Uploads a JPEG to Cloudinary in the "vourdev-carousels" folder.
- * Returns the secure URL of the uploaded image.
- *
- * The bytes go up as binary multipart rather than a `data:` URI. Base64 costs a third
- * more bytes for the same image, and on a link dropping a large share of its packets
- * every extra byte is another chance to stall — the encoding was buying nothing, since
- * the caller holds the JPEG either way.
- */
-export async function uploadImage(base64Data: string): Promise<string> {
-  if (!process.env.CLOUDINARY_URL) {
-    throw new Error("CLOUDINARY_URL environment variable is not configured");
-  }
-
-  const body = base64Data.startsWith("data:")
-    ? Buffer.from(base64Data.slice(base64Data.indexOf(",") + 1), "base64")
-    : Buffer.from(base64Data, "base64");
-
-  return new Promise<string>((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      { folder: "vourdev-carousels", resource_type: "image", timeout: UPLOAD_TIMEOUT_MS },
-      (err, result) => {
-        if (err) return reject(err);
-        if (!result?.secure_url) return reject(new Error("Cloudinary returned no secure_url"));
-        resolve(result.secure_url);
-      }
-    );
-    stream.on("error", reject);
-    stream.end(body);
-  });
-}
+const REQUEST_TIMEOUT_MS = 20_000;
 
 /**
  * The `public_id` Cloudinary knows an asset by, recovered from its delivery URL.
@@ -107,18 +76,19 @@ export async function destroyImage(url: string): Promise<boolean> {
   const res = await cloudinary.uploader.destroy(publicId, {
     resource_type: "image",
     invalidate: true,
-    timeout: UPLOAD_TIMEOUT_MS,
+    timeout: REQUEST_TIMEOUT_MS,
   } as unknown as { resource_type: "image"; invalidate: boolean });
   return res?.result === "ok";
 }
 
 /**
- * Returns an on-the-fly resized derivative of a Cloudinary URL, bounded to
- * stay under TikTok's 2,073,600 (1920x1080) pixel-count cap for photo posts.
- * Slides are captured at 1080x1350 (4:5) x2 pixel ratio (2160x2700 = 5.83M px)
- * for Instagram sharpness, which already exceeds that cap. c_limit only
- * downscales — never upscales or distorts — so this is a no-op for any
- * asset already under the bound.
+ * Bound a legacy Cloudinary URL to TikTok's 2,073,600-pixel cap for photo posts.
+ *
+ * Only decks captured before 25 Aug 2026 need this. Those were rendered at pixel ratio 2
+ * (2160x2700 = 5.83M px), well past the cap, so their delivery URL has to carry a
+ * `c_limit` transform. Captures since then are 1080x1350 = 1.46M px and already under it,
+ * and they are not Cloudinary URLs anyway — with no `/upload/` marker to find, this
+ * returns them untouched, which is the right answer for both.
  */
 export function toTikTokSafeUrl(url: string): string {
   const marker = "/upload/";

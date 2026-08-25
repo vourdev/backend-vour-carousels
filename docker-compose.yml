@@ -22,6 +22,9 @@ services:
       - OMNIROUTE_API_KEY=${OMNIROUTE_API_KEY}
       - OMNIROUTE_BASE_URL=${OMNIROUTE_BASE_URL}
       - OMNIROUTE_COMBO=${OMNIROUTE_COMBO:-vour-combos}
+      - SLIDE_STORE_DIR=${SLIDE_STORE_DIR:-/data/slides}
+      - PUBLIC_SLIDE_BASE=${PUBLIC_SLIDE_BASE:-https://cdn.vour.dev/slides}
+      # Legacy: delete-only, for rows that still point at Cloudinary.
       - CLOUDINARY_URL=${CLOUDINARY_URL}
       - BUFFER_TOKEN=${BUFFER_TOKEN}
       # Without at least one channel, /automation/generate answers 500.
@@ -29,6 +32,10 @@ services:
       - BUFFER_TIKTOK_CHANNEL_ID=${BUFFER_TIKTOK_CHANNEL_ID}
       - AUTOMATION_SECRET=${AUTOMATION_SECRET}
       - ALLOWED_ORIGIN=${ALLOWED_ORIGIN}
+    # nginx serves this same directory from the host, so the bytes never leave the box
+    # to be published -- Buffer pulls them back through Cloudflare instead.
+    volumes:
+      - /var/lib/vour/slides:/data/slides
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "healthcheck.js"]

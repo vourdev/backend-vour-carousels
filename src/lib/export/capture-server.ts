@@ -1,6 +1,10 @@
-const SLIDE_W = 1080;
-const SLIDE_H = 1350;
-const READY_TIMEOUT_MS = 6000;
+import {
+  READY_TIMEOUT_MS,
+  SLIDE_H,
+  SLIDE_PIXEL_RATIO,
+  SLIDE_QUALITY,
+  SLIDE_W,
+} from "./slide-format";
 
 /**
  * Render an assembled carousel HTML string in a headless Chromium browser
@@ -12,8 +16,8 @@ export async function captureCarouselServer(
   opts: { pixelRatio?: number; quality?: number } = {}
 ): Promise<Buffer[]> {
   const { chromium } = await import("playwright");
-  const pixelRatio = opts.pixelRatio ?? 2;
-  const quality = opts.quality ?? 92;
+  const pixelRatio = opts.pixelRatio ?? SLIDE_PIXEL_RATIO;
+  const quality = opts.quality ?? SLIDE_QUALITY;
 
   const browser = await chromium.launch({ headless: true });
   try {

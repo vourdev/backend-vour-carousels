@@ -1,193 +1,99 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { createHash } from "node:crypto";
+import { mkdtemp, readdir, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 /**
  * Capture is the most expensive step in the pipeline, and its output used to reach the
  * browser as base64 only — `URL.createObjectURL()` blobs that a refresh throws away, at
- * which point the wizard re-ran the whole capture. Uploading here is what makes the
+ * which point the wizard re-ran the whole capture. Persisting here is what makes the
  * result outlive the page.
  */
 
-const uploadImage = vi.fn();
-vi.mock("@/lib/publish/cloudinary", () => ({ uploadImage: (...a: unknown[]) => uploadImage(...a) }));
+let dir: string;
+const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 
-beforeEach(() => {
-  uploadImage.mockReset();
-  process.env.CLOUDINARY_URL = "cloudinary://key:secret@cloud";
+beforeEach(async () => {
+  dir = await mkdtemp(join(tmpdir(), "slides-"));
+  process.env.SLIDE_STORE_DIR = dir;
+  process.env.PUBLIC_SLIDE_BASE = "https://cdn.vour.dev/slides";
+});
+
+afterEach(async () => {
+  vi.restoreAllMocks();
+  await rm(dir, { recursive: true, force: true });
 });
 
 describe("uploadSlides", () => {
-  it("keeps slide order even though uploads run in parallel", async () => {
+  it("keeps slide order and names every file after its contents", async () => {
     const { uploadSlides } = await import("@/lib/publish/upload-slides");
-    // Earlier slides resolve last, so a naive push-as-you-go would reverse the deck.
-    uploadImage.mockImplementation(
-      (b64: string) =>
-        new Promise((resolve) =>
-          setTimeout(() => resolve(`https://cdn/${b64}.jpg`), (5 - Number(b64)) * 5)
-        )
+
+    const { urls, hashes } = await uploadSlides(["0", "1", "2", "3", "4"]);
+
+    expect(urls).toEqual(
+      ["0", "1", "2", "3", "4"].map((b) => `https://cdn.vour.dev/slides/${sha(b)}.jpg`)
     );
-
-    const { urls } = await uploadSlides(["0", "1", "2", "3", "4"]);
-    expect(urls).toEqual([
-      "https://cdn/0.jpg",
-      "https://cdn/1.jpg",
-      "https://cdn/2.jpg",
-      "https://cdn/3.jpg",
-      "https://cdn/4.jpg",
-    ]);
-  });
-
-  it("uploads every slide exactly once", async () => {
-    const { uploadSlides } = await import("@/lib/publish/upload-slides");
-    uploadImage.mockImplementation(async (b64: string) => `https://cdn/${b64}`);
-
-    const { urls } = await uploadSlides(["a", "b", "c", "d", "e", "f", "g"]);
-    expect(urls).toHaveLength(7);
-    expect(uploadImage).toHaveBeenCalledTimes(7);
-  });
-
-  // A partial list is worse than none: it would be persisted, and a later publish would
-  // post a deck with slides silently missing.
-  it("returns nothing rather than a partial deck when one slide fails", async () => {
-    const { uploadSlides } = await import("@/lib/publish/upload-slides");
-    uploadImage.mockImplementation(async (b64: string) => {
-      if (b64 === "c") throw new Error("Cloudinary 500");
-      return `https://cdn/${b64}`;
-    });
-
-    const res = await uploadSlides(["a", "b", "c", "d"]);
-    expect(res.urls).toEqual([]);
-    expect(res.error).toContain("Cloudinary 500");
+    expect(hashes).toEqual(["0", "1", "2", "3", "4"].map(sha));
+    expect((await readdir(dir)).sort()).toEqual(
+      ["0", "1", "2", "3", "4"].map((b) => `${sha(b)}.jpg`).sort()
+    );
   });
 
   /**
-   * The whole deck used to be lost to one dropped packet.
-   *
-   * `uploadSlides` is all-or-nothing by design, so a single slide erroring empties the
-   * result — and the wizard then advanced to step 4 holding object URLs, wrote a carousel
-   * row with no imageUrls, and stranded the user there after a refresh. On this VPS's
-   * uplink a lost connection is routine, so the first attempt has to not be the only one.
+   * The URL follows from the hash alone, so a re-export of an unchanged deck resolves to
+   * exactly the URLs already on the row. That is what makes a revision cheap: nothing has
+   * to be compared against the previous run, and nothing is rewritten.
    */
-  it("retries a slide that failed transiently instead of losing the deck", async () => {
-    const { uploadSlides } = await import("@/lib/publish/upload-slides");
-    let cAttempts = 0;
-    uploadImage.mockImplementation(async (b64: string) => {
-      if (b64 === "c" && ++cAttempts === 1) {
-        // The shape the Cloudinary SDK actually rejects with on a dropped connection:
-        // a plain object with no `code` and no `cause`, which lib/retry reads as permanent.
-        throw Object.assign(new Error("socket hang up"), { http_code: 499 });
-      }
-      return `https://cdn/${b64}`;
-    });
-
-    const res = await uploadSlides(["a", "b", "c", "d"]);
-    expect(res.error).toBeUndefined();
-    expect(res.urls).toEqual(["https://cdn/a", "https://cdn/b", "https://cdn/c", "https://cdn/d"]);
-    expect(cAttempts).toBe(2);
-  });
-
-  it("gives up after a bounded number of attempts per slide", async () => {
-    const { uploadSlides } = await import("@/lib/publish/upload-slides");
-    uploadImage.mockImplementation(async () => {
-      throw new Error("socket hang up");
-    });
-
-    const res = await uploadSlides(["only"]);
-    expect(res.urls).toEqual([]);
-    expect(res.error).toContain("socket hang up");
-    // Bounded: a retry loop with no ceiling would hold the request open indefinitely
-    // while Chromium's output sits in memory waiting on it. Four attempts, because
-    // uploadImage caps a single try at 20s — the whole budget is smaller than three
-    // attempts were when a stalled connection could hang for 108 seconds.
-    expect(uploadImage).toHaveBeenCalledTimes(4);
-  });
-
-  /**
-   * A revision touches one or two slides of eight. Re-uploading the other six cost minutes
-   * on this uplink and abandoned the previous run's assets in Cloudinary, where nothing
-   * ever deleted them — three exports of one deck left two full sets behind.
-   */
-  describe("re-export", () => {
-    it("uploads only the slides whose bytes changed", async () => {
-      const { uploadSlides, slideHash } = await import("@/lib/publish/upload-slides");
-      uploadImage.mockImplementation(async (b64: string) => `https://cdn/${b64}-new`);
-
-      const first = await uploadSlides(["a", "b", "c"]);
-      expect(uploadImage).toHaveBeenCalledTimes(3);
-      uploadImage.mockClear();
-
-      // Slide 1 revised; 0 and 2 are byte-identical.
-      const second = await uploadSlides(["a", "B", "c"], first);
-      expect(uploadImage).toHaveBeenCalledTimes(1);
-      expect(uploadImage).toHaveBeenCalledWith("B");
-      expect(second.urls[0]).toBe(first.urls[0]);
-      expect(second.urls[2]).toBe(first.urls[2]);
-      expect(second.urls[1]).not.toBe(first.urls[1]);
-      expect(second.hashes[0]).toBe(slideHash("a"));
-    });
-
-    it("uploads nothing at all when the deck is unchanged", async () => {
-      const { uploadSlides } = await import("@/lib/publish/upload-slides");
-      uploadImage.mockImplementation(async (b64: string) => `https://cdn/${b64}`);
-
-      const first = await uploadSlides(["a", "b"]);
-      uploadImage.mockClear();
-
-      const second = await uploadSlides(["a", "b"], first);
-      expect(uploadImage).not.toHaveBeenCalled();
-      expect(second.urls).toEqual(first.urls);
-    });
-
-    it("matches by content, so reordering the deck re-uploads nothing", async () => {
-      const { uploadSlides } = await import("@/lib/publish/upload-slides");
-      uploadImage.mockImplementation(async (b64: string) => `https://cdn/${b64}`);
-
-      const first = await uploadSlides(["a", "b", "c"]);
-      uploadImage.mockClear();
-
-      // Index-based matching would consider all three changed and pay for the whole deck.
-      const second = await uploadSlides(["c", "a", "b"], first);
-      expect(uploadImage).not.toHaveBeenCalled();
-      expect(second.urls).toEqual([first.urls[2], first.urls[0], first.urls[1]]);
-    });
-
-    it("ignores a previous entry whose url is missing", async () => {
-      const { uploadSlides, slideHash } = await import("@/lib/publish/upload-slides");
-      uploadImage.mockImplementation(async (b64: string) => `https://cdn/${b64}`);
-
-      // A row written before the hashes existed, or a half-failed run.
-      const second = await uploadSlides(["a"], { urls: [], hashes: [slideHash("a")] });
-      expect(uploadImage).toHaveBeenCalledTimes(1);
-      expect(second.urls).toEqual(["https://cdn/a"]);
-    });
-  });
-
-  describe("orphanedUrls", () => {
-    it("names exactly what the new export no longer points at", async () => {
-      const { orphanedUrls } = await import("@/lib/publish/upload-slides");
-      const previous = { urls: ["u0", "u1", "u2"], hashes: ["h0", "h1", "h2"] };
-      expect(orphanedUrls(previous, ["u0", "NEW", "u2"])).toEqual(["u1"]);
-    });
-
-    it("is empty when everything was reused", async () => {
-      const { orphanedUrls } = await import("@/lib/publish/upload-slides");
-      const previous = { urls: ["u0", "u1"], hashes: ["h0", "h1"] };
-      expect(orphanedUrls(previous, ["u1", "u0"])).toEqual([]);
-    });
-  });
-
-  it("reports the missing configuration instead of throwing", async () => {
-    delete process.env.CLOUDINARY_URL;
+  it("gives identical slides identical URLs across separate exports", async () => {
     const { uploadSlides } = await import("@/lib/publish/upload-slides");
 
-    const res = await uploadSlides(["a"]);
-    expect(res.urls).toEqual([]);
-    expect(res.error).toMatch(/CLOUDINARY_URL/);
-    expect(uploadImage).not.toHaveBeenCalled();
+    const first = await uploadSlides(["a", "b"]);
+    const second = await uploadSlides(["a", "b"]);
+
+    expect(second.urls).toEqual(first.urls);
+    expect(await readdir(dir)).toHaveLength(2);
   });
 
-  it("does nothing for an empty deck", async () => {
+  /** A deck that repeats a slide stores it once — same bytes, same name. */
+  it("collapses duplicate slides onto one file", async () => {
     const { uploadSlides } = await import("@/lib/publish/upload-slides");
+
+    const { urls, error } = await uploadSlides(["same", "same", "other"]);
+
+    // Asserted before the URLs: on failure `urls` is empty, and comparing two undefined
+    // entries passes while the deck was in fact lost.
+    expect(error).toBeUndefined();
+    expect(urls).toHaveLength(3);
+    expect(urls[0]).toBe(urls[1]);
+    expect(urls[2]).not.toBe(urls[0]);
+    expect(await readdir(dir)).toHaveLength(2);
+  });
+
+  it("returns nothing for an empty deck without touching the disk", async () => {
+    const { uploadSlides } = await import("@/lib/publish/upload-slides");
+
     expect(await uploadSlides([])).toEqual({ urls: [], hashes: [] });
-    expect(uploadImage).not.toHaveBeenCalled();
+    expect(await readdir(dir)).toEqual([]);
+  });
+
+  /**
+   * `uploadSlides` is all-or-nothing by design: a partial list would be persisted, and a
+   * later publish would post a deck with slides missing without anything having failed
+   * loudly.
+   */
+  it("reports an error and no URLs when one slide cannot be written", async () => {
+    const store = await import("@/lib/publish/local-store");
+    vi.spyOn(store, "storeSlide").mockImplementation(async (_b64: string, hash: string) => {
+      if (hash === sha("c")) throw new Error("ENOSPC: no space left on device");
+      return `https://cdn.vour.dev/slides/${hash}.jpg`;
+    });
+    const { uploadSlides } = await import("@/lib/publish/upload-slides");
+
+    const res = await uploadSlides(["a", "b", "c", "d"]);
+
+    expect(res.urls).toEqual([]);
+    expect(res.hashes).toEqual([]);
+    expect(res.error).toMatch(/ENOSPC/);
   });
 });

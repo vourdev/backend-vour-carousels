@@ -1,5 +1,6 @@
 import { Hono } from "hono";
-import { uploadImage } from "../../lib/publish/cloudinary";
+import { storeSlide } from "../../lib/publish/local-store";
+import { slideHash } from "../../lib/publish/upload-slides";
 import { scheduleBufferPost } from "../../lib/publish/buffer";
 import { buildPostText } from "../../lib/publish/caption";
 import { getCarousel, updateCarousel } from "../../lib/history/repo";
@@ -51,8 +52,9 @@ app.post("/upload", async (c) => {
   if (!image) {
     return c.json({ error: "Missing image base64" }, 400);
   }
-  const secureUrl = await uploadImage(image);
-  return c.json({ url: secureUrl });
+  // The name is the hash of the bytes, so posting the same image twice costs one write.
+  const url = await storeSlide(image, slideHash(image));
+  return c.json({ url });
 });
 
 app.post("/schedule", async (c) => {

@@ -8,7 +8,14 @@ import {
   type CaptureSuccess,
 } from "../../services/capture-jobs";
 import { orphanedUrls, uploadSlides } from "../../lib/publish/upload-slides";
-import { destroyImage } from "../../lib/publish/cloudinary";
+import { deleteAsset } from "../../lib/publish/assets";
+import {
+  READY_TIMEOUT_MS,
+  SLIDE_H,
+  SLIDE_PIXEL_RATIO,
+  SLIDE_QUALITY,
+  SLIDE_W,
+} from "../../lib/export/slide-format";
 import { getCarousel, updateCarousel } from "../../lib/history/repo";
 import { assembleCarousel } from "../../lib/ds/assemble";
 import { warmUpIllustrations } from "../../lib/ds/illustrations.server";
@@ -42,11 +49,8 @@ async function runCapture(
     // Re-use logic similar to captureCarouselServer, wrapped inside the queue.
     // But instead of importing/exporting a separate playwright instance,
     // we use the browser instance passed by our queue callback!
-    const pixelRatio = opts?.pixelRatio ?? 2;
-    const quality = opts?.quality ?? 92;
-    const SLIDE_W = 1080;
-    const SLIDE_H = 1350;
-    const READY_TIMEOUT_MS = 6000;
+    const pixelRatio = opts?.pixelRatio ?? SLIDE_PIXEL_RATIO;
+    const quality = opts?.quality ?? SLIDE_QUALITY;
 
     const context = await browser.newContext({
       viewport: { width: SLIDE_W, height: SLIDE_H },
@@ -92,18 +96,18 @@ async function runCapture(
   // busy" used to have no answer in any log.
   console.log(`[capture] rendered ${images.length} slides${carouselId ? ` for ${carouselId}` : ""}`);
 
-  // What this deck already has on Cloudinary, so a revision does not pay for the slides
-  // it did not touch. Reading it is one row; getting it wrong only costs a re-upload.
+  // What this deck already points at, so a re-export can delete what it replaced.
+  // Reading it is one row; getting it wrong only costs an abandoned file.
   const owned = carouselId ? await getCarousel(carouselId, userId) : null;
   const previous = owned
     ? { urls: owned.imageUrls, hashes: owned.imageHashes }
     : { urls: [], hashes: [] };
 
-  const { urls, hashes, error: uploadError } = await uploadSlides(images, previous);
+  const { urls, hashes, error: uploadError } = await uploadSlides(images);
   if (uploadError) {
     // Not fatal: the caller still has the render. Logged so a persistent
-    // Cloudinary problem is visible rather than showing up later as a
-    // publish that has to upload from scratch.
+    // storage fault is visible rather than showing up later as a publish
+    // that has no slides to point at.
     console.error("Slide upload after capture failed:", uploadError);
   }
 
@@ -112,7 +116,7 @@ async function runCapture(
   if (owned && urls.length > 0) {
     await updateCarousel(owned.id, { imageUrls: urls, imageHashes: hashes, status: "exported" });
 
-    // The slides this export replaced. Left alone they stayed in Cloudinary forever —
+    // The slides this export replaced. Left alone they stayed on disk forever —
     // three exports of one deck meant two abandoned sets. Deliberately skipped once the
     // deck is scheduled or posted: Buffer fetches the asset at post time, so deleting
     // what a pending post still points at would publish a hole.
@@ -120,7 +124,7 @@ async function runCapture(
       const stale = orphanedUrls(previous, urls);
       if (stale.length > 0) {
         const removed = await Promise.all(
-          stale.map((u) => destroyImage(u).catch(() => false))
+          stale.map((u) => deleteAsset(u).catch(() => false))
         );
         console.log(
           `[capture] cleaned ${removed.filter(Boolean).length}/${stale.length} replaced slides`

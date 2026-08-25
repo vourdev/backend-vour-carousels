@@ -1,8 +1,9 @@
 import { toBlob } from "html-to-image";
 import { inlineFontFaceCss } from "../ds/fonts-inline";
 
-const SLIDE_W = 1080;
-const SLIDE_H = 1350;
+import { SLIDE_H, SLIDE_PIXEL_RATIO, SLIDE_W } from "./slide-format";
+
+/** Shorter than the server's: the browser already has the fonts this page is using. */
 const READY_TIMEOUT_MS = 4000;
 
 /** Resolve when `p` settles or after `ms` — never hangs. */
@@ -55,7 +56,7 @@ export async function captureCarousel(
   html: string,
   opts: { pixelRatio?: number; quality?: number } = {}
 ): Promise<Blob[]> {
-  const pixelRatio = opts.pixelRatio ?? 1;
+  const pixelRatio = opts.pixelRatio ?? SLIDE_PIXEL_RATIO;
 
   const iframe = await mountHiddenIframe(html);
   try {

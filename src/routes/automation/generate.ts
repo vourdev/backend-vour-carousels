@@ -6,6 +6,13 @@ import { assembleCarousel } from "../../lib/ds/assemble";
 import { warmUpIllustrations } from "../../lib/ds/illustrations.server";
 import { captureQueue } from "../../services/capture-queue";
 import { uploadSlides } from "../../lib/publish/upload-slides";
+import {
+  READY_TIMEOUT_MS,
+  SLIDE_H,
+  SLIDE_PIXEL_RATIO,
+  SLIDE_QUALITY,
+  SLIDE_W,
+} from "../../lib/export/slide-format";
 import { scheduleBufferPost } from "../../lib/publish/buffer";
 import { buildPostText } from "../../lib/publish/caption";
 import { nextWibSlot, POST_HOUR_WIB } from "../../lib/publish/schedule";
@@ -81,11 +88,8 @@ async function createAndPublishCarousel({
 
   // 4. Capture Carousel slides using Playwright via concurrency queue
   const imageBase64s = await captureQueue.capture(async (browser) => {
-    const pixelRatio = 2;
-    const quality = 92;
-    const SLIDE_W = 1080;
-    const SLIDE_H = 1350;
-    const READY_TIMEOUT_MS = 6000;
+    const pixelRatio = SLIDE_PIXEL_RATIO;
+    const quality = SLIDE_QUALITY;
 
     const context = await browser.newContext({
       viewport: { width: SLIDE_W, height: SLIDE_H },
