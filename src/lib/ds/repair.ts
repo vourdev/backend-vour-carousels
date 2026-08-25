@@ -1,5 +1,6 @@
 import { mockupSchema, slidePlanSchema, coverHookSchema, type SlidePlan } from "../ds/schema";
 import { hoistAccentMarkdown } from "../ds/accent";
+import { FALLBACK_ILLUSTRATION } from "../ds/illustrations";
 
 /**
  * Best-effort repair of a raw LLM slide-plan object BEFORE strict validation.
@@ -90,6 +91,45 @@ function repairMockup(m: any): any | undefined {
   }
   const res = mockupSchema.safeParse(m);
   return res.success ? res.data : undefined;
+}
+
+/**
+ * Recover a cover anchor the model meant but could not express.
+ *
+ * Two shapes turn up whenever someone asks for an illustration on the cover, and both
+ * used to end as an empty box. A cover carries `hook` and has no `mockup` field at all,
+ * so a model reaching for the vocabulary it knows from point slides puts the illustration
+ * under `mockup`, where zod strips it silently. And an illustration hook with no slugs
+ * fails `.min(1)`, which drops the hook entirely and discards the request.
+ *
+ * Both are repaired towards what was asked rather than away from it: the mockup is folded
+ * into a hook, and an empty slug list is filled with the fallback. The user sees an
+ * illustration — the fallback one if the model named nothing usable, but an illustration.
+ */
+function repairCoverHook(s: any): void {
+  // Illustration written as a point-slide mockup: the right intent, the wrong field.
+  if (!s.hook && s.mockup?.type === "illustration") {
+    s.hook = { kind: "illustration", ...s.mockup };
+    delete s.hook.type;
+  }
+  // A cover has no mockup field; leaving it would only confuse the next reader.
+  if (s.mockup !== undefined) delete s.mockup;
+
+  if (!s.hook || s.hook.kind !== "illustration") return;
+
+  const h = s.hook;
+  const named: string[] = [
+    ...(Array.isArray(h.illustrationSlugs) ? h.illustrationSlugs : []),
+    h.illustrationSlug,
+    h.slug,
+  ].filter((v: unknown): v is string => typeof v === "string" && v.trim() !== "");
+
+  delete h.illustrationSlug;
+  delete h.slug;
+  h.illustrationSlugs = named.length ? named.slice(0, 2) : [FALLBACK_ILLUSTRATION];
+  if (!named.length) {
+    console.warn("[cover-hook] illustration asked for with no slug — using the fallback.");
+  }
 }
 
 /** Fixed shape from the prompt: "fyp" first, "vourdev" last, five in total. */
@@ -185,10 +225,13 @@ export function repairSlidePlan(raw: any): SlidePlan {
           s.cta.strong = clampStr(s.cta.strong, 60);
           s.cta.sub = clampStr(s.cta.sub, 90);
         }
-        if (s.role === "cover" && s.hook !== undefined) {
-          const res = coverHookSchema.safeParse(s.hook);
-          if (res.success) s.hook = res.data;
-          else delete s.hook; // fall back to the hero cover template
+        if (s.role === "cover") {
+          repairCoverHook(s);
+          if (s.hook !== undefined) {
+            const res = coverHookSchema.safeParse(s.hook);
+            if (res.success) s.hook = res.data;
+            else delete s.hook; // fall back to the hero cover template
+          }
         }
       }
     }

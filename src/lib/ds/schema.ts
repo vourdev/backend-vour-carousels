@@ -538,6 +538,28 @@ const coverHookNocGrid = z.object({
   banner: z.string().max(24).optional(),
 });
 
+/**
+ * Cover anchor — an unDraw illustration, the same vocabulary point slides use.
+ *
+ * Added 25 Aug 2026 because it was the one thing a cover could not be. Asking for
+ * "illustration on the cover" was unsatisfiable by construction: a cover carries `hook`
+ * and never `mockup`, and no hook kind held an illustration — so the model either emitted
+ * a `mockup` key that zod stripped, or a hook kind that failed the union, and the cover
+ * came back with an empty anchor box. Repeating the request could not help, because
+ * nothing it could return would have worked.
+ *
+ * Slugs go through the same normalizer as the mockup, so an invented one lands on the
+ * fallback rather than rendering nothing.
+ */
+const coverHookIllustration = z.object({
+  kind: z.literal("illustration"),
+  illustrationSlugs: z
+    .array(z.string().transform(normalizeIllustration))
+    .min(1)
+    .max(2),
+  caption: z.string().max(90).optional(),
+});
+
 /** Cover anchor — a Norman door: pull handle labeled with a contradicting action */
 const coverHookDoor = z.object({
   kind: z.literal("door"),
@@ -552,6 +574,7 @@ export const coverHookSchema = z.discriminatedUnion("kind", [
   coverHookBadge,
   coverHookNocGrid,
   coverHookDoor,
+  coverHookIllustration,
 ]);
 
 export type CoverHook = z.infer<typeof coverHookSchema>;

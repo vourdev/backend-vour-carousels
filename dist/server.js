@@ -65037,6 +65037,11 @@ var coverHookNocGrid = external_exports.object({
   state: external_exports.enum(["down", "up"]).optional(),
   banner: external_exports.string().max(24).optional()
 });
+var coverHookIllustration = external_exports.object({
+  kind: external_exports.literal("illustration"),
+  illustrationSlugs: external_exports.array(external_exports.string().transform(normalizeIllustration)).min(1).max(2),
+  caption: external_exports.string().max(90).optional()
+});
 var coverHookDoor = external_exports.object({
   kind: external_exports.literal("door"),
   label: external_exports.string().max(12).optional(),
@@ -65049,7 +65054,8 @@ var coverHookSchema = external_exports.discriminatedUnion("kind", [
   coverHookCustom,
   coverHookBadge,
   coverHookNocGrid,
-  coverHookDoor
+  coverHookDoor,
+  coverHookIllustration
 ]);
 var coverSlide = external_exports.object({
   role: external_exports.literal("cover"),
@@ -65174,6 +65180,26 @@ function repairMockup(m) {
   const res = mockupSchema.safeParse(m);
   return res.success ? res.data : void 0;
 }
+function repairCoverHook(s) {
+  if (!s.hook && s.mockup?.type === "illustration") {
+    s.hook = { kind: "illustration", ...s.mockup };
+    delete s.hook.type;
+  }
+  if (s.mockup !== void 0) delete s.mockup;
+  if (!s.hook || s.hook.kind !== "illustration") return;
+  const h = s.hook;
+  const named = [
+    ...Array.isArray(h.illustrationSlugs) ? h.illustrationSlugs : [],
+    h.illustrationSlug,
+    h.slug
+  ].filter((v) => typeof v === "string" && v.trim() !== "");
+  delete h.illustrationSlug;
+  delete h.slug;
+  h.illustrationSlugs = named.length ? named.slice(0, 2) : [FALLBACK_ILLUSTRATION];
+  if (!named.length) {
+    console.warn("[cover-hook] illustration asked for with no slug \u2014 using the fallback.");
+  }
+}
 var HASHTAG_FLOOR = ["fyp", "backend", "coding", "developer", "vourdev"];
 function repairPostFields(raw2) {
   const slides = Array.isArray(raw2.slides) ? raw2.slides : [];
@@ -65229,10 +65255,13 @@ function repairSlidePlan(raw2) {
           s.cta.strong = clampStr(s.cta.strong, 60);
           s.cta.sub = clampStr(s.cta.sub, 90);
         }
-        if (s.role === "cover" && s.hook !== void 0) {
-          const res = coverHookSchema.safeParse(s.hook);
-          if (res.success) s.hook = res.data;
-          else delete s.hook;
+        if (s.role === "cover") {
+          repairCoverHook(s);
+          if (s.hook !== void 0) {
+            const res = coverHookSchema.safeParse(s.hook);
+            if (res.success) s.hook = res.data;
+            else delete s.hook;
+          }
         }
       }
     }
@@ -66256,6 +66285,12 @@ function renderDoorHook(h) {
   const handle = h.pull === false ? "" : `<div class="handle"></div>`;
   return coverDoorTemplate.replace("LABEL_INJECT", () => escapeHtml(h.label ?? "DORONG")).replace("HANDLE_INJECT", () => handle).replace("HAND_INJECT", () => handIcon);
 }
+function renderIllustrationHook(h) {
+  const sizeClass = h.illustrationSlugs.length > 1 ? "is-pair" : "is-single";
+  const items = h.illustrationSlugs.map((slug) => `<div class="illus-item">${renderIllustration(slug, "onDark")}</div>`).join("");
+  const caption = h.caption ? `<div class="catatan mt-20"><div class="catatan-body">${escapeHtml(h.caption)}</div></div>` : "";
+  return `<div class="anchor-wrap"><div class="illustration-group ${sizeClass}">${items}</div>${caption}</div>`;
+}
 function renderIllustrationMockup(m, variant) {
   const caption = m.caption ? `<div class="catatan mt-20"><div class="catatan-body">${escapeHtml(m.caption)}</div></div>` : "";
   const sizeClass = m.illustrationSlugs.length > 1 ? "is-pair" : "is-single";
@@ -66416,6 +66451,13 @@ function renderSlide(slide, slideIndex = 0) {
       else if (h.kind === "badge") fragment = renderBadgeHook(h);
       else if (h.kind === "nocgrid") fragment = renderNocGridHook(h);
       else if (h.kind === "door") fragment = renderDoorHook(h);
+      else if (h.kind === "illustration") fragment = renderIllustrationHook(h);
+      if (!fragment.trim()) {
+        console.warn(
+          `[cover-hook] kind="${h.kind}" rendered nothing \u2014 falling back to the editorial cover.`
+        );
+        return renderSlide({ ...slide, hook: void 0 }, slideIndex);
+      }
       const base = fillTemplate(coverCompactTemplate, {
         brand,
         coverSurface: "ink cover-ink",
@@ -67468,6 +67510,7 @@ SLIDE ROLES
       badge   \u2014 { kind: "badge", role: "DevOps Engineer", sub?: "// one aside", struck?: true } (CONTRARIAN: "X is not a job title")
       nocgrid \u2014 { kind: "nocgrid", cols?: 6, rows?: 3, state?: "down"|"up", banner?: "100% PACKET LOSS" } (URGENCY/RISK: everything is down)
       door    \u2014 { kind: "door", label?: "DORONG", pull?: true } (MISCONCEPTION: pretty but unusable \u2014 pull handle labeled push)
+      illustration \u2014 { kind: "illustration", illustrationSlugs: ["slug"] or ["slug-a","slug-b"], caption?: "\u2264 90 chars" } (ABSTRACT/ANALOGY cover: same slug vocabulary and the same ILLUSTRATION_CATEGORIES list as the point-slide mockup). A cover has NO \`mockup\` field \u2014 an illustration on the cover is ALWAYS this hook.
       custom  \u2014 { kind: "custom", html: "..." } (BESPOKE: the visual metaphor the four anchors
                  above cannot draw \u2014 a struck-out invoice, a split gauge, a stacked receipt.
                  Same contract as the custom mockup: STRUCTURE ONLY. No css field, no
@@ -67708,7 +67751,7 @@ STRICT REVISION INSTRUCTIONS
 1. IDENTIFY TARGET SLIDE:
    - "outro" / "slide outro" -> Update the slide with role "outro" (the final slide in the array).
    - "cover" / "slide cover" / "slide 1" -> Update the slide with role "cover" (the first slide).
-   - Cover hook edits: the cover carries an optional \`hook\` \u2014 kind "device" (chrome/label/lines), "badge" (role/sub/struck), "nocgrid" (cols/rows/state/banner), "door" (label/pull), or "custom" (html + css). Set, swap, or remove it when asked to change the intro visual; removing it falls back to the text-only cover with its \`ghostNumeral\`.
+   - Cover hook edits: the cover carries an optional \`hook\` \u2014 kind "device" (chrome/label/lines), "badge" (role/sub/struck), "nocgrid" (cols/rows/state/banner), "door" (label/pull), "illustration" (illustrationSlugs, 1-2 from ILLUSTRATION_CATEGORIES), or "custom" (html + css). "Pakai illustration untuk cover" means \`hook: { kind: "illustration", illustrationSlugs: [...] }\` \u2014 the cover has NO \`mockup\` field, and an illustration written there is discarded. Set, swap, or remove it when asked to change the intro visual; removing it falls back to the text-only cover with its \`ghostNumeral\`.
    - Cover \`stamp\` is the italic series mark top-right ("Engineering Notes"). Update it when asked to change the series label; never blank it out.
    - custom hook/mockup html+css must stay self-contained with its own class names. Never style shared chrome (section, h1, .eyebrow, .geser) \u2014 the renderer scopes those rules away.
    - "slide N" or "slide point N" -> Update the slide at that 1-based index in the slides array.
@@ -67744,7 +67787,17 @@ STRICT REVISION INSTRUCTIONS
      it, and treat the earlier entry as superseded rather than trying to satisfy both.
 
 7. USER INSTRUCTION PRECEDENCE:
-   - Manual revision requests from the user ALWAYS take highest priority over default guidelines. If the user explicitly requests a specific change (e.g. a longer headline, specific phrasing, or custom mockup), honor the user's manual instruction verbatim.`;
+   - Manual revision requests from the user ALWAYS take highest priority over default guidelines. If the user explicitly requests a specific change (e.g. a longer headline, specific phrasing, or custom mockup), honor the user's manual instruction verbatim.
+
+MOCKUP RULES AND THE ILLUSTRATION VOCABULARY
+${MOCKUP_BUDGETS}
+
+This block was missing here until 25 Aug 2026, and this is the path a revision takes
+whenever the scope classifier cannot narrow the request. Without it the model was asked to
+change a mockup to "illustration" while holding no list of legal slugs \u2014 the scoped paths
+carry all 156, this one carried none. Slugs must be copied VERBATIM from
+ILLUSTRATION_CATEGORIES above; anything else is replaced by a fallback, which is not what
+the user asked for.`;
 function revisionHistoryBlock(history) {
   if (!history.length) return "";
   const lines = history.map((h, i) => `${i + 1}. asked: "${h.request}"${h.outcome ? `
@@ -67866,7 +67919,10 @@ STAY VALID
 - Keep the slide's \`role\`. A point slide keeps a valid \`mockup\`; an outro keeps its \`cta\`.
 - Whenever you edit a headline, pick ONE word from the NEW headline as \`accentWord\` \u2014 it
   must appear verbatim inside the new headline string.
-- Cover slides may carry a \`hook\` (device / badge / nocgrid / door / custom) and a \`stamp\`.
+- Cover slides may carry a \`hook\` (device / badge / nocgrid / door / illustration / custom) and a \`stamp\`.
+  A cover has NO \`mockup\` field. "Ganti mockup cover jadi illustration" means
+  \`hook: { kind: "illustration", illustrationSlugs: ["..."] }\` with slugs copied verbatim
+  from ILLUSTRATION_CATEGORIES.
   Set, swap or remove the hook when asked to change the intro visual; never blank the stamp.
 - custom html is STRUCTURE ONLY \u2014 no style attributes, no <style>, no css field. They are
   stripped before rendering.

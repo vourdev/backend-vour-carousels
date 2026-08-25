@@ -724,6 +724,25 @@ function renderDoorHook(h: Extract<CoverHook, { kind: "door" }>): string {
     .replace("HAND_INJECT", () => handIcon);
 }
 
+/**
+ * The cover's illustration anchor.
+ *
+ * Shares the markup and the CSS of the point-slide mockup — same group, same item, same
+ * pair/single sizing — so the two cannot drift apart visually. The variant is fixed to
+ * onDark because a cover is always ink; on a point slide the surface can be either and
+ * the renderer has to resolve it.
+ */
+function renderIllustrationHook(h: Extract<CoverHook, { kind: "illustration" }>): string {
+  const sizeClass = h.illustrationSlugs.length > 1 ? "is-pair" : "is-single";
+  const items = h.illustrationSlugs
+    .map((slug) => `<div class="illus-item">${renderIllustration(slug, "onDark")}</div>`)
+    .join("");
+  const caption = h.caption
+    ? `<div class="catatan mt-20"><div class="catatan-body">${escapeHtml(h.caption)}</div></div>`
+    : "";
+  return `<div class="anchor-wrap"><div class="illustration-group ${sizeClass}">${items}</div>${caption}</div>`;
+}
+
 function renderIllustrationMockup(
   m: Extract<Mockup, { type: "illustration" }>,
   variant: IllustrationVariant
@@ -939,6 +958,20 @@ export function renderSlide(slide: Slide, slideIndex = 0): string {
       else if (h.kind === "badge") fragment = renderBadgeHook(h);
       else if (h.kind === "nocgrid") fragment = renderNocGridHook(h);
       else if (h.kind === "door") fragment = renderDoorHook(h);
+      else if (h.kind === "illustration") fragment = renderIllustrationHook(h);
+
+      // An anchor that produced nothing is the blank box users kept reporting: the compact
+      // template still draws the frame around HOOK_INJECT, so an empty fragment renders as
+      // an empty rectangle where the illustration should be. The editorial cover is a
+      // complete design in its own right, so falling back to it shows a finished slide
+      // instead of a hole.
+      if (!fragment.trim()) {
+        console.warn(
+          `[cover-hook] kind="${h.kind}" rendered nothing — falling back to the editorial cover.`
+        );
+        return renderSlide({ ...slide, hook: undefined }, slideIndex);
+      }
+
       const base = fillTemplate(coverCompactTemplate, {
         brand,
         coverSurface: "ink cover-ink",
