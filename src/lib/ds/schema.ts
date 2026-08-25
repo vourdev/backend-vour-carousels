@@ -485,6 +485,19 @@ const mockupUnion = z.discriminatedUnion("type", [
 
 export const mockupSchema = z.preprocess(migrateLegacyIllustration, mockupUnion);
 
+/**
+ * Every mockup type, derived from the union rather than written out beside it.
+ *
+ * The prompts have to show the model what it may choose from, and a hand-kept copy of
+ * this list is a copy that goes stale — which it did: the revision prompts listed one
+ * type out of thirty-two, so a chat asking to "ganti mockup jadi timeline" was answered
+ * from memory rather than from a menu. Deriving it means adding a mockup to the union
+ * puts it in front of the model on the next build.
+ */
+export const MOCKUP_TYPES = mockupUnion.options.map(
+  (o) => o.shape.type.value
+) as readonly string[];
+
 export type Mockup = z.infer<typeof mockupUnion>;
 
 /* ── Cover hook (intro scroll-stopper) ────────────────────────── */

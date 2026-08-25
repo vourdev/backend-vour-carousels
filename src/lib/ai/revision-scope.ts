@@ -15,7 +15,7 @@
  * `assertScopePreserved` then re-checks that claim against the merged result.
  */
 
-import { slideSchema, type Slide, type SlidePlan } from "../ds/schema";
+import { slideSchema, type Slide, type SlidePlan, MOCKUP_TYPES } from "../ds/schema";
 
 export type GlobalField = "title" | "caption" | "hashtags";
 
@@ -119,6 +119,26 @@ const RE_ASPECT_LAYOUT =
   /\b(?:layout|tata\s*letak|komposisi|susunan|full[\s-]?width|selebar|satu\s+kolom|dua\s+kolom|split[\s-]?content|centered|rata\s+tengah|mockup[\s-]?forward|note[\s-]?emphasis|standard)\b/i;
 const RE_ASPECT_MOCKUP =
   /\b(?:mockup|visual|ilustrasi|illustration|diagram|bagan|grafik|chart|checklist|flow|kartu|card|callout|quote|kutipan|screenshot|terminal|tabel|table|gambar(?:nya)?)\b/i;
+
+/**
+ * A mockup type named after a change verb also puts the mockup in play.
+ *
+ * The list above was hand-written and held eight of the thirty-two type names, so
+ * "ganti slide 6 jadi pitfalls" did not register as a mockup request: the aspect stayed
+ * out of scope, the model's new mockup was discarded as drift, and the slide came back
+ * unchanged. It looked like the model ignoring the instruction. Measured 25 Aug 2026 —
+ * the same request phrased "ganti MOCKUP slide 6 jadi pitfalls" worked every time.
+ *
+ * Derived from MOCKUP_TYPES so a new mockup is recognised the day it is added. The change
+ * verb is required rather than matching a bare type name anywhere in the sentence,
+ * because several of them are ordinary words — "database", "config", "browser", "table" —
+ * and a copy edit that merely mentions one must not reopen the mockup for rewriting.
+ * That is the drift this scope guard exists to prevent.
+ */
+const RE_MOCKUP_TYPE_NAMED = new RegExp(
+  String.raw`\b(?:jadi|ke|pakai|gunakan|ubah|ganti|bikin|buat|pindah|switch|change|use|make)\b[^.!?]{0,40}?\b(?:${MOCKUP_TYPES.join("|")})\b`,
+  "i"
+);
 const RE_ASPECT_SURFACE =
   /\b(?:surface|background|latar|warna\s+dasar|gelap|terang|dark|light|ink|paper)\b/i;
 
@@ -126,7 +146,7 @@ const RE_ASPECT_SURFACE =
 export function parseAspects(message: string): SlideAspect[] {
   const aspects: SlideAspect[] = ["copy"];
   if (RE_ASPECT_LAYOUT.test(message)) aspects.push("layout");
-  if (RE_ASPECT_MOCKUP.test(message)) aspects.push("mockup");
+  if (RE_ASPECT_MOCKUP.test(message) || RE_MOCKUP_TYPE_NAMED.test(message)) aspects.push("mockup");
   if (RE_ASPECT_SURFACE.test(message)) aspects.push("surface");
   return aspects;
 }

@@ -1,5 +1,6 @@
 import { ICON_SLUGS } from "../ds/icons";
 import { ILLUSTRATION_CATEGORIES } from "../ds/illustrations";
+import { MOCKUP_TYPES } from "../ds/schema";
 import { NARROW_SAFE_MOCKUPS, NOTE_BEARING_MOCKUPS } from "../ds/render-slide";
 import { CUSTOM_CLASS_WHITELIST } from "../ds/sanitize";
 import { VOICE_SAMPLES, VOICE_PATTERNS, SENTENCE_TEMPLATES } from "./voice-samples";
@@ -395,6 +396,84 @@ RITME ANTAR SLIDE (cek setelah semua slide jadi)
    pendek. Body yang panjangnya seragam di semua slide = bau AI.
 `;
 
+/**
+ * One line per mockup type, for the paths that have to offer a choice rather than teach
+ * the whole vocabulary.
+ *
+ * Built from MOCKUP_TYPES, which is derived from the schema union, so a new mockup shows
+ * up here on the next build instead of whenever someone remembers. It exists because the
+ * revision prompts were listing ONE type out of thirty-two: a chat asking to "ganti mockup
+ * slide 3 jadi timeline" was answered from the model's memory of what types might exist,
+ * not from a menu. Generation had the full catalogue all along, which is why the same
+ * request worked there and not in revision.
+ *
+ * The long numbered catalogue in planSystem stays where it is — it carries every field of
+ * every type and is what generation needs. This is the short form: what exists, and when
+ * to reach for it.
+ */
+const MOCKUP_PURPOSE: Record<string, string> = {
+  card: "general info card — conceptual explanation",
+  terminal: "mac-style code block, 4-8 lines — code, CLI, config, JSON. The ONLY type for log/terminal output",
+  comparison: "two panels, loser vs winner — before/after, bad/good",
+  steps: "2-4 numbered step cards — tutorial, how-to",
+  callout: "dark banner with icon — one critical warning or takeaway",
+  bigstat: "large editorial number (≤ 6 chars) + caption — an impressive metric",
+  flow: "2-5 sequential nodes with arrows, one optional focus — pipeline, ordered sequence",
+  hub: "center node wired to 3-4 tools — 'X connects to A, B, C'",
+  concept: "parent term split into 2-3 children (MAX 3)",
+  checklist: "3-6 ticked recap items — 'what you learned'",
+  browser: "browser chrome + 2-4 stat cards — dashboard evidence, rebuilt UI",
+  quote: "editorial serif pull-quote — expert claim, rule of thumb",
+  datatable: "✗/✓ two-column table, 2-4 rows — Jangan vs Lakukan",
+  commandlist: "mono cmd → description rows, 2-6 — CLI catalogue",
+  timeline: "two dated cards, dulu vs sekarang — evolution over time",
+  promptcard: "bordered mono block with a corner label — a shareable prompt",
+  foldertree: "mono directory listing, 3-8 lines, one optional active row — project structure",
+  commandpalette: "dark Cmd+K menu, 2-5 rows — IDE menu, keyboard-driven UI",
+  database: "EXACTLY 2 related tables + relation glyph — schema, ERD, foreign keys",
+  gitbranch: "fixed branch/merge SVG — branching workflow, PR, trunk-based",
+  illustration: "unDraw editorial SVG, 1-2 slugs from ILLUSTRATION_CATEGORIES — MANDATORY for analogy/metaphor and abstract concepts. Renderer sizes it; there is no width/height/colour field",
+  screenshot: "real user-uploaded evidence — case study, incident report. Never faked",
+  custom: "hand-written HTML, STRUCTURE ONLY, no css field — the escape hatch when nothing above can draw it. Max ~1 per deck. NEVER for log/terminal output",
+  apirequest: "HTTP method/url/status/headers/body — REST endpoint",
+  eventqueue: "producer → topic → consumer — Kafka, RabbitMQ, pub-sub",
+  latencycomp: "2-3 horizontal bars with values — performance or benchmark comparison",
+  config: "key/value lines under a filename — .env, yaml, properties",
+  statemachine: "states and transitions — entity lifecycle, checkout steps",
+  architecture: "client → router → nodes — topology, load balancer",
+  decision: "2-3 options, each with the condition that selects it — 'kapan pakai yang mana'",
+  mythfact: "myth vs fact — whenever the slide corrects a misconception",
+  pitfalls: "numbered list of 3-5 mistakes, optional level low|mid|high — what goes wrong",
+};
+
+const MOCKUP_MENU = MOCKUP_TYPES.map(
+  (t) => `- ${t} — ${MOCKUP_PURPOSE[t] ?? "NO DESCRIPTION — see MOCKUP_PURPOSE in prompts.ts"}`
+).join("\n");
+
+/**
+ * What a custom mockup has to fit inside.
+ *
+ * The numbers are the real ones, not an approximation: the canvas is 1080x1350 and
+ * `section` is padded 96px top, 80px sides, 80px bottom, which leaves exactly 920px of
+ * usable width. Width is safe on its own — `.diag-wrap > *` is clamped to max-width:100%.
+ * HEIGHT IS NOT CLAMPED, and that asymmetry is the whole reason this block exists: a
+ * custom mockup taller than its slot pushes the note off the bottom of the canvas, and
+ * nothing fails — the slide just renders wrong.
+ */
+const CUSTOM_MOCKUP_FIT = `SIZING A custom MOCKUP (and a custom cover hook)
+- The canvas is 1080x1350. After the slide's own padding the usable width is exactly
+  920px, and the mockup slot is what remains between the body copy and the note —
+  roughly 420-600px tall depending on how long the headline and body run.
+- Width takes care of itself: the wrapper clamps children to max-width 100%.
+  HEIGHT DOES NOT. A block taller than the slot pushes the note off the 1350px canvas
+  and nothing errors — the slide just comes out wrong. Keep it short by construction:
+  at most 6-8 rows, or 2-3 stacked blocks, with short labels.
+- Do NOT write width, height, style="...", <style>, or presentational attributes. They
+  are STRIPPED before rendering, so they cannot make it fit — they only make it look
+  like you handled the sizing. The design system sizes and styles it from the surface.
+- If the content genuinely needs a dense grid or a fixed size, custom is the wrong
+  answer: say which typed mockup came closest and why it fell short.`;
+
 const MOCKUP_VARIETY_RULE = `
 ═══════════════════════════════════════════════════════════════
 VISUAL DIRECTOR — anti-repetition is MANDATORY
@@ -519,9 +598,7 @@ WRITING A custom MOCKUP (when you do reach for it):
   gives you, that is the signal that this content needs a NEW typed mockup — not a
   reason to reach for custom. Say so in your reasoning: name what the content is and
   which typed mockup came closest and why it fell short.
-- Size it to fit: the slot is ~920px wide and gets roughly the lower half of the
-  1080×1350 canvas. Keep it to a handful of elements and short labels; a custom
-  mockup that needs a dense grid is the wrong call for the slide.
+${CUSTOM_MOCKUP_FIT}
 - If everything you wrote is stripped and nothing renderable is left, the slide falls
   back to a plain summary card. That is a worse slide than a typed mockup would be.
 
@@ -1099,6 +1176,22 @@ STRICT REVISION INSTRUCTIONS
 7. USER INSTRUCTION PRECEDENCE:
    - Manual revision requests from the user ALWAYS take highest priority over default guidelines. If the user explicitly requests a specific change (e.g. a longer headline, specific phrasing, or custom mockup), honor the user's manual instruction verbatim.
 
+MOCKUP TYPES AVAILABLE — pick from this list, do not invent a type
+${MOCKUP_MENU}
+
+A TYPE THE USER NAMED IS NOT A SUGGESTION
+- "ganti mockup slide 3 jadi timeline" means the slide comes back with type "timeline".
+  If the content does not fit that shape, reshape the CONTENT to fit it — that is what
+  was asked for. Substituting a type you judge more suitable reads as the request being
+  ignored, and the user's next move is to ask again in the same words.
+- When the request describes an intent instead of naming a type ("bikin perbandingan
+  bagus vs buruk", "tunjukkan urutannya"), then choose: pick the entry above whose
+  purpose matches, and say which in your reasoning.
+- The only type you may refuse outright is one whose HARD RULE forbids it — log or
+  terminal output is always "terminal", never "custom".
+
+${CUSTOM_MOCKUP_FIT}
+
 MOCKUP RULES AND THE ILLUSTRATION VOCABULARY
 ${MOCKUP_BUDGETS}
 
@@ -1247,6 +1340,22 @@ CHANGE ONLY WHAT WAS ASKED FOR
 - \`layout\`, \`mockup\`, \`hook\` and \`surface\` are each carried over from the previous
   slide in code unless the request actually named them, so a change to one of them that
   nobody asked for is discarded rather than shipped. Returning it only wastes the turn.
+
+MOCKUP TYPES AVAILABLE — pick from this list, do not invent a type
+${MOCKUP_MENU}
+
+A TYPE THE USER NAMED IS NOT A SUGGESTION
+- "ganti mockup slide 3 jadi timeline" means the slide comes back with type "timeline".
+  If the content does not fit that shape, reshape the CONTENT to fit it — that is what
+  was asked for. Substituting a type you judge more suitable reads as the request being
+  ignored, and the user's next move is to ask again in the same words.
+- When the request describes an intent instead of naming a type ("bikin perbandingan
+  bagus vs buruk", "tunjukkan urutannya"), then choose: pick the entry above whose
+  purpose matches, and say which in your reasoning.
+- The only type you may refuse outright is one whose HARD RULE forbids it — log or
+  terminal output is always "terminal", never "custom".
+
+${CUSTOM_MOCKUP_FIT}
 
 CHANGING A SLIDE'S MOCKUP TYPE IS EXPLICITLY SUPPORTED
 - "ganti mockup slide 4 jadi illustration", "bikin slide 3 pakai terminal", "ubah jadi

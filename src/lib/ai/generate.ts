@@ -2,7 +2,7 @@ import { generateText, generateObject, type LanguageModel } from "ai";
 import { supportsStructuredOutput, aiCallDefaults } from "./registry";
 import { z } from "zod";
 import { slidePlanSchema, slideSchema, type SlidePlan } from "../ds/schema";
-import { repairSlidePlan } from "../ds/repair";
+import { repairSlide, repairSlidePlan } from "../ds/repair";
 import { resolveLayout } from "../ds/render-slide";
 import { normalizeIllustration } from "../ds/illustrations";
 import {
@@ -108,7 +108,91 @@ export async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<
   throw new Error(`Failed after ${attempts} attempts. Last error: ${msg}${extraInfo}`);
 }
 
-function extractAndParseJson(rawText: string): any {
+/**
+ * Repair the ways an LLM breaks JSON, without touching JSON that is already valid.
+ *
+ * Only reached after a strict parse has failed, so healthy output pays nothing. The three
+ * faults here are the ones actually observed from this provider, in one pass over the
+ * text that tracks whether it is inside a string literal:
+ *
+ *  - a raw newline or tab inside a string. JSON forbids literal control characters there,
+ *    and a model writing multi-line copy emits them constantly.
+ *  - a trailing comma before } or ], which every model does eventually.
+ *  - truncation. The response simply stops, leaving an unterminated string and unclosed
+ *    braces. Closing them yields the complete part of the answer instead of none of it.
+ *
+ * A revision that dies on a comma is a revision the user has to ask for twice, and the
+ * second attempt costs another model call on a link that is already the slow part.
+ */
+/**
+ * True when the last meaningful character ended a value and the next one starts another,
+ * which means the comma between them is missing. Deliberately narrow: only a closed
+ * bracket or a closed string counts, so this cannot fire between a key and its value.
+ */
+function needsSeparator(out: string): boolean {
+  const prev = out.replace(/\s+$/, "").slice(-1);
+  return prev === "}" || prev === "]" || prev === '"';
+}
+
+function salvageJson(text: string): string {
+  let out = "";
+  let inString = false;
+  let escaped = false;
+  const stack: string[] = [];
+
+  for (const ch of text) {
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+        out += ch;
+        continue;
+      }
+      if (ch === "\\") {
+        escaped = true;
+        out += ch;
+        continue;
+      }
+      if (ch === '"') {
+        inString = false;
+        out += ch;
+        continue;
+      }
+      // Literal control characters are illegal inside a JSON string; escape rather
+      // than drop, so the copy the model wrote survives intact.
+      if (ch === "\n") { out += "\\n"; continue; }
+      if (ch === "\r") { out += "\\r"; continue; }
+      if (ch === "\t") { out += "\\t"; continue; }
+      out += ch;
+      continue;
+    }
+
+    if (ch === '"') {
+      // A quote opening a new value straight after a finished one: the separator was
+      // dropped. Observed as `Expected ',' or ']' after array element`.
+      if (needsSeparator(out)) out += ",";
+      inString = true;
+      out += ch;
+      continue;
+    }
+    if (ch === "{" || ch === "[") {
+      if (needsSeparator(out)) out += ",";
+      stack.push(ch);
+      out += ch;
+      continue;
+    }
+    if (ch === "}" || ch === "]") { stack.pop(); out += ch; continue; }
+    out += ch;
+  }
+
+  if (inString) out += '"';
+  // Drop a trailing comma (and any whitespace after it) before closing.
+  out = out.replace(/,(\s*)$/, "$1");
+  while (stack.length) out += stack.pop() === "{" ? "}" : "]";
+  // Trailing commas anywhere else.
+  return out.replace(/,(\s*[}\]])/g, "$1");
+}
+
+export function extractAndParseJson(rawText: string): any {
   let cleaned = rawText.trim();
   if (cleaned.startsWith("```")) {
     cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
@@ -117,8 +201,25 @@ function extractAndParseJson(rawText: string): any {
   const lastBrace = cleaned.lastIndexOf("}");
   if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
     cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+  } else if (firstBrace !== -1) {
+    // No closing brace at all: the response was cut off. Keep what arrived.
+    cleaned = cleaned.substring(firstBrace);
   }
-  return JSON.parse(cleaned);
+
+  try {
+    return JSON.parse(cleaned);
+  } catch (strict) {
+    const salvaged = salvageJson(cleaned);
+    try {
+      const value = JSON.parse(salvaged);
+      console.warn("[json] model returned malformed JSON; salvaged it rather than losing the turn.");
+      return value;
+    } catch {
+      // Report the original fault, not the salvage attempt's — the first one says what
+      // the model actually got wrong.
+      throw strict;
+    }
+  }
 }
 
 export async function generateBrief(idea: string, model: LanguageModel): Promise<string> {
@@ -576,7 +677,41 @@ async function reviseTargetSlides(
       prompt,
       ...aiCallDefaults(),
     });
-    const parsed = slidePatchSchema.parse(extractAndParseJson(text));
+    // Repaired before validating, exactly as generation and whole-plan revision do. This
+    // path skipped it, so a mockup one field short threw and cost the whole turn — the
+    // same output would have been salvaged anywhere else. Measured against the live model
+    // on 25 Aug 2026: a revision to a typed mockup died on `expected string, received
+    // undefined` while the identical request through generation came back fine.
+    const raw = extractAndParseJson(text) as { slides?: { index?: number; slide?: any }[] };
+    for (const entry of raw?.slides ?? []) {
+      const patched = entry?.slide;
+      if (!patched || typeof patched !== "object") continue;
+
+      // Whether the model MEANT to send a mockup, recorded before repair can drop it.
+      const offered = "mockup" in patched;
+      repairSlide(patched);
+
+      // Repair dropped a mockup the model did meant to send, because it came back
+      // malformed. Left as-is the merge would then delete the slide's existing mockup —
+      // the aspect is in scope, and an in-scope field missing from the patch reads as
+      // "remove it". The slide would render with an empty half, which is the blank box
+      // this whole thread has been chasing. Carrying the previous mockup forward makes
+      // the worst case "unchanged" instead of "worse than before".
+      //
+      // Only when the model offered one: a request that genuinely asks to remove the
+      // mockup sends no `mockup` key at all, and that still removes it.
+      if (offered && !("mockup" in patched)) {
+        const previous: any = plan.slides[(entry.index ?? 0) - 1];
+        if (previous?.mockup) {
+          console.warn(
+            `[revision-scope] slide ${entry.index}: model's new mockup was unusable — keeping the previous one rather than leaving the slide empty.`
+          );
+          patched.mockup = previous.mockup;
+        }
+      }
+    }
+
+    const parsed = slidePatchSchema.parse(raw);
     return parsed.slides.map((s) => ({ index: s.index - 1, slide: s.slide }));
   });
 }

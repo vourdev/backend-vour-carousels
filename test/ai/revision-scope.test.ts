@@ -11,6 +11,7 @@ import {
   type RevisionScope,
 } from "@/lib/ai/revision-scope";
 import type { SlidePlan, Slide } from "@/lib/ds/schema";
+import { MOCKUP_TYPES } from "@/lib/ds/schema";
 
 const slide = (n: number): Slide => ({
   role: "point",
@@ -363,5 +364,42 @@ describe("mergeScopedRevision aspect filtering", () => {
     expect(() => assertScopePreserved(before, after, withAspects([1], ["copy"]))).toThrow(
       RevisionScopeViolation
     );
+  });
+});
+
+/**
+ * The mockup aspect was matched against a hand-written word list that held eight of the
+ * thirty-two type names. So "ganti slide 6 jadi pitfalls" never registered as a mockup
+ * request: the aspect stayed out of scope, the model's new mockup was discarded as drift,
+ * and the slide came back unchanged — which looked like the model ignoring the user.
+ * Measured live: the same request with the word "mockup" in it worked every time.
+ */
+describe("naming a mockup type is naming the mockup", () => {
+
+  it.each(MOCKUP_TYPES)("recognises a change to %s", (type) => {
+    expect(parseAspects(`ganti slide 3 jadi ${type}`)).toContain("mockup");
+  });
+
+  it.each([
+    "slide 6 ganti jadi pitfalls",
+    "bikin slide 3 pakai datatable",
+    "ubah slide 4 jadi mythfact",
+    "slide 5 gunakan custom mockup",
+    "make slide 2 a timeline",
+  ])("puts the mockup in scope for %s", (msg) => {
+    expect(parseAspects(msg)).toContain("mockup");
+  });
+
+  /**
+   * Several type names are ordinary words. A copy edit that merely mentions one must not
+   * reopen the mockup for rewriting — that is the drift this guard exists to prevent.
+   */
+  it.each([
+    "perbaiki headline slide 2 biar lebih tajam",
+    "tulis ulang body slide 3, sebutkan database-nya",
+    "bikin caption lebih pendek",
+    "headline slide 4 sebut soal config yang salah",
+  ])("leaves the mockup alone for %s", (msg) => {
+    expect(parseAspects(msg)).not.toContain("mockup");
   });
 });

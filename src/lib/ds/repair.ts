@@ -176,63 +176,78 @@ function repairPostFields(raw: any): void {
   raw.hashtags = cleaned.slice(0, 5);
 }
 
+/**
+ * The per-slide half of `repairSlidePlan`, on its own so the scoped revision path can
+ * use it too.
+ *
+ * It could not before, and that asymmetry was a real failure: generation and whole-plan
+ * revision both parse through `repairSlidePlan`, while a scoped revision — the path every
+ * chat revision takes — went straight to `slidePatchSchema.parse`. So a mockup that came
+ * back one field short threw and lost the whole turn, where the same output would have
+ * been salvaged on any other path. Measured against the live model on 25 Aug 2026: a
+ * revision to a typed mockup died with `expected string, received undefined`.
+ */
+export function repairSlide(s: any): void {
+  if (!s || typeof s !== "object") return;
+  if (typeof s.headline === "string") {
+    const fixed = hoistAccentMarkdown(s.headline, s.accentWord);
+    s.headline = fixed.headline;
+    if (fixed.accentWord !== undefined) s.accentWord = fixed.accentWord;
+  }
+  s.headline = clampStr(s.headline, 90);
+  s.eyebrow = clampStr(s.eyebrow, 40);
+  s.lede = clampStr(s.lede, 140);
+  s.body = clampStr(s.body, 160);
+  if (s.role === "point" && s.mockup !== undefined) {
+    const fixed = repairMockup(s.mockup);
+    if (fixed) s.mockup = fixed;
+    else delete s.mockup; // fall back to auto-card in resolveMockup
+  }
+  // Drop an invented layout name rather than pinning it to "standard": an absent
+  // layout is a signal the renderer acts on (it rotates one in), whereas writing
+  // "standard" here is an instruction to stay flat. Coercing every miss to
+  // "standard" made the model's silence indistinguishable from a real choice.
+  if (
+    s.role === "point" &&
+    s.layout !== undefined &&
+    !["standard", "mockup-forward", "split-content", "note-emphasis"].includes(s.layout)
+  ) {
+    delete s.layout;
+  }
+  // Surface/mockup collision. The prompt asks the model to keep a dark
+  // device off a dark slide, but asking is not enforcing: a terminal on an
+  // Ink slide is a near-black panel on a near-black canvas. Flip the slide
+  // to Paper rather than dropping a mockup the deck needs — the surface is
+  // rhythm, the mockup is content.
+  if (
+    s.role === "point" &&
+    s.surface === "ink" &&
+    s.mockup &&
+    ALWAYS_DARK_MOCKUPS.has(s.mockup.type)
+  ) {
+    s.surface = "paper";
+  }
+  if (s.role === "outro" && s.cta && typeof s.cta === "object") {
+    s.cta.strong = clampStr(s.cta.strong, 60);
+    s.cta.sub = clampStr(s.cta.sub, 90);
+  }
+  if (s.role === "cover") {
+    repairCoverHook(s);
+    if (s.hook !== undefined) {
+      const res = coverHookSchema.safeParse(s.hook);
+      if (res.success) s.hook = res.data;
+      else delete s.hook; // fall back to the hero cover template
+    }
+  }
+}
+
 export function repairSlidePlan(raw: any): SlidePlan {
   if (raw && typeof raw === "object") {
     repairPostFields(raw);
 
     if (Array.isArray(raw.slides)) {
       for (const s of raw.slides) {
-        if (!s || typeof s !== "object") continue;
-        if (typeof s.headline === "string") {
-          const fixed = hoistAccentMarkdown(s.headline, s.accentWord);
-          s.headline = fixed.headline;
-          if (fixed.accentWord !== undefined) s.accentWord = fixed.accentWord;
-        }
-        s.headline = clampStr(s.headline, 90);
-        s.eyebrow = clampStr(s.eyebrow, 40);
-        s.lede = clampStr(s.lede, 140);
-        s.body = clampStr(s.body, 160);
-        if (s.role === "point" && s.mockup !== undefined) {
-          const fixed = repairMockup(s.mockup);
-          if (fixed) s.mockup = fixed;
-          else delete s.mockup; // fall back to auto-card in resolveMockup
-        }
-        // Drop an invented layout name rather than pinning it to "standard": an absent
-        // layout is a signal the renderer acts on (it rotates one in), whereas writing
-        // "standard" here is an instruction to stay flat. Coercing every miss to
-        // "standard" made the model's silence indistinguishable from a real choice.
-        if (
-          s.role === "point" &&
-          s.layout !== undefined &&
-          !["standard", "mockup-forward", "split-content", "note-emphasis"].includes(s.layout)
-        ) {
-          delete s.layout;
-        }
-        // Surface/mockup collision. The prompt asks the model to keep a dark
-        // device off a dark slide, but asking is not enforcing: a terminal on an
-        // Ink slide is a near-black panel on a near-black canvas. Flip the slide
-        // to Paper rather than dropping a mockup the deck needs — the surface is
-        // rhythm, the mockup is content.
-        if (
-          s.role === "point" &&
-          s.surface === "ink" &&
-          s.mockup &&
-          ALWAYS_DARK_MOCKUPS.has(s.mockup.type)
-        ) {
-          s.surface = "paper";
-        }
-        if (s.role === "outro" && s.cta && typeof s.cta === "object") {
-          s.cta.strong = clampStr(s.cta.strong, 60);
-          s.cta.sub = clampStr(s.cta.sub, 90);
-        }
-        if (s.role === "cover") {
-          repairCoverHook(s);
-          if (s.hook !== undefined) {
-            const res = coverHookSchema.safeParse(s.hook);
-            if (res.success) s.hook = res.data;
-            else delete s.hook; // fall back to the hero cover template
-          }
-        }
+        repairSlide(s);
       }
     }
   }

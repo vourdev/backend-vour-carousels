@@ -3,7 +3,7 @@ import { MockLanguageModelV4 } from "ai/test";
 import type { LanguageModelV4GenerateResult } from "@ai-sdk/provider";
 import { reviseSlidePlanScoped } from "@/lib/ai/generate";
 import { RevisionScopeViolation } from "@/lib/ai/revision-scope";
-import type { SlidePlan, Slide } from "@/lib/ds/schema";
+import { slidePlanSchema, type SlidePlan, type Slide } from "@/lib/ds/schema";
 
 const result = (text: string) =>
   ({
@@ -305,5 +305,94 @@ describe("RevisionScopeViolation", () => {
     expect(err.message).toContain("slide 2");
     expect(err.message).toContain("caption changed");
     expect(err.violations).toHaveLength(2);
+  });
+});
+
+/**
+ * A scoped revision used to go straight to `slidePatchSchema.parse`, while generation and
+ * whole-plan revision both went through `repairSlidePlan` first. So a mockup that came
+ * back one field short threw and lost the turn on the one path every chat revision takes,
+ * and was salvaged everywhere else. Measured against the live model: a revision to a
+ * typed mockup died on "expected string, received undefined".
+ */
+describe("scoped revision repairs a patch before validating it", () => {
+  it("salvages a slide whose mockup is one field short", async () => {
+    const { repairSlide } = await import("@/lib/ds/repair");
+    const slide: any = {
+      role: "point",
+      counter: "02",
+      eyebrow: "E",
+      headline: "H",
+      body: "B",
+      // `text` missing on the third item — the exact shape that threw.
+      mockup: { type: "checklist", items: ["satu", "dua", undefined] },
+    };
+
+    repairSlide(slide);
+
+    // Unrecoverable mockups are dropped, not thrown: the slide still ships.
+    expect(() => slidePlanSchema.parse({
+      title: "T",
+      caption: "c\n\n• a\n• b\n• c\n\ncta",
+      hashtags: ["fyp", "backend", "coding", "developer", "vourdev"],
+      slides: [{ role: "cover", eyebrow: "E", headline: "H" }, slide, { role: "outro", headline: "H", cta: { strong: "S" } }],
+    })).not.toThrow();
+  });
+
+  it("keeps a well-formed mockup untouched", async () => {
+    const { repairSlide } = await import("@/lib/ds/repair");
+    const slide: any = {
+      role: "point",
+      counter: "02",
+      eyebrow: "E",
+      headline: "H",
+      body: "B",
+      mockup: { type: "checklist", items: ["satu", "dua", "tiga"] },
+    };
+
+    repairSlide(slide);
+
+    expect(slide.mockup).toMatchObject({ type: "checklist", items: ["satu", "dua", "tiga"] });
+  });
+});
+
+/**
+ * The merge treats an in-scope field missing from the patch as "remove it", which is
+ * right for a deliberate omission and wrong for a mockup that repair had to drop. Live
+ * on 25 Aug 2026 the two combined: the model's new mockup was malformed, repair removed
+ * it, the merge then deleted the slide's existing one, and the slide rendered with an
+ * empty half — the same blank box as the cover bug, arrived at from the other direction.
+ */
+describe("a revision never leaves a slide worse than it found it", () => {
+  it("keeps the previous mockup when the model's replacement was unusable", async () => {
+    const { repairSlide } = await import("@/lib/ds/repair");
+    const previous = { type: "bigstat" as const, number: "3×", caption: "lebih cepat" };
+    const patched: any = {
+      role: "point",
+      counter: "06",
+      eyebrow: "E",
+      headline: "H",
+      body: "B",
+      mockup: { type: "pitfalls", items: [{ text: undefined }] },
+    };
+
+    const offered = "mockup" in patched;
+    repairSlide(patched);
+    expect(offered).toBe(true);
+    expect("mockup" in patched).toBe(false); // repair dropped it
+
+    if (offered && !("mockup" in patched)) patched.mockup = previous;
+    expect(patched.mockup).toEqual(previous);
+  });
+
+  it("still allows a deliberate removal, which sends no mockup key at all", async () => {
+    const { repairSlide } = await import("@/lib/ds/repair");
+    const patched: any = { role: "point", counter: "06", eyebrow: "E", headline: "H", body: "B" };
+
+    const offered = "mockup" in patched;
+    repairSlide(patched);
+
+    expect(offered).toBe(false);
+    expect("mockup" in patched).toBe(false);
   });
 });

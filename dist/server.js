@@ -65001,6 +65001,9 @@ var mockupUnion = external_exports.discriminatedUnion("type", [
   mockupPitfalls
 ]);
 var mockupSchema = external_exports.preprocess(migrateLegacyIllustration, mockupUnion);
+var MOCKUP_TYPES = mockupUnion.options.map(
+  (o) => o.shape.type.value
+);
 var coverHookDevice = external_exports.object({
   kind: external_exports.literal("device"),
   chrome: external_exports.enum(["browser", "terminal"]).default("browser"),
@@ -65225,44 +65228,47 @@ Simpan biar nggak keulang di project kamu.`;
   }
   raw2.hashtags = cleaned.slice(0, 5);
 }
+function repairSlide(s) {
+  if (!s || typeof s !== "object") return;
+  if (typeof s.headline === "string") {
+    const fixed = hoistAccentMarkdown(s.headline, s.accentWord);
+    s.headline = fixed.headline;
+    if (fixed.accentWord !== void 0) s.accentWord = fixed.accentWord;
+  }
+  s.headline = clampStr(s.headline, 90);
+  s.eyebrow = clampStr(s.eyebrow, 40);
+  s.lede = clampStr(s.lede, 140);
+  s.body = clampStr(s.body, 160);
+  if (s.role === "point" && s.mockup !== void 0) {
+    const fixed = repairMockup(s.mockup);
+    if (fixed) s.mockup = fixed;
+    else delete s.mockup;
+  }
+  if (s.role === "point" && s.layout !== void 0 && !["standard", "mockup-forward", "split-content", "note-emphasis"].includes(s.layout)) {
+    delete s.layout;
+  }
+  if (s.role === "point" && s.surface === "ink" && s.mockup && ALWAYS_DARK_MOCKUPS.has(s.mockup.type)) {
+    s.surface = "paper";
+  }
+  if (s.role === "outro" && s.cta && typeof s.cta === "object") {
+    s.cta.strong = clampStr(s.cta.strong, 60);
+    s.cta.sub = clampStr(s.cta.sub, 90);
+  }
+  if (s.role === "cover") {
+    repairCoverHook(s);
+    if (s.hook !== void 0) {
+      const res = coverHookSchema.safeParse(s.hook);
+      if (res.success) s.hook = res.data;
+      else delete s.hook;
+    }
+  }
+}
 function repairSlidePlan(raw2) {
   if (raw2 && typeof raw2 === "object") {
     repairPostFields(raw2);
     if (Array.isArray(raw2.slides)) {
       for (const s of raw2.slides) {
-        if (!s || typeof s !== "object") continue;
-        if (typeof s.headline === "string") {
-          const fixed = hoistAccentMarkdown(s.headline, s.accentWord);
-          s.headline = fixed.headline;
-          if (fixed.accentWord !== void 0) s.accentWord = fixed.accentWord;
-        }
-        s.headline = clampStr(s.headline, 90);
-        s.eyebrow = clampStr(s.eyebrow, 40);
-        s.lede = clampStr(s.lede, 140);
-        s.body = clampStr(s.body, 160);
-        if (s.role === "point" && s.mockup !== void 0) {
-          const fixed = repairMockup(s.mockup);
-          if (fixed) s.mockup = fixed;
-          else delete s.mockup;
-        }
-        if (s.role === "point" && s.layout !== void 0 && !["standard", "mockup-forward", "split-content", "note-emphasis"].includes(s.layout)) {
-          delete s.layout;
-        }
-        if (s.role === "point" && s.surface === "ink" && s.mockup && ALWAYS_DARK_MOCKUPS.has(s.mockup.type)) {
-          s.surface = "paper";
-        }
-        if (s.role === "outro" && s.cta && typeof s.cta === "object") {
-          s.cta.strong = clampStr(s.cta.strong, 60);
-          s.cta.sub = clampStr(s.cta.sub, 90);
-        }
-        if (s.role === "cover") {
-          repairCoverHook(s);
-          if (s.hook !== void 0) {
-            const res = coverHookSchema.safeParse(s.hook);
-            if (res.success) s.hook = res.data;
-            else delete s.hook;
-          }
-        }
+        repairSlide(s);
       }
     }
   }
@@ -66576,11 +66582,15 @@ var RE_STRUCTURAL = [
 ];
 var RE_ASPECT_LAYOUT = /\b(?:layout|tata\s*letak|komposisi|susunan|full[\s-]?width|selebar|satu\s+kolom|dua\s+kolom|split[\s-]?content|centered|rata\s+tengah|mockup[\s-]?forward|note[\s-]?emphasis|standard)\b/i;
 var RE_ASPECT_MOCKUP = /\b(?:mockup|visual|ilustrasi|illustration|diagram|bagan|grafik|chart|checklist|flow|kartu|card|callout|quote|kutipan|screenshot|terminal|tabel|table|gambar(?:nya)?)\b/i;
+var RE_MOCKUP_TYPE_NAMED = new RegExp(
+  String.raw`\b(?:jadi|ke|pakai|gunakan|ubah|ganti|bikin|buat|pindah|switch|change|use|make)\b[^.!?]{0,40}?\b(?:${MOCKUP_TYPES.join("|")})\b`,
+  "i"
+);
 var RE_ASPECT_SURFACE = /\b(?:surface|background|latar|warna\s+dasar|gelap|terang|dark|light|ink|paper)\b/i;
 function parseAspects(message) {
   const aspects = ["copy"];
   if (RE_ASPECT_LAYOUT.test(message)) aspects.push("layout");
-  if (RE_ASPECT_MOCKUP.test(message)) aspects.push("mockup");
+  if (RE_ASPECT_MOCKUP.test(message) || RE_MOCKUP_TYPE_NAMED.test(message)) aspects.push("mockup");
   if (RE_ASPECT_SURFACE.test(message)) aspects.push("surface");
   return aspects;
 }
@@ -67088,6 +67098,56 @@ RITME ANTAR SLIDE (cek setelah semua slide jadi)
 3. Variasikan panjang body: campur 1 kalimat panjang dengan 1 fragmen
    pendek. Body yang panjangnya seragam di semua slide = bau AI.
 `;
+var MOCKUP_PURPOSE = {
+  card: "general info card \u2014 conceptual explanation",
+  terminal: "mac-style code block, 4-8 lines \u2014 code, CLI, config, JSON. The ONLY type for log/terminal output",
+  comparison: "two panels, loser vs winner \u2014 before/after, bad/good",
+  steps: "2-4 numbered step cards \u2014 tutorial, how-to",
+  callout: "dark banner with icon \u2014 one critical warning or takeaway",
+  bigstat: "large editorial number (\u2264 6 chars) + caption \u2014 an impressive metric",
+  flow: "2-5 sequential nodes with arrows, one optional focus \u2014 pipeline, ordered sequence",
+  hub: "center node wired to 3-4 tools \u2014 'X connects to A, B, C'",
+  concept: "parent term split into 2-3 children (MAX 3)",
+  checklist: "3-6 ticked recap items \u2014 'what you learned'",
+  browser: "browser chrome + 2-4 stat cards \u2014 dashboard evidence, rebuilt UI",
+  quote: "editorial serif pull-quote \u2014 expert claim, rule of thumb",
+  datatable: "\u2717/\u2713 two-column table, 2-4 rows \u2014 Jangan vs Lakukan",
+  commandlist: "mono cmd \u2192 description rows, 2-6 \u2014 CLI catalogue",
+  timeline: "two dated cards, dulu vs sekarang \u2014 evolution over time",
+  promptcard: "bordered mono block with a corner label \u2014 a shareable prompt",
+  foldertree: "mono directory listing, 3-8 lines, one optional active row \u2014 project structure",
+  commandpalette: "dark Cmd+K menu, 2-5 rows \u2014 IDE menu, keyboard-driven UI",
+  database: "EXACTLY 2 related tables + relation glyph \u2014 schema, ERD, foreign keys",
+  gitbranch: "fixed branch/merge SVG \u2014 branching workflow, PR, trunk-based",
+  illustration: "unDraw editorial SVG, 1-2 slugs from ILLUSTRATION_CATEGORIES \u2014 MANDATORY for analogy/metaphor and abstract concepts. Renderer sizes it; there is no width/height/colour field",
+  screenshot: "real user-uploaded evidence \u2014 case study, incident report. Never faked",
+  custom: "hand-written HTML, STRUCTURE ONLY, no css field \u2014 the escape hatch when nothing above can draw it. Max ~1 per deck. NEVER for log/terminal output",
+  apirequest: "HTTP method/url/status/headers/body \u2014 REST endpoint",
+  eventqueue: "producer \u2192 topic \u2192 consumer \u2014 Kafka, RabbitMQ, pub-sub",
+  latencycomp: "2-3 horizontal bars with values \u2014 performance or benchmark comparison",
+  config: "key/value lines under a filename \u2014 .env, yaml, properties",
+  statemachine: "states and transitions \u2014 entity lifecycle, checkout steps",
+  architecture: "client \u2192 router \u2192 nodes \u2014 topology, load balancer",
+  decision: "2-3 options, each with the condition that selects it \u2014 'kapan pakai yang mana'",
+  mythfact: "myth vs fact \u2014 whenever the slide corrects a misconception",
+  pitfalls: "numbered list of 3-5 mistakes, optional level low|mid|high \u2014 what goes wrong"
+};
+var MOCKUP_MENU = MOCKUP_TYPES.map(
+  (t) => `- ${t} \u2014 ${MOCKUP_PURPOSE[t] ?? "NO DESCRIPTION \u2014 see MOCKUP_PURPOSE in prompts.ts"}`
+).join("\n");
+var CUSTOM_MOCKUP_FIT = `SIZING A custom MOCKUP (and a custom cover hook)
+- The canvas is 1080x1350. After the slide's own padding the usable width is exactly
+  920px, and the mockup slot is what remains between the body copy and the note \u2014
+  roughly 420-600px tall depending on how long the headline and body run.
+- Width takes care of itself: the wrapper clamps children to max-width 100%.
+  HEIGHT DOES NOT. A block taller than the slot pushes the note off the 1350px canvas
+  and nothing errors \u2014 the slide just comes out wrong. Keep it short by construction:
+  at most 6-8 rows, or 2-3 stacked blocks, with short labels.
+- Do NOT write width, height, style="...", <style>, or presentational attributes. They
+  are STRIPPED before rendering, so they cannot make it fit \u2014 they only make it look
+  like you handled the sizing. The design system sizes and styles it from the surface.
+- If the content genuinely needs a dense grid or a fixed size, custom is the wrong
+  answer: say which typed mockup came closest and why it fell short.`;
 var MOCKUP_VARIETY_RULE = `
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
 VISUAL DIRECTOR \u2014 anti-repetition is MANDATORY
@@ -67212,9 +67272,7 @@ WRITING A custom MOCKUP (when you do reach for it):
   gives you, that is the signal that this content needs a NEW typed mockup \u2014 not a
   reason to reach for custom. Say so in your reasoning: name what the content is and
   which typed mockup came closest and why it fell short.
-- Size it to fit: the slot is ~920px wide and gets roughly the lower half of the
-  1080\xD71350 canvas. Keep it to a handful of elements and short labels; a custom
-  mockup that needs a dense grid is the wrong call for the slide.
+${CUSTOM_MOCKUP_FIT}
 - If everything you wrote is stripped and nothing renderable is left, the slide falls
   back to a plain summary card. That is a worse slide than a typed mockup would be.
 
@@ -67789,6 +67847,22 @@ STRICT REVISION INSTRUCTIONS
 7. USER INSTRUCTION PRECEDENCE:
    - Manual revision requests from the user ALWAYS take highest priority over default guidelines. If the user explicitly requests a specific change (e.g. a longer headline, specific phrasing, or custom mockup), honor the user's manual instruction verbatim.
 
+MOCKUP TYPES AVAILABLE \u2014 pick from this list, do not invent a type
+${MOCKUP_MENU}
+
+A TYPE THE USER NAMED IS NOT A SUGGESTION
+- "ganti mockup slide 3 jadi timeline" means the slide comes back with type "timeline".
+  If the content does not fit that shape, reshape the CONTENT to fit it \u2014 that is what
+  was asked for. Substituting a type you judge more suitable reads as the request being
+  ignored, and the user's next move is to ask again in the same words.
+- When the request describes an intent instead of naming a type ("bikin perbandingan
+  bagus vs buruk", "tunjukkan urutannya"), then choose: pick the entry above whose
+  purpose matches, and say which in your reasoning.
+- The only type you may refuse outright is one whose HARD RULE forbids it \u2014 log or
+  terminal output is always "terminal", never "custom".
+
+${CUSTOM_MOCKUP_FIT}
+
 MOCKUP RULES AND THE ILLUSTRATION VOCABULARY
 ${MOCKUP_BUDGETS}
 
@@ -67905,6 +67979,22 @@ CHANGE ONLY WHAT WAS ASKED FOR
 - \`layout\`, \`mockup\`, \`hook\` and \`surface\` are each carried over from the previous
   slide in code unless the request actually named them, so a change to one of them that
   nobody asked for is discarded rather than shipped. Returning it only wastes the turn.
+
+MOCKUP TYPES AVAILABLE \u2014 pick from this list, do not invent a type
+${MOCKUP_MENU}
+
+A TYPE THE USER NAMED IS NOT A SUGGESTION
+- "ganti mockup slide 3 jadi timeline" means the slide comes back with type "timeline".
+  If the content does not fit that shape, reshape the CONTENT to fit it \u2014 that is what
+  was asked for. Substituting a type you judge more suitable reads as the request being
+  ignored, and the user's next move is to ask again in the same words.
+- When the request describes an intent instead of naming a type ("bikin perbandingan
+  bagus vs buruk", "tunjukkan urutannya"), then choose: pick the entry above whose
+  purpose matches, and say which in your reasoning.
+- The only type you may refuse outright is one whose HARD RULE forbids it \u2014 log or
+  terminal output is always "terminal", never "custom".
+
+${CUSTOM_MOCKUP_FIT}
 
 CHANGING A SLIDE'S MOCKUP TYPE IS EXPLICITLY SUPPORTED
 - "ganti mockup slide 4 jadi illustration", "bikin slide 3 pakai terminal", "ubah jadi
@@ -68086,6 +68176,71 @@ async function withRetry2(fn, attempts = 3) {
   const msg = lastError instanceof Error ? lastError.message : String(lastError);
   throw new Error(`Failed after ${attempts} attempts. Last error: ${msg}${extraInfo}`);
 }
+function needsSeparator(out) {
+  const prev = out.replace(/\s+$/, "").slice(-1);
+  return prev === "}" || prev === "]" || prev === '"';
+}
+function salvageJson(text2) {
+  let out = "";
+  let inString = false;
+  let escaped = false;
+  const stack = [];
+  for (const ch of text2) {
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+        out += ch;
+        continue;
+      }
+      if (ch === "\\") {
+        escaped = true;
+        out += ch;
+        continue;
+      }
+      if (ch === '"') {
+        inString = false;
+        out += ch;
+        continue;
+      }
+      if (ch === "\n") {
+        out += "\\n";
+        continue;
+      }
+      if (ch === "\r") {
+        out += "\\r";
+        continue;
+      }
+      if (ch === "	") {
+        out += "\\t";
+        continue;
+      }
+      out += ch;
+      continue;
+    }
+    if (ch === '"') {
+      if (needsSeparator(out)) out += ",";
+      inString = true;
+      out += ch;
+      continue;
+    }
+    if (ch === "{" || ch === "[") {
+      if (needsSeparator(out)) out += ",";
+      stack.push(ch);
+      out += ch;
+      continue;
+    }
+    if (ch === "}" || ch === "]") {
+      stack.pop();
+      out += ch;
+      continue;
+    }
+    out += ch;
+  }
+  if (inString) out += '"';
+  out = out.replace(/,(\s*)$/, "$1");
+  while (stack.length) out += stack.pop() === "{" ? "}" : "]";
+  return out.replace(/,(\s*[}\]])/g, "$1");
+}
 function extractAndParseJson(rawText) {
   let cleaned = rawText.trim();
   if (cleaned.startsWith("```")) {
@@ -68095,8 +68250,21 @@ function extractAndParseJson(rawText) {
   const lastBrace = cleaned.lastIndexOf("}");
   if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
     cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+  } else if (firstBrace !== -1) {
+    cleaned = cleaned.substring(firstBrace);
   }
-  return JSON.parse(cleaned);
+  try {
+    return JSON.parse(cleaned);
+  } catch (strict) {
+    const salvaged = salvageJson(cleaned);
+    try {
+      const value = JSON.parse(salvaged);
+      console.warn("[json] model returned malformed JSON; salvaged it rather than losing the turn.");
+      return value;
+    } catch {
+      throw strict;
+    }
+  }
 }
 async function generateBrief(idea, model) {
   return withRetry2(async () => {
@@ -68388,7 +68556,23 @@ async function reviseTargetSlides(plan, scope, message, model, history) {
       prompt,
       ...aiCallDefaults()
     });
-    const parsed = slidePatchSchema.parse(extractAndParseJson(text2));
+    const raw2 = extractAndParseJson(text2);
+    for (const entry of raw2?.slides ?? []) {
+      const patched = entry?.slide;
+      if (!patched || typeof patched !== "object") continue;
+      const offered = "mockup" in patched;
+      repairSlide(patched);
+      if (offered && !("mockup" in patched)) {
+        const previous = plan.slides[(entry.index ?? 0) - 1];
+        if (previous?.mockup) {
+          console.warn(
+            `[revision-scope] slide ${entry.index}: model's new mockup was unusable \u2014 keeping the previous one rather than leaving the slide empty.`
+          );
+          patched.mockup = previous.mockup;
+        }
+      }
+    }
+    const parsed = slidePatchSchema.parse(raw2);
     return parsed.slides.map((s) => ({ index: s.index - 1, slide: s.slide }));
   });
 }
