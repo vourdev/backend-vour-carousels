@@ -7,6 +7,7 @@ import { summarizePlanDiff } from "../../lib/memory/diff";
 import type { SlidePlan } from "../../lib/ds/schema";
 import { getUnderusedMockupTypes, getRecentMockupStatsWithPercentages, getGlobalMockupStats, getRecentLayoutStats } from "../../lib/history/repo";
 import { withDeadline } from "../../lib/retry";
+import { fulfillWebEvidence } from "../../lib/evidence/fulfill";
 
 const app = new Hono<{ Variables: { session: any } }>();
 
@@ -48,8 +49,13 @@ app.post("/", async (c) => {
       : Promise.resolve([]),
   ]);
   const diversity: MockupDiversityContext = { underusedTypes: underused, stats };
-  const plan = await generateSlidePlan(brief, model, diversity);
-  return c.json({ plan });
+  const drafted = await generateSlidePlan(brief, model, diversity);
+  // Same rule as the cron path, same function: a screenshot slide is filled in
+  // automatically when a search can prove the URL and the shot passes validation. What it
+  // cannot fill stays `pending`, which renders as the "BUTUH SCREENSHOT ASLI" card — on
+  // this path a human is watching and can still upload the real thing.
+  const { plan, attempts } = await fulfillWebEvidence(drafted, { path: "user" });
+  return c.json({ plan, evidence: attempts });
 });
 
 app.post("/revise", async (c) => {

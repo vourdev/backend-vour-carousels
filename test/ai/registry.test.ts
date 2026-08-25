@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { availableModels, defaultModel } from "@/lib/ai/registry";
+import { availableModels, defaultModel, resolveModel } from "@/lib/ai/registry";
 
 const base = {} as NodeJS.ProcessEnv;
 
@@ -40,6 +40,23 @@ describe("availableModels", () => {
 
     const fullCombo = { ...base, OMNIROUTE_API_KEY: "k", OMNIROUTE_BASE_URL: "u", OMNIROUTE_COMBO: "my-combo" };
     expect(availableModels(fullCombo)).toEqual(["vour-high", "vour-lite", "omniroute"]);
+  });
+});
+
+describe("the retired gemini id", () => {
+  it("resolves without reaching for a Google provider", async () => {
+    // Saved carousels and drafts store the model id they were made with, and "gemini" is
+    // in some of them. The provider SDK is gone, so opening one of those records must not
+    // throw — it falls back to the combo it would be regenerated with today.
+    const env = { OMNIROUTE_API_KEY: "k", OMNIROUTE_BASE_URL: "https://example.test/v1" };
+    const saved = { ...process.env };
+    Object.assign(process.env, env);
+    try {
+      const model: any = resolveModel("gemini");
+      expect(String(model.provider)).toContain("vour-lite");
+    } finally {
+      process.env = saved as NodeJS.ProcessEnv;
+    }
   });
 });
 

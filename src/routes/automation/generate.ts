@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { defaultModel, resolveModel } from "../../lib/ai/registry";
 import { generateBrief, generateSlidePlan, stripUnfulfillableEvidence, type MockupDiversityContext } from "../../lib/ai/generate";
+import { fulfillWebEvidence } from "../../lib/evidence/fulfill";
 import { assembleCarousel } from "../../lib/ds/assemble";
 import { warmUpIllustrations } from "../../lib/ds/illustrations.server";
 import { captureQueue } from "../../services/capture-queue";
@@ -65,9 +66,14 @@ async function createAndPublishCarousel({
     getRecentMockupStatsWithPercentages(userId).catch(() => []),
   ]);
   const diversity: MockupDiversityContext = { underusedTypes: underused, stats };
+  const drafted = await generateSlidePlan(brief, resolvedModel, diversity);
+  // Try to satisfy screenshot evidence without a human: resolve the site by web search,
+  // photograph it, and keep the picture only if it passes the automated quality check.
+  const { plan: withEvidence } = await fulfillWebEvidence(drafted, { path: "automation" });
   // Nobody is watching this run, so a mockup that asks a human for a screenshot can
-  // never be satisfied — it would ship to Instagram as a placeholder card.
-  const plan = stripUnfulfillableEvidence(await generateSlidePlan(brief, resolvedModel, diversity));
+  // never be satisfied — it would ship to Instagram as a placeholder card. Anything
+  // auto-capture could not fill is still pending here, and this is what catches it.
+  const plan = stripUnfulfillableEvidence(withEvidence);
 
   // 3. Assemble Carousel HTML
   await warmUpIllustrations();

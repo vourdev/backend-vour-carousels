@@ -13140,11 +13140,11 @@ var init_kysely = __esm({
       async execute(callback) {
         return this.#props.executor.provideConnection(async (connection) => {
           const executor = this.#props.executor.withConnectionProvider(new SingleConnectionProvider(connection));
-          const db6 = new Kysely({
+          const db7 = new Kysely({
             ...this.#props,
             executor
           });
-          return await callback(db6);
+          return await callback(db7);
         });
       }
     };
@@ -14923,8 +14923,8 @@ var init_sqlite_introspector = __esm({
     init_sql();
     SqliteIntrospector = class {
       #db;
-      constructor(db6) {
-        this.#db = db6;
+      constructor(db7) {
+        this.#db = db7;
       }
       async getSchemas() {
         return [];
@@ -15884,8 +15884,8 @@ var init_lib_esm = __esm({
         }
         return new LibsqlDriver(client4, closeClient);
       }
-      createIntrospector(db6) {
-        return new SqliteIntrospector(db6);
+      createIntrospector(db7) {
+        return new SqliteIntrospector(db7);
       }
       createQueryCompiler() {
         return new SqliteQueryCompiler();
@@ -16851,7 +16851,7 @@ var require_lodash = __commonJS({
   "node_modules/lodash/lodash.js"(exports, module) {
     (function() {
       var undefined2;
-      var VERSION7 = "4.18.1";
+      var VERSION6 = "4.18.1";
       var LARGE_ARRAY_SIZE = 200;
       var CORE_ERROR_TEXT = "Unsupported core-js use. Try https://npms.io/search?q=ponyfill.", FUNC_ERROR_TEXT = "Expected a function", INVALID_TEMPL_VAR_ERROR_TEXT = "Invalid `variable` option passed into `_.template`", INVALID_TEMPL_IMPORTS_ERROR_TEXT = "Invalid `imports` option passed into `_.template`";
       var HASH_UNDEFINED = "__lodash_hash_undefined__";
@@ -17541,7 +17541,7 @@ var require_lodash = __commonJS({
         var arrayProto = Array2.prototype, funcProto = Function2.prototype, objectProto = Object2.prototype;
         var coreJsData = context["__core-js_shared__"];
         var funcToString = funcProto.toString;
-        var hasOwnProperty2 = objectProto.hasOwnProperty;
+        var hasOwnProperty = objectProto.hasOwnProperty;
         var idCounter = 0;
         var maskSrcKey = (function() {
           var uid = /[^.]+$/.exec(coreJsData && coreJsData.keys && coreJsData.keys.IE_PROTO || "");
@@ -17551,7 +17551,7 @@ var require_lodash = __commonJS({
         var objectCtorString = funcToString.call(Object2);
         var oldDash = root._;
         var reIsNative = RegExp2(
-          "^" + funcToString.call(hasOwnProperty2).replace(reRegExpChar, "\\$&").replace(/hasOwnProperty|(function).*?(?=\\\()| for .+?(?=\\\])/g, "$1.*?") + "$"
+          "^" + funcToString.call(hasOwnProperty).replace(reRegExpChar, "\\$&").replace(/hasOwnProperty|(function).*?(?=\\\()| for .+?(?=\\\])/g, "$1.*?") + "$"
         );
         var Buffer2 = moduleExports ? context.Buffer : undefined2, Symbol2 = context.Symbol, Uint8Array2 = context.Uint8Array, allocUnsafe = Buffer2 ? Buffer2.allocUnsafe : undefined2, getPrototype = overArg(Object2.getPrototypeOf, Object2), objectCreate = Object2.create, propertyIsEnumerable = objectProto.propertyIsEnumerable, splice = arrayProto.splice, spreadableSymbol = Symbol2 ? Symbol2.isConcatSpreadable : undefined2, symIterator = Symbol2 ? Symbol2.iterator : undefined2, symToStringTag = Symbol2 ? Symbol2.toStringTag : undefined2;
         var defineProperty = (function() {
@@ -17574,7 +17574,7 @@ var require_lodash = __commonJS({
             if (value instanceof LodashWrapper) {
               return value;
             }
-            if (hasOwnProperty2.call(value, "__wrapped__")) {
+            if (hasOwnProperty.call(value, "__wrapped__")) {
               return wrapperClone(value);
             }
           }
@@ -17735,11 +17735,11 @@ var require_lodash = __commonJS({
             var result2 = data[key];
             return result2 === HASH_UNDEFINED ? undefined2 : result2;
           }
-          return hasOwnProperty2.call(data, key) ? data[key] : undefined2;
+          return hasOwnProperty.call(data, key) ? data[key] : undefined2;
         }
         function hashHas(key) {
           var data = this.__data__;
-          return nativeCreate ? data[key] !== undefined2 : hasOwnProperty2.call(data, key);
+          return nativeCreate ? data[key] !== undefined2 : hasOwnProperty.call(data, key);
         }
         function hashSet(key, value) {
           var data = this.__data__;
@@ -17896,7 +17896,7 @@ var require_lodash = __commonJS({
         function arrayLikeKeys(value, inherited) {
           var isArr = isArray(value), isArg = !isArr && isArguments(value), isBuff = !isArr && !isArg && isBuffer3(value), isType = !isArr && !isArg && !isBuff && isTypedArray(value), skipIndexes = isArr || isArg || isBuff || isType, result2 = skipIndexes ? baseTimes(value.length, String2) : [], length = result2.length;
           for (var key in value) {
-            if ((inherited || hasOwnProperty2.call(value, key)) && !(skipIndexes && // Safari 9 has enumerable `arguments.length` in strict mode.
+            if ((inherited || hasOwnProperty.call(value, key)) && !(skipIndexes && // Safari 9 has enumerable `arguments.length` in strict mode.
             (key == "length" || // Node.js 0.10 has enumerable non-index properties on buffers.
             isBuff && (key == "offset" || key == "parent") || // PhantomJS 2 has enumerable non-index properties on typed arrays.
             isType && (key == "buffer" || key == "byteLength" || key == "byteOffset") || // Skip index properties.
@@ -17923,7 +17923,7 @@ var require_lodash = __commonJS({
         }
         function assignValue(object3, key, value) {
           var objValue = object3[key];
-          if (!(hasOwnProperty2.call(object3, key) && eq(objValue, value)) || value === undefined2 && !(key in object3)) {
+          if (!(hasOwnProperty.call(object3, key) && eq(objValue, value)) || value === undefined2 && !(key in object3)) {
             baseAssignValue(object3, key, value);
           }
         }
@@ -18198,7 +18198,7 @@ var require_lodash = __commonJS({
           return value > other;
         }
         function baseHas(object3, key) {
-          return object3 != null && hasOwnProperty2.call(object3, key);
+          return object3 != null && hasOwnProperty.call(object3, key);
         }
         function baseHasIn(object3, key) {
           return object3 != null && key in Object2(object3);
@@ -18285,7 +18285,7 @@ var require_lodash = __commonJS({
             return objIsArr || isTypedArray(object3) ? equalArrays(object3, other, bitmask, customizer, equalFunc, stack) : equalByTag(object3, other, objTag, bitmask, customizer, equalFunc, stack);
           }
           if (!(bitmask & COMPARE_PARTIAL_FLAG)) {
-            var objIsWrapped = objIsObj && hasOwnProperty2.call(object3, "__wrapped__"), othIsWrapped = othIsObj && hasOwnProperty2.call(other, "__wrapped__");
+            var objIsWrapped = objIsObj && hasOwnProperty.call(object3, "__wrapped__"), othIsWrapped = othIsObj && hasOwnProperty.call(other, "__wrapped__");
             if (objIsWrapped || othIsWrapped) {
               var objUnwrapped = objIsWrapped ? object3.value() : object3, othUnwrapped = othIsWrapped ? other.value() : other;
               stack || (stack = new Stack());
@@ -18366,7 +18366,7 @@ var require_lodash = __commonJS({
           }
           var result2 = [];
           for (var key in Object2(object3)) {
-            if (hasOwnProperty2.call(object3, key) && key != "constructor") {
+            if (hasOwnProperty.call(object3, key) && key != "constructor") {
               result2.push(key);
             }
           }
@@ -18378,7 +18378,7 @@ var require_lodash = __commonJS({
           }
           var isProto = isPrototype(object3), result2 = [];
           for (var key in object3) {
-            if (!(key == "constructor" && (isProto || !hasOwnProperty2.call(object3, key)))) {
+            if (!(key == "constructor" && (isProto || !hasOwnProperty.call(object3, key)))) {
               result2.push(key);
             }
           }
@@ -18785,7 +18785,7 @@ var require_lodash = __commonJS({
           }
           while (++index < length) {
             var key = toKey(path[index]);
-            if (key === "__proto__" && !hasOwnProperty2.call(object3, "__proto__")) {
+            if (key === "__proto__" && !hasOwnProperty.call(object3, "__proto__")) {
               return false;
             }
             if ((key === "constructor" || key === "prototype") && index < length - 1) {
@@ -19404,7 +19404,7 @@ var require_lodash = __commonJS({
           return setWrapToString(setter(result2, newData), func, bitmask);
         }
         function customDefaultsAssignIn(objValue, srcValue, key, object3) {
-          if (objValue === undefined2 || eq(objValue, objectProto[key]) && !hasOwnProperty2.call(object3, key)) {
+          if (objValue === undefined2 || eq(objValue, objectProto[key]) && !hasOwnProperty.call(object3, key)) {
             return srcValue;
           }
           return objValue;
@@ -19517,7 +19517,7 @@ var require_lodash = __commonJS({
           var index = objLength;
           while (index--) {
             var key = objProps[index];
-            if (!(isPartial ? key in other : hasOwnProperty2.call(other, key))) {
+            if (!(isPartial ? key in other : hasOwnProperty.call(other, key))) {
               return false;
             }
           }
@@ -19565,7 +19565,7 @@ var require_lodash = __commonJS({
           return metaMap.get(func);
         };
         function getFuncName(func) {
-          var result2 = func.name + "", array3 = realNames[result2], length = hasOwnProperty2.call(realNames, result2) ? array3.length : 0;
+          var result2 = func.name + "", array3 = realNames[result2], length = hasOwnProperty.call(realNames, result2) ? array3.length : 0;
           while (length--) {
             var data = array3[length], otherFunc = data.func;
             if (otherFunc == null || otherFunc == func) {
@@ -19575,7 +19575,7 @@ var require_lodash = __commonJS({
           return result2;
         }
         function getHolder(func) {
-          var object3 = hasOwnProperty2.call(lodash, "placeholder") ? lodash : func;
+          var object3 = hasOwnProperty.call(lodash, "placeholder") ? lodash : func;
           return object3.placeholder;
         }
         function getIteratee() {
@@ -19600,7 +19600,7 @@ var require_lodash = __commonJS({
           return baseIsNative(value) ? value : undefined2;
         }
         function getRawTag(value) {
-          var isOwn = hasOwnProperty2.call(value, symToStringTag), tag = value[symToStringTag];
+          var isOwn = hasOwnProperty.call(value, symToStringTag), tag = value[symToStringTag];
           try {
             value[symToStringTag] = undefined2;
             var unmasked = true;
@@ -19697,7 +19697,7 @@ var require_lodash = __commonJS({
         }
         function initCloneArray(array3) {
           var length = array3.length, result2 = new array3.constructor(length);
-          if (length && typeof array3[0] == "string" && hasOwnProperty2.call(array3, "index")) {
+          if (length && typeof array3[0] == "string" && hasOwnProperty.call(array3, "index")) {
             result2.index = array3.index;
             result2.input = array3.input;
           }
@@ -20468,7 +20468,7 @@ var require_lodash = __commonJS({
           return baseWrapperValue(this.__wrapped__, this.__actions__);
         }
         var countBy = createAggregator(function(result2, value, key) {
-          if (hasOwnProperty2.call(result2, key)) {
+          if (hasOwnProperty.call(result2, key)) {
             ++result2[key];
           } else {
             baseAssignValue(result2, key, 1);
@@ -20506,7 +20506,7 @@ var require_lodash = __commonJS({
           return func(collection, getIteratee(iteratee2, 3));
         }
         var groupBy = createAggregator(function(result2, value, key) {
-          if (hasOwnProperty2.call(result2, key)) {
+          if (hasOwnProperty.call(result2, key)) {
             result2[key].push(value);
           } else {
             baseAssignValue(result2, key, [value]);
@@ -20903,7 +20903,7 @@ var require_lodash = __commonJS({
         var isArguments = baseIsArguments(/* @__PURE__ */ (function() {
           return arguments;
         })()) ? baseIsArguments : function(value) {
-          return isObjectLike(value) && hasOwnProperty2.call(value, "callee") && !propertyIsEnumerable.call(value, "callee");
+          return isObjectLike(value) && hasOwnProperty.call(value, "callee") && !propertyIsEnumerable.call(value, "callee");
         };
         var isArray = Array2.isArray;
         var isArrayBuffer = nodeIsArrayBuffer ? baseUnary(nodeIsArrayBuffer) : baseIsArrayBuffer;
@@ -20936,7 +20936,7 @@ var require_lodash = __commonJS({
             return !baseKeys(value).length;
           }
           for (var key in value) {
-            if (hasOwnProperty2.call(value, key)) {
+            if (hasOwnProperty.call(value, key)) {
               return false;
             }
           }
@@ -21014,7 +21014,7 @@ var require_lodash = __commonJS({
           if (proto === null) {
             return true;
           }
-          var Ctor = hasOwnProperty2.call(proto, "constructor") && proto.constructor;
+          var Ctor = hasOwnProperty.call(proto, "constructor") && proto.constructor;
           return typeof Ctor == "function" && Ctor instanceof Ctor && funcToString.call(Ctor) == objectCtorString;
         }
         var isRegExp = nodeIsRegExp ? baseUnary(nodeIsRegExp) : baseIsRegExp;
@@ -21106,7 +21106,7 @@ var require_lodash = __commonJS({
             return;
           }
           for (var key in source) {
-            if (hasOwnProperty2.call(source, key)) {
+            if (hasOwnProperty.call(source, key)) {
               assignValue(object3, key, source[key]);
             }
           }
@@ -21141,7 +21141,7 @@ var require_lodash = __commonJS({
             while (++propsIndex < propsLength) {
               var key = props[propsIndex];
               var value = object3[key];
-              if (value === undefined2 || eq(value, objectProto[key]) && !hasOwnProperty2.call(object3, key)) {
+              if (value === undefined2 || eq(value, objectProto[key]) && !hasOwnProperty.call(object3, key)) {
                 object3[key] = source[key];
               }
             }
@@ -21196,7 +21196,7 @@ var require_lodash = __commonJS({
           if (value != null && typeof value.toString != "function") {
             value = nativeObjectToString.call(value);
           }
-          if (hasOwnProperty2.call(result2, value)) {
+          if (hasOwnProperty.call(result2, value)) {
             result2[value].push(key);
           } else {
             result2[value] = [key];
@@ -21516,7 +21516,7 @@ var require_lodash = __commonJS({
             (options.escape || reNoMatch).source + "|" + interpolate.source + "|" + (interpolate === reInterpolate ? reEsTemplate : reNoMatch).source + "|" + (options.evaluate || reNoMatch).source + "|$",
             "g"
           );
-          var sourceURL = "//# sourceURL=" + (hasOwnProperty2.call(options, "sourceURL") ? (options.sourceURL + "").replace(/\s/g, " ") : "lodash.templateSources[" + ++templateCounter + "]") + "\n";
+          var sourceURL = "//# sourceURL=" + (hasOwnProperty.call(options, "sourceURL") ? (options.sourceURL + "").replace(/\s/g, " ") : "lodash.templateSources[" + ++templateCounter + "]") + "\n";
           string4.replace(reDelimiters, function(match2, escapeValue, interpolateValue, esTemplateValue, evaluateValue, offset) {
             interpolateValue || (interpolateValue = esTemplateValue);
             source += string4.slice(index, offset).replace(reUnescapedString, escapeStringChar);
@@ -21535,7 +21535,7 @@ var require_lodash = __commonJS({
             return match2;
           });
           source += "';\n";
-          var variable = hasOwnProperty2.call(options, "variable") && options.variable;
+          var variable = hasOwnProperty.call(options, "variable") && options.variable;
           if (!variable) {
             source = "with (obj) {\n" + source + "\n}\n";
           } else if (reForbiddenIdentifierChars.test(variable)) {
@@ -22162,13 +22162,13 @@ var require_lodash = __commonJS({
         mixin(lodash, (function() {
           var source = {};
           baseForOwn(lodash, function(func, methodName) {
-            if (!hasOwnProperty2.call(lodash.prototype, methodName)) {
+            if (!hasOwnProperty.call(lodash.prototype, methodName)) {
               source[methodName] = func;
             }
           });
           return source;
         })(), { "chain": false });
-        lodash.VERSION = VERSION7;
+        lodash.VERSION = VERSION6;
         arrayEach(["bind", "bindKey", "curry", "curryRight", "partial", "partialRight"], function(methodName) {
           lodash[methodName].placeholder = lodash;
         });
@@ -22302,7 +22302,7 @@ var require_lodash = __commonJS({
           var lodashFunc = lodash[methodName];
           if (lodashFunc) {
             var key = lodashFunc.name + "";
-            if (!hasOwnProperty2.call(realNames, key)) {
+            if (!hasOwnProperty.call(realNames, key)) {
               realNames[key] = [];
             }
             realNames[key].push({ "name": methodName, "func": lodashFunc });
@@ -22376,11 +22376,11 @@ var require_getRawTag = __commonJS({
   "node_modules/lodash/_getRawTag.js"(exports, module) {
     var Symbol2 = require_Symbol();
     var objectProto = Object.prototype;
-    var hasOwnProperty2 = objectProto.hasOwnProperty;
+    var hasOwnProperty = objectProto.hasOwnProperty;
     var nativeObjectToString = objectProto.toString;
     var symToStringTag = Symbol2 ? Symbol2.toStringTag : void 0;
     function getRawTag(value) {
-      var isOwn = hasOwnProperty2.call(value, symToStringTag), tag = value[symToStringTag];
+      var isOwn = hasOwnProperty.call(value, symToStringTag), tag = value[symToStringTag];
       try {
         value[symToStringTag] = void 0;
         var unmasked = true;
@@ -22520,9 +22520,9 @@ var require_baseIsNative = __commonJS({
     var funcProto = Function.prototype;
     var objectProto = Object.prototype;
     var funcToString = funcProto.toString;
-    var hasOwnProperty2 = objectProto.hasOwnProperty;
+    var hasOwnProperty = objectProto.hasOwnProperty;
     var reIsNative = RegExp(
-      "^" + funcToString.call(hasOwnProperty2).replace(reRegExpChar, "\\$&").replace(/hasOwnProperty|(function).*?(?=\\\()| for .+?(?=\\\])/g, "$1.*?") + "$"
+      "^" + funcToString.call(hasOwnProperty).replace(reRegExpChar, "\\$&").replace(/hasOwnProperty|(function).*?(?=\\\()| for .+?(?=\\\])/g, "$1.*?") + "$"
     );
     function baseIsNative(value) {
       if (!isObject3(value) || isMasked(value)) {
@@ -22610,10 +22610,10 @@ var require_assignValue = __commonJS({
     var baseAssignValue = require_baseAssignValue();
     var eq = require_eq();
     var objectProto = Object.prototype;
-    var hasOwnProperty2 = objectProto.hasOwnProperty;
+    var hasOwnProperty = objectProto.hasOwnProperty;
     function assignValue(object3, key, value) {
       var objValue = object3[key];
-      if (!(hasOwnProperty2.call(object3, key) && eq(objValue, value)) || value === void 0 && !(key in object3)) {
+      if (!(hasOwnProperty.call(object3, key) && eq(objValue, value)) || value === void 0 && !(key in object3)) {
         baseAssignValue(object3, key, value);
       }
     }
@@ -22909,12 +22909,12 @@ var require_isArguments = __commonJS({
     var baseIsArguments = require_baseIsArguments();
     var isObjectLike = require_isObjectLike();
     var objectProto = Object.prototype;
-    var hasOwnProperty2 = objectProto.hasOwnProperty;
+    var hasOwnProperty = objectProto.hasOwnProperty;
     var propertyIsEnumerable = objectProto.propertyIsEnumerable;
     var isArguments = baseIsArguments(/* @__PURE__ */ (function() {
       return arguments;
     })()) ? baseIsArguments : function(value) {
-      return isObjectLike(value) && hasOwnProperty2.call(value, "callee") && !propertyIsEnumerable.call(value, "callee");
+      return isObjectLike(value) && hasOwnProperty.call(value, "callee") && !propertyIsEnumerable.call(value, "callee");
     };
     module.exports = isArguments;
   }
@@ -23049,11 +23049,11 @@ var require_arrayLikeKeys = __commonJS({
     var isIndex = require_isIndex();
     var isTypedArray = require_isTypedArray();
     var objectProto = Object.prototype;
-    var hasOwnProperty2 = objectProto.hasOwnProperty;
+    var hasOwnProperty = objectProto.hasOwnProperty;
     function arrayLikeKeys(value, inherited) {
       var isArr = isArray(value), isArg = !isArr && isArguments(value), isBuff = !isArr && !isArg && isBuffer3(value), isType = !isArr && !isArg && !isBuff && isTypedArray(value), skipIndexes = isArr || isArg || isBuff || isType, result = skipIndexes ? baseTimes(value.length, String) : [], length = result.length;
       for (var key in value) {
-        if ((inherited || hasOwnProperty2.call(value, key)) && !(skipIndexes && // Safari 9 has enumerable `arguments.length` in strict mode.
+        if ((inherited || hasOwnProperty.call(value, key)) && !(skipIndexes && // Safari 9 has enumerable `arguments.length` in strict mode.
         (key == "length" || // Node.js 0.10 has enumerable non-index properties on buffers.
         isBuff && (key == "offset" || key == "parent") || // PhantomJS 2 has enumerable non-index properties on typed arrays.
         isType && (key == "buffer" || key == "byteLength" || key == "byteOffset") || // Skip index properties.
@@ -23102,14 +23102,14 @@ var require_baseKeysIn = __commonJS({
     var isPrototype = require_isPrototype();
     var nativeKeysIn = require_nativeKeysIn();
     var objectProto = Object.prototype;
-    var hasOwnProperty2 = objectProto.hasOwnProperty;
+    var hasOwnProperty = objectProto.hasOwnProperty;
     function baseKeysIn(object3) {
       if (!isObject3(object3)) {
         return nativeKeysIn(object3);
       }
       var isProto = isPrototype(object3), result = [];
       for (var key in object3) {
-        if (!(key == "constructor" && (isProto || !hasOwnProperty2.call(object3, key)))) {
+        if (!(key == "constructor" && (isProto || !hasOwnProperty.call(object3, key)))) {
           result.push(key);
         }
       }
@@ -23203,14 +23203,14 @@ var require_baseKeys = __commonJS({
     var isPrototype = require_isPrototype();
     var nativeKeys = require_nativeKeys();
     var objectProto = Object.prototype;
-    var hasOwnProperty2 = objectProto.hasOwnProperty;
+    var hasOwnProperty = objectProto.hasOwnProperty;
     function baseKeys(object3) {
       if (!isPrototype(object3)) {
         return nativeKeys(object3);
       }
       var result = [];
       for (var key in Object(object3)) {
-        if (hasOwnProperty2.call(object3, key) && key != "constructor") {
+        if (hasOwnProperty.call(object3, key) && key != "constructor") {
           result.push(key);
         }
       }
@@ -23330,7 +23330,7 @@ var require_isEmpty = __commonJS({
     var mapTag = "[object Map]";
     var setTag = "[object Set]";
     var objectProto = Object.prototype;
-    var hasOwnProperty2 = objectProto.hasOwnProperty;
+    var hasOwnProperty = objectProto.hasOwnProperty;
     function isEmpty(value) {
       if (value == null) {
         return true;
@@ -23346,7 +23346,7 @@ var require_isEmpty = __commonJS({
         return !baseKeys(value).length;
       }
       for (var key in value) {
-        if (hasOwnProperty2.call(value, key)) {
+        if (hasOwnProperty.call(value, key)) {
           return false;
         }
       }
@@ -23527,7 +23527,7 @@ var require_isPlainObject = __commonJS({
     var funcProto = Function.prototype;
     var objectProto = Object.prototype;
     var funcToString = funcProto.toString;
-    var hasOwnProperty2 = objectProto.hasOwnProperty;
+    var hasOwnProperty = objectProto.hasOwnProperty;
     var objectCtorString = funcToString.call(Object);
     function isPlainObject2(value) {
       if (!isObjectLike(value) || baseGetTag(value) != objectTag) {
@@ -23537,7 +23537,7 @@ var require_isPlainObject = __commonJS({
       if (proto === null) {
         return true;
       }
-      var Ctor = hasOwnProperty2.call(proto, "constructor") && proto.constructor;
+      var Ctor = hasOwnProperty.call(proto, "constructor") && proto.constructor;
       return typeof Ctor == "function" && Ctor instanceof Ctor && funcToString.call(Ctor) == objectCtorString;
     }
     module.exports = isPlainObject2;
@@ -23770,14 +23770,14 @@ var require_hashGet = __commonJS({
     var nativeCreate = require_nativeCreate();
     var HASH_UNDEFINED = "__lodash_hash_undefined__";
     var objectProto = Object.prototype;
-    var hasOwnProperty2 = objectProto.hasOwnProperty;
+    var hasOwnProperty = objectProto.hasOwnProperty;
     function hashGet(key) {
       var data = this.__data__;
       if (nativeCreate) {
         var result = data[key];
         return result === HASH_UNDEFINED ? void 0 : result;
       }
-      return hasOwnProperty2.call(data, key) ? data[key] : void 0;
+      return hasOwnProperty.call(data, key) ? data[key] : void 0;
     }
     module.exports = hashGet;
   }
@@ -23788,10 +23788,10 @@ var require_hashHas = __commonJS({
   "node_modules/lodash/_hashHas.js"(exports, module) {
     var nativeCreate = require_nativeCreate();
     var objectProto = Object.prototype;
-    var hasOwnProperty2 = objectProto.hasOwnProperty;
+    var hasOwnProperty = objectProto.hasOwnProperty;
     function hashHas(key) {
       var data = this.__data__;
-      return nativeCreate ? data[key] !== void 0 : hasOwnProperty2.call(data, key);
+      return nativeCreate ? data[key] !== void 0 : hasOwnProperty.call(data, key);
     }
     module.exports = hashHas;
   }
@@ -24340,7 +24340,7 @@ var require_equalObjects = __commonJS({
     var getAllKeys = require_getAllKeys();
     var COMPARE_PARTIAL_FLAG = 1;
     var objectProto = Object.prototype;
-    var hasOwnProperty2 = objectProto.hasOwnProperty;
+    var hasOwnProperty = objectProto.hasOwnProperty;
     function equalObjects(object3, other, bitmask, customizer, equalFunc, stack) {
       var isPartial = bitmask & COMPARE_PARTIAL_FLAG, objProps = getAllKeys(object3), objLength = objProps.length, othProps = getAllKeys(other), othLength = othProps.length;
       if (objLength != othLength && !isPartial) {
@@ -24349,7 +24349,7 @@ var require_equalObjects = __commonJS({
       var index = objLength;
       while (index--) {
         var key = objProps[index];
-        if (!(isPartial ? key in other : hasOwnProperty2.call(other, key))) {
+        if (!(isPartial ? key in other : hasOwnProperty.call(other, key))) {
           return false;
         }
       }
@@ -24404,7 +24404,7 @@ var require_baseIsEqualDeep = __commonJS({
     var arrayTag = "[object Array]";
     var objectTag = "[object Object]";
     var objectProto = Object.prototype;
-    var hasOwnProperty2 = objectProto.hasOwnProperty;
+    var hasOwnProperty = objectProto.hasOwnProperty;
     function baseIsEqualDeep(object3, other, bitmask, customizer, equalFunc, stack) {
       var objIsArr = isArray(object3), othIsArr = isArray(other), objTag = objIsArr ? arrayTag : getTag(object3), othTag = othIsArr ? arrayTag : getTag(other);
       objTag = objTag == argsTag ? objectTag : objTag;
@@ -24422,7 +24422,7 @@ var require_baseIsEqualDeep = __commonJS({
         return objIsArr || isTypedArray(object3) ? equalArrays(object3, other, bitmask, customizer, equalFunc, stack) : equalByTag(object3, other, objTag, bitmask, customizer, equalFunc, stack);
       }
       if (!(bitmask & COMPARE_PARTIAL_FLAG)) {
-        var objIsWrapped = objIsObj && hasOwnProperty2.call(object3, "__wrapped__"), othIsWrapped = othIsObj && hasOwnProperty2.call(other, "__wrapped__");
+        var objIsWrapped = objIsObj && hasOwnProperty.call(object3, "__wrapped__"), othIsWrapped = othIsObj && hasOwnProperty.call(other, "__wrapped__");
         if (objIsWrapped || othIsWrapped) {
           var objUnwrapped = objIsWrapped ? object3.value() : object3, othUnwrapped = othIsWrapped ? other.value() : other;
           stack || (stack = new Stack());
@@ -25365,10 +25365,10 @@ var require_getAllKeysIn = __commonJS({
 var require_initCloneArray = __commonJS({
   "node_modules/lodash/_initCloneArray.js"(exports, module) {
     var objectProto = Object.prototype;
-    var hasOwnProperty2 = objectProto.hasOwnProperty;
+    var hasOwnProperty = objectProto.hasOwnProperty;
     function initCloneArray(array3) {
       var length = array3.length, result = new array3.constructor(length);
-      if (length && typeof array3[0] == "string" && hasOwnProperty2.call(array3, "index")) {
+      if (length && typeof array3[0] == "string" && hasOwnProperty.call(array3, "index")) {
         result.index = array3.index;
         result.input = array3.input;
       }
@@ -28133,7 +28133,7 @@ var require_uploader = __commonJS({
     var fs = __require("fs");
     var {
       extname,
-      basename: basename2
+      basename
     } = __require("path");
     var Writable = __require("stream").Writable;
     var { upload_prefix } = require_config()();
@@ -28549,7 +28549,7 @@ var require_uploader = __commonJS({
       let finish_buffer = Buffer.from("--" + boundary + "--", "ascii");
       let oauth_token = options.oauth_token || config2().oauth_token;
       if (file2 != null || options.stream) {
-        let filename = options.stream ? options.filename ? options.filename : "file" : basename2(file2);
+        let filename = options.stream ? options.filename ? options.filename : "file" : basename(file2);
         file_header = Buffer.from(encodeFilePart(boundary, "application/octet-stream", "file", filename), "binary");
       }
       const parsedUrl = new URL2(url2);
@@ -31581,14 +31581,14 @@ var Hono = class _Hono {
    * app.route("/api", app2) // GET /api/user
    * ```
    */
-  route(path, app11) {
+  route(path, app12) {
     const subApp = this.basePath(path);
-    app11.routes.map((r) => {
+    app12.routes.map((r) => {
       let handler;
-      if (app11.errorHandler === errorHandler) {
+      if (app12.errorHandler === errorHandler) {
         handler = r.handler;
       } else {
-        handler = async (c, next) => (await compose([], app11.errorHandler)(c, () => r.handler(c, next))).res;
+        handler = async (c, next) => (await compose([], app12.errorHandler)(c, () => r.handler(c, next))).res;
         handler[COMPOSED_HANDLER] = r.handler;
       }
       subApp.#addRoute(r.method, r.path, handler, r.basePath);
@@ -48516,18 +48516,6 @@ function convertUint8ArrayToBase64(array3) {
 function convertToBase64(value) {
   return value instanceof Uint8Array ? convertUint8ArrayToBase64(value) : value;
 }
-function convertInlineFileDataToUint8Array(data) {
-  if (data.type === "text") {
-    return new TextEncoder().encode(data.text);
-  }
-  if (data.data instanceof Uint8Array) {
-    return data.data;
-  }
-  if (data.data instanceof ArrayBuffer) {
-    return new Uint8Array(data.data);
-  }
-  return convertBase64ToUint8Array(data.data);
-}
 function convertToFormData(input, options = {}) {
   const { useArrayBrackets = true } = options;
   const formData = new FormData();
@@ -49670,35 +49658,6 @@ function mapReasoningToProviderEffort({
     });
   }
   return mapped;
-}
-var DEFAULT_REASONING_BUDGET_PERCENTAGES = {
-  minimal: 0.02,
-  low: 0.1,
-  medium: 0.3,
-  high: 0.6,
-  xhigh: 0.9
-};
-function mapReasoningToProviderBudget({
-  reasoning,
-  maxOutputTokens,
-  maxReasoningBudget,
-  minReasoningBudget = 1024,
-  budgetPercentages = DEFAULT_REASONING_BUDGET_PERCENTAGES,
-  warnings
-}) {
-  const pct = budgetPercentages[reasoning];
-  if (pct == null) {
-    warnings.push({
-      type: "unsupported",
-      feature: "reasoning",
-      details: `reasoning "${reasoning}" is not supported by this model.`
-    });
-    return void 0;
-  }
-  return Math.min(
-    maxReasoningBudget,
-    Math.max(minReasoningBudget, Math.round(maxOutputTokens * pct))
-  );
 }
 var suspectProtoRx = /"(?:_|\\u005[Ff])(?:_|\\u005[Ff])(?:p|\\u0070)(?:r|\\u0072)(?:o|\\u006[Ff])(?:t|\\u0074)(?:o|\\u006[Ff])(?:_|\\u005[Ff])(?:_|\\u005[Ff])"\s*:/;
 var suspectConstructorRx = /"(?:c|\\u0063)(?:o|\\u006[Ff])(?:n|\\u006[Ee])(?:s|\\u0073)(?:t|\\u0074)(?:r|\\u0072)(?:u|\\u0075)(?:c|\\u0063)(?:t|\\u0074)(?:o|\\u006[Ff])(?:r|\\u0072)"\s*:/;
@@ -51272,19 +51231,6 @@ function resolveFullMediaType({
     functionality: `file of media type "${part.mediaType}" must specify subtype since it is not passed as inline bytes`
   });
 }
-function resolveProviderReference({
-  reference,
-  provider
-}) {
-  const id = reference[provider];
-  if (id != null) {
-    return id;
-  }
-  throw new NoSuchProviderReferenceError({
-    provider,
-    reference
-  });
-}
 var retryWithExponentialBackoff = ({
   maxRetries = 2,
   initialDelayInMs = 2e3,
@@ -51428,7 +51374,7 @@ var createJsonErrorResponseHandler = ({
     };
   }
 };
-var createEventSourceResponseHandler = (chunkSchema2) => async ({ response }) => {
+var createEventSourceResponseHandler = (chunkSchema) => async ({ response }) => {
   const responseHeaders = extractResponseHeaders(response);
   if (response.body == null) {
     throw new EmptyResponseBodyError({});
@@ -51437,15 +51383,15 @@ var createEventSourceResponseHandler = (chunkSchema2) => async ({ response }) =>
     responseHeaders,
     value: parseJsonEventStream({
       stream: response.body,
-      schema: chunkSchema2
+      schema: chunkSchema
     })
   };
 };
-var createJsonResponseHandler = (responseSchema2) => async ({ response, url: url2, requestBodyValues }) => {
+var createJsonResponseHandler = (responseSchema) => async ({ response, url: url2, requestBodyValues }) => {
   const responseBody = await readResponseBodyAsText({ response, url: url2 });
   const parsedResult = await safeParseJSON({
     text: responseBody,
-    schema: responseSchema2
+    schema: responseSchema
   });
   const responseHeaders = extractResponseHeaders(response);
   if (!parsedResult.success) {
@@ -51749,7702 +51695,6 @@ function getToolCaller(tool2) {
   return tool2 == null ? void 0 : tool2.experimental_toolCaller;
 }
 
-// node_modules/@ai-sdk/google/dist/index.js
-var VERSION2 = true ? "4.0.45" : "0.0.0-test";
-var googleErrorDataSchema = lazySchema(
-  () => zodSchema(
-    external_exports.object({
-      error: external_exports.object({
-        code: external_exports.number().nullable(),
-        message: external_exports.string(),
-        status: external_exports.string(),
-        details: external_exports.array(external_exports.unknown()).nullish()
-      })
-    })
-  )
-);
-var googleFailedResponseHandler = createJsonErrorResponseHandler({
-  errorSchema: googleErrorDataSchema,
-  errorToMessage: (data) => data.error.message
-});
-var googleEmbeddingContentPartSchema = external_exports.union([
-  external_exports.object({ text: external_exports.string() }),
-  external_exports.object({
-    inlineData: external_exports.object({
-      mimeType: external_exports.string(),
-      data: external_exports.string()
-    })
-  }),
-  external_exports.object({
-    fileData: external_exports.object({
-      fileUri: external_exports.string(),
-      mimeType: external_exports.string()
-    })
-  })
-]);
-var googleEmbeddingModelOptions = lazySchema(
-  () => zodSchema(
-    external_exports.object({
-      /**
-       * Optional. Optional reduced dimension for the output embedding.
-       * If set, excessive values in the output embedding are truncated from the end.
-       */
-      outputDimensionality: external_exports.number().optional(),
-      /**
-       * Optional. Specifies the task type for generating embeddings.
-       * Supported task types:
-       * - SEMANTIC_SIMILARITY: Optimized for text similarity.
-       * - CLASSIFICATION: Optimized for text classification.
-       * - CLUSTERING: Optimized for clustering texts based on similarity.
-       * - RETRIEVAL_DOCUMENT: Optimized for document retrieval.
-       * - RETRIEVAL_QUERY: Optimized for query-based retrieval.
-       * - QUESTION_ANSWERING: Optimized for answering questions.
-       * - FACT_VERIFICATION: Optimized for verifying factual information.
-       * - CODE_RETRIEVAL_QUERY: Optimized for retrieving code blocks based on natural language queries.
-       */
-      taskType: external_exports.enum([
-        "SEMANTIC_SIMILARITY",
-        "CLASSIFICATION",
-        "CLUSTERING",
-        "RETRIEVAL_DOCUMENT",
-        "RETRIEVAL_QUERY",
-        "QUESTION_ANSWERING",
-        "FACT_VERIFICATION",
-        "CODE_RETRIEVAL_QUERY"
-      ]).optional(),
-      /**
-       * Optional. Per-value multimodal content parts for embedding non-text
-       * content (images, video, PDF, audio). Each entry corresponds to the
-       * embedding value at the same index and its parts are merged with the
-       * text value in the request. Use `null` for entries that are text-only.
-       *
-       * The array length must match the number of values being embedded. In
-       * the case of a single embedding, the array length must be 1.
-       */
-      content: external_exports.array(external_exports.array(googleEmbeddingContentPartSchema).min(1).nullable()).optional()
-    })
-  )
-);
-var GoogleEmbeddingModel = class _GoogleEmbeddingModel {
-  constructor(modelId, config2) {
-    this.specificationVersion = "v4";
-    this.maxEmbeddingsPerCall = 100;
-    this.supportsParallelCalls = true;
-    this.modelId = modelId;
-    this.config = config2;
-  }
-  static [WORKFLOW_SERIALIZE](model) {
-    return serializeModelOptions({
-      modelId: model.modelId,
-      config: model.config
-    });
-  }
-  static [WORKFLOW_DESERIALIZE](options) {
-    return new _GoogleEmbeddingModel(options.modelId, options.config);
-  }
-  get provider() {
-    return this.config.provider;
-  }
-  async doEmbed({
-    values,
-    headers,
-    abortSignal,
-    providerOptions
-  }) {
-    const googleOptions = await parseProviderOptions({
-      provider: "google",
-      providerOptions,
-      schema: googleEmbeddingModelOptions
-    });
-    if (values.length > this.maxEmbeddingsPerCall) {
-      throw new TooManyEmbeddingValuesForCallError({
-        provider: this.provider,
-        modelId: this.modelId,
-        maxEmbeddingsPerCall: this.maxEmbeddingsPerCall,
-        values
-      });
-    }
-    const mergedHeaders = combineHeaders(
-      this.config.headers ? await resolve(this.config.headers) : void 0,
-      headers
-    );
-    const multimodalContent = googleOptions == null ? void 0 : googleOptions.content;
-    if (multimodalContent != null && multimodalContent.length !== values.length) {
-      throw new Error(
-        `The number of multimodal content entries (${multimodalContent.length}) must match the number of values (${values.length}).`
-      );
-    }
-    if (values.length === 1) {
-      const valueParts = multimodalContent == null ? void 0 : multimodalContent[0];
-      const textPart = values[0] ? [{ text: values[0] }] : [];
-      const parts = valueParts != null ? [...textPart, ...valueParts] : [{ text: values[0] }];
-      const {
-        responseHeaders: responseHeaders2,
-        value: response2,
-        rawValue: rawValue2
-      } = await postJsonToApi({
-        url: `${this.config.baseURL}/models/${this.modelId}:embedContent`,
-        headers: mergedHeaders,
-        body: {
-          model: `models/${this.modelId}`,
-          content: {
-            parts
-          },
-          outputDimensionality: googleOptions == null ? void 0 : googleOptions.outputDimensionality,
-          taskType: googleOptions == null ? void 0 : googleOptions.taskType
-        },
-        failedResponseHandler: googleFailedResponseHandler,
-        successfulResponseHandler: createJsonResponseHandler(
-          googleGenerativeAISingleEmbeddingResponseSchema
-        ),
-        abortSignal,
-        fetch: this.config.fetch
-      });
-      return {
-        warnings: [],
-        embeddings: [response2.embedding.values],
-        usage: void 0,
-        response: { headers: responseHeaders2, body: rawValue2 }
-      };
-    }
-    const {
-      responseHeaders,
-      value: response,
-      rawValue
-    } = await postJsonToApi({
-      url: `${this.config.baseURL}/models/${this.modelId}:batchEmbedContents`,
-      headers: mergedHeaders,
-      body: {
-        requests: values.map((value, index) => {
-          const valueParts = multimodalContent == null ? void 0 : multimodalContent[index];
-          const textPart = value ? [{ text: value }] : [];
-          return {
-            model: `models/${this.modelId}`,
-            content: {
-              role: "user",
-              parts: valueParts != null ? [...textPart, ...valueParts] : [{ text: value }]
-            },
-            outputDimensionality: googleOptions == null ? void 0 : googleOptions.outputDimensionality,
-            taskType: googleOptions == null ? void 0 : googleOptions.taskType
-          };
-        })
-      },
-      failedResponseHandler: googleFailedResponseHandler,
-      successfulResponseHandler: createJsonResponseHandler(
-        googleGenerativeAITextEmbeddingResponseSchema
-      ),
-      abortSignal,
-      fetch: this.config.fetch
-    });
-    return {
-      warnings: [],
-      embeddings: response.embeddings.map((item) => item.values),
-      usage: void 0,
-      response: { headers: responseHeaders, body: rawValue }
-    };
-  }
-};
-var googleGenerativeAITextEmbeddingResponseSchema = lazySchema(
-  () => zodSchema(
-    external_exports.object({
-      embeddings: external_exports.array(external_exports.object({ values: external_exports.array(external_exports.number()) }))
-    })
-  )
-);
-var googleGenerativeAISingleEmbeddingResponseSchema = lazySchema(
-  () => zodSchema(
-    external_exports.object({
-      embedding: external_exports.object({ values: external_exports.array(external_exports.number()) })
-    })
-  )
-);
-function convertGoogleUsage(usage) {
-  var _a25, _b18, _c, _d;
-  if (usage == null) {
-    return createNullLanguageModelUsage();
-  }
-  const promptTokens = (_a25 = usage.promptTokenCount) != null ? _a25 : 0;
-  const candidatesTokens = (_b18 = usage.candidatesTokenCount) != null ? _b18 : 0;
-  const cachedContentTokens = (_c = usage.cachedContentTokenCount) != null ? _c : 0;
-  const thoughtsTokens = (_d = usage.thoughtsTokenCount) != null ? _d : 0;
-  return {
-    inputTokens: {
-      total: promptTokens,
-      noCache: promptTokens - cachedContentTokens,
-      cacheRead: cachedContentTokens,
-      cacheWrite: void 0
-    },
-    outputTokens: {
-      total: candidatesTokens + thoughtsTokens,
-      text: candidatesTokens,
-      reasoning: thoughtsTokens
-    },
-    raw: usage
-  };
-}
-function convertJSONSchemaToOpenAPISchema(jsonSchema2, isRoot = true) {
-  if (jsonSchema2 == null) {
-    return void 0;
-  }
-  if (isEmptyObjectSchema(jsonSchema2)) {
-    if (isRoot) {
-      return void 0;
-    }
-    if (typeof jsonSchema2 === "object" && jsonSchema2.description) {
-      return { type: "object", description: jsonSchema2.description };
-    }
-    return { type: "object" };
-  }
-  if (typeof jsonSchema2 === "boolean") {
-    return { type: "boolean", properties: {} };
-  }
-  const {
-    type,
-    description,
-    required: required2,
-    properties,
-    items,
-    allOf,
-    anyOf,
-    oneOf,
-    format,
-    const: constValue,
-    minLength,
-    enum: enumValues
-  } = jsonSchema2;
-  const result = {};
-  if (description) result.description = description;
-  if (required2) result.required = required2;
-  if (format) result.format = format;
-  if (type) {
-    if (Array.isArray(type)) {
-      const hasNull = type.includes("null");
-      const nonNullTypes = type.filter((t) => t !== "null");
-      if (nonNullTypes.length === 0) {
-        result.type = "null";
-      } else {
-        result.anyOf = nonNullTypes.map((t) => ({ type: t }));
-        if (hasNull) {
-          result.nullable = true;
-        }
-      }
-    } else {
-      result.type = type;
-    }
-  }
-  const values = enumValues != null ? enumValues : constValue !== void 0 ? [constValue] : void 0;
-  if (values !== void 0) {
-    addEnumToSchema({ values, type, result });
-  }
-  if (properties != null) {
-    result.properties = Object.entries(properties).reduce(
-      (acc, [key, value]) => {
-        acc[key] = convertJSONSchemaToOpenAPISchema(value, false);
-        return acc;
-      },
-      {}
-    );
-  }
-  if (items) {
-    result.items = Array.isArray(items) ? items.map((item) => convertJSONSchemaToOpenAPISchema(item, false)) : convertJSONSchemaToOpenAPISchema(items, false);
-  }
-  if (allOf) {
-    result.allOf = allOf.map(
-      (item) => convertJSONSchemaToOpenAPISchema(item, false)
-    );
-  }
-  if (anyOf) {
-    if (anyOf.some(
-      (schema) => typeof schema === "object" && (schema == null ? void 0 : schema.type) === "null"
-    )) {
-      const nonNullSchemas = anyOf.filter(
-        (schema) => !(typeof schema === "object" && (schema == null ? void 0 : schema.type) === "null")
-      );
-      if (nonNullSchemas.length === 1) {
-        const converted = convertJSONSchemaToOpenAPISchema(
-          nonNullSchemas[0],
-          false
-        );
-        if (typeof converted === "object") {
-          result.nullable = true;
-          Object.assign(result, converted);
-        }
-      } else {
-        result.anyOf = nonNullSchemas.map(
-          (item) => convertJSONSchemaToOpenAPISchema(item, false)
-        );
-        result.nullable = true;
-      }
-    } else {
-      result.anyOf = anyOf.map(
-        (item) => convertJSONSchemaToOpenAPISchema(item, false)
-      );
-    }
-  }
-  if (oneOf) {
-    result.oneOf = oneOf.map(
-      (item) => convertJSONSchemaToOpenAPISchema(item, false)
-    );
-  }
-  if (minLength !== void 0) {
-    result.minLength = minLength;
-  }
-  return result;
-}
-function addEnumToSchema({
-  values,
-  type,
-  result
-}) {
-  const nullable2 = Array.isArray(type) && type.includes("null") || type === void 0 && values.includes(null);
-  const enumValues = nullable2 ? values.filter((value) => value !== null) : values;
-  if (values.length > 0 && values.every((value) => value === null)) {
-    const typeAllowsNull = type === void 0 || type === "null" || Array.isArray(type) && type.includes("null");
-    if (typeAllowsNull) {
-      result.type = "null";
-      if (Array.isArray(type)) {
-        delete result.anyOf;
-      }
-      return;
-    }
-  }
-  const enumType = getEnumType({ values: enumValues, type });
-  if (enumType === void 0) {
-    throw new UnsupportedFunctionalityError({
-      functionality: "JSON Schema enum with mixed or unsupported values",
-      message: "Google does not support this JSON Schema enum. Enum values must share one supported primitive type and match the schema type."
-    });
-  }
-  result.type = enumType;
-  if (Array.isArray(type)) {
-    delete result.anyOf;
-  }
-  if (nullable2) {
-    result.nullable = true;
-  }
-  if (enumType === "string") {
-    result.enum = enumValues;
-  } else {
-    result.format = "enum";
-    result.enum = enumValues.map(String);
-  }
-}
-function getEnumType({
-  values,
-  type
-}) {
-  if (values.length === 0) {
-    return void 0;
-  }
-  const typeAllows = (enumType) => type === void 0 || type === enumType || Array.isArray(type) && type.includes(enumType);
-  if (typeAllows("string") && values.every((value) => typeof value === "string")) {
-    return "string";
-  }
-  if ((typeAllows("number") || typeAllows("integer")) && values.every((value) => typeof value === "number" && Number.isFinite(value))) {
-    if (typeAllows("number")) {
-      return "number";
-    }
-    if (values.every((value) => Number.isInteger(value))) {
-      return "integer";
-    }
-  }
-  if (typeAllows("boolean") && values.every((value) => typeof value === "boolean")) {
-    return "boolean";
-  }
-  return void 0;
-}
-function isEmptyObjectSchema(jsonSchema2) {
-  return jsonSchema2 != null && typeof jsonSchema2 === "object" && jsonSchema2.type === "object" && (jsonSchema2.properties == null || Object.keys(jsonSchema2.properties).length === 0) && !jsonSchema2.additionalProperties;
-}
-var SKIP_THOUGHT_SIGNATURE_VALIDATOR = "skip_thought_signature_validator";
-var dataUrlRegex = /^data:([^;,]+);base64,(.+)$/s;
-function parseBase64DataUrl(value) {
-  const match2 = dataUrlRegex.exec(value);
-  if (match2 == null) {
-    return void 0;
-  }
-  return {
-    mediaType: match2[1],
-    data: match2[2]
-  };
-}
-function convertUrlToolResultPart(url2) {
-  const parsedDataUrl = parseBase64DataUrl(url2);
-  if (parsedDataUrl == null) {
-    return void 0;
-  }
-  return {
-    inlineData: {
-      mimeType: parsedDataUrl.mediaType,
-      data: parsedDataUrl.data
-    }
-  };
-}
-function appendToolResultParts(parts, toolName, outputValue, toolCallId, includeFunctionCallIds = true) {
-  const functionResponseParts = [];
-  const responseTextParts = [];
-  for (const contentPart of outputValue) {
-    switch (contentPart.type) {
-      case "text": {
-        responseTextParts.push(contentPart.text);
-        break;
-      }
-      case "file": {
-        if (contentPart.data.type === "data") {
-          functionResponseParts.push({
-            inlineData: {
-              mimeType: resolveFullMediaType({ part: contentPart }),
-              data: convertToBase64(contentPart.data.data)
-            }
-          });
-        } else if (contentPart.data.type === "url") {
-          const functionResponsePart = convertUrlToolResultPart(
-            contentPart.data.url.toString()
-          );
-          if (functionResponsePart != null) {
-            functionResponseParts.push(functionResponsePart);
-          } else {
-            responseTextParts.push(JSON.stringify(contentPart));
-          }
-        } else {
-          responseTextParts.push(JSON.stringify(contentPart));
-        }
-        break;
-      }
-      default: {
-        responseTextParts.push(JSON.stringify(contentPart));
-        break;
-      }
-    }
-  }
-  parts.push({
-    functionResponse: {
-      ...includeFunctionCallIds && toolCallId != null ? { id: toolCallId } : {},
-      name: toolName,
-      response: {
-        name: toolName,
-        content: responseTextParts.length > 0 ? responseTextParts.join("\n") : "Tool executed successfully."
-      },
-      ...functionResponseParts.length > 0 ? { parts: functionResponseParts } : {}
-    }
-  });
-}
-function appendLegacyToolResultParts(parts, toolName, outputValue, toolCallId, includeFunctionCallIds = true) {
-  for (const contentPart of outputValue) {
-    switch (contentPart.type) {
-      case "text":
-        parts.push({
-          functionResponse: {
-            ...includeFunctionCallIds && toolCallId != null ? { id: toolCallId } : {},
-            name: toolName,
-            response: {
-              name: toolName,
-              content: contentPart.text
-            }
-          }
-        });
-        break;
-      case "file": {
-        if (contentPart.data.type === "data") {
-          const topLevelMediaType = getTopLevelMediaType(contentPart.mediaType);
-          parts.push(
-            {
-              inlineData: {
-                mimeType: resolveFullMediaType({ part: contentPart }),
-                data: convertToBase64(contentPart.data.data)
-              }
-            },
-            {
-              text: `Tool executed successfully and returned this ${topLevelMediaType === "image" ? "image" : "file"} as a response`
-            }
-          );
-        } else {
-          parts.push({ text: JSON.stringify(contentPart) });
-        }
-        break;
-      }
-      default:
-        parts.push({ text: JSON.stringify(contentPart) });
-        break;
-    }
-  }
-}
-function convertToGoogleMessages(prompt, options) {
-  var _a25, _b18, _c, _d, _e, _f;
-  const systemInstructionParts = [];
-  const contents = [];
-  let systemMessagesAllowed = true;
-  const isGemmaModel = (_a25 = options == null ? void 0 : options.isGemmaModel) != null ? _a25 : false;
-  const isGemini3Model = (_b18 = options == null ? void 0 : options.isGemini3Model) != null ? _b18 : false;
-  const onWarning = options == null ? void 0 : options.onWarning;
-  const providerOptionsNames = (_c = options == null ? void 0 : options.providerOptionsNames) != null ? _c : ["google"];
-  const isVertexLike = !providerOptionsNames.includes("google");
-  const supportsFunctionResponseParts = (_d = options == null ? void 0 : options.supportsFunctionResponseParts) != null ? _d : true;
-  const includeFunctionCallIds = (_e = options == null ? void 0 : options.includeFunctionCallIds) != null ? _e : true;
-  let sentinelInjected = false;
-  const missingSignatureToolNames = [];
-  const injectSkipSignature = (toolName) => {
-    missingSignatureToolNames.push(toolName);
-    sentinelInjected = true;
-    return SKIP_THOUGHT_SIGNATURE_VALIDATOR;
-  };
-  const readProviderOpts = (part) => {
-    var _a26, _b24, _c2, _d2, _e2;
-    for (const name25 of providerOptionsNames) {
-      const v = (_a26 = part.providerOptions) == null ? void 0 : _a26[name25];
-      if (v != null) return v;
-    }
-    if (isVertexLike) {
-      return (_b24 = part.providerOptions) == null ? void 0 : _b24.google;
-    }
-    return (_e2 = (_c2 = part.providerOptions) == null ? void 0 : _c2.googleVertex) != null ? _e2 : (_d2 = part.providerOptions) == null ? void 0 : _d2.vertex;
-  };
-  for (const { role, content } of prompt) {
-    switch (role) {
-      case "system": {
-        if (!systemMessagesAllowed) {
-          throw new UnsupportedFunctionalityError({
-            functionality: "system messages are only supported at the beginning of the conversation"
-          });
-        }
-        systemInstructionParts.push({ text: content });
-        break;
-      }
-      case "user": {
-        systemMessagesAllowed = false;
-        const parts = [];
-        for (const part of content) {
-          switch (part.type) {
-            case "text": {
-              parts.push({ text: part.text });
-              break;
-            }
-            case "file": {
-              switch (part.data.type) {
-                case "url": {
-                  parts.push({
-                    fileData: {
-                      mimeType: resolveFullMediaType({ part }),
-                      fileUri: part.data.url.toString()
-                    }
-                  });
-                  break;
-                }
-                case "reference": {
-                  if (isVertexLike) {
-                    throw new UnsupportedFunctionalityError({
-                      functionality: "file parts with provider references"
-                    });
-                  }
-                  parts.push({
-                    fileData: {
-                      mimeType: resolveFullMediaType({ part }),
-                      fileUri: resolveProviderReference({
-                        reference: part.data.reference,
-                        provider: "google"
-                      })
-                    }
-                  });
-                  break;
-                }
-                case "text": {
-                  parts.push({
-                    inlineData: {
-                      mimeType: isFullMediaType(part.mediaType) ? part.mediaType : "text/plain",
-                      data: convertToBase64(
-                        new TextEncoder().encode(part.data.text)
-                      )
-                    }
-                  });
-                  break;
-                }
-                case "data": {
-                  parts.push({
-                    inlineData: {
-                      mimeType: resolveFullMediaType({ part }),
-                      data: convertToBase64(part.data.data)
-                    }
-                  });
-                  break;
-                }
-              }
-              break;
-            }
-          }
-        }
-        contents.push({ role: "user", parts });
-        break;
-      }
-      case "assistant": {
-        systemMessagesAllowed = false;
-        let modelResponseHasSignedFunctionCall = false;
-        contents.push({
-          role: "model",
-          parts: content.map((part) => {
-            const providerOpts = readProviderOpts(part);
-            const thoughtSignature = (providerOpts == null ? void 0 : providerOpts.thoughtSignature) != null ? String(providerOpts.thoughtSignature) : void 0;
-            switch (part.type) {
-              case "text": {
-                return part.text.length === 0 ? void 0 : {
-                  text: part.text,
-                  thoughtSignature
-                };
-              }
-              case "reasoning": {
-                return part.text.length === 0 ? void 0 : {
-                  text: part.text,
-                  thought: true,
-                  thoughtSignature
-                };
-              }
-              case "reasoning-file": {
-                switch (part.data.type) {
-                  case "url": {
-                    throw new UnsupportedFunctionalityError({
-                      functionality: "File data URLs in assistant messages are not supported"
-                    });
-                  }
-                  case "data": {
-                    return {
-                      inlineData: {
-                        mimeType: part.mediaType,
-                        data: convertToBase64(part.data.data)
-                      },
-                      thought: true,
-                      thoughtSignature
-                    };
-                  }
-                }
-                break;
-              }
-              case "file": {
-                switch (part.data.type) {
-                  case "url": {
-                    throw new UnsupportedFunctionalityError({
-                      functionality: "File data URLs in assistant messages are not supported"
-                    });
-                  }
-                  case "reference": {
-                    if (isVertexLike) {
-                      throw new UnsupportedFunctionalityError({
-                        functionality: "file parts with provider references"
-                      });
-                    }
-                    return {
-                      fileData: {
-                        mimeType: part.mediaType,
-                        fileUri: resolveProviderReference({
-                          reference: part.data.reference,
-                          provider: "google"
-                        })
-                      },
-                      ...(providerOpts == null ? void 0 : providerOpts.thought) === true ? { thought: true } : {},
-                      thoughtSignature
-                    };
-                  }
-                  case "text": {
-                    return {
-                      inlineData: {
-                        mimeType: isFullMediaType(part.mediaType) ? part.mediaType : "text/plain",
-                        data: convertToBase64(
-                          new TextEncoder().encode(part.data.text)
-                        )
-                      },
-                      ...(providerOpts == null ? void 0 : providerOpts.thought) === true ? { thought: true } : {},
-                      thoughtSignature
-                    };
-                  }
-                  case "data": {
-                    return {
-                      inlineData: {
-                        mimeType: part.mediaType,
-                        data: convertToBase64(part.data.data)
-                      },
-                      ...(providerOpts == null ? void 0 : providerOpts.thought) === true ? { thought: true } : {},
-                      thoughtSignature
-                    };
-                  }
-                }
-                break;
-              }
-              case "tool-call": {
-                const serverToolCallId = (providerOpts == null ? void 0 : providerOpts.serverToolCallId) != null ? String(providerOpts.serverToolCallId) : void 0;
-                const serverToolType = (providerOpts == null ? void 0 : providerOpts.serverToolType) != null ? String(providerOpts.serverToolType) : void 0;
-                const isServerToolCall = serverToolCallId != null && serverToolType != null;
-                const shouldSkipMissingSignatureMitigation = (
-                  // Gemini 3 returns a single signature for a parallel
-                  // function-call response on the first standard function
-                  // call. Subsequent standard function calls in the same
-                  // model response legitimately have no signature.
-                  !isServerToolCall && thoughtSignature == null && modelResponseHasSignedFunctionCall
-                );
-                const effectiveThoughtSignature = thoughtSignature != null ? thoughtSignature : isGemini3Model && !shouldSkipMissingSignatureMitigation ? injectSkipSignature(part.toolName) : void 0;
-                if (!isServerToolCall && thoughtSignature != null) {
-                  modelResponseHasSignedFunctionCall = true;
-                }
-                if (isServerToolCall) {
-                  return {
-                    toolCall: {
-                      toolType: serverToolType,
-                      args: typeof part.input === "string" ? secureJsonParse(part.input) : part.input,
-                      id: serverToolCallId
-                    },
-                    thoughtSignature: effectiveThoughtSignature
-                  };
-                }
-                return {
-                  functionCall: {
-                    ...includeFunctionCallIds && part.toolCallId != null ? { id: part.toolCallId } : {},
-                    name: part.toolName,
-                    args: part.input
-                  },
-                  thoughtSignature: effectiveThoughtSignature
-                };
-              }
-              case "tool-result": {
-                const serverToolCallId = (providerOpts == null ? void 0 : providerOpts.serverToolCallId) != null ? String(providerOpts.serverToolCallId) : void 0;
-                const serverToolType = (providerOpts == null ? void 0 : providerOpts.serverToolType) != null ? String(providerOpts.serverToolType) : void 0;
-                if (serverToolCallId && serverToolType) {
-                  return {
-                    toolResponse: {
-                      toolType: serverToolType,
-                      response: part.output.type === "json" ? part.output.value : {},
-                      id: serverToolCallId
-                    },
-                    thoughtSignature
-                  };
-                }
-                return void 0;
-              }
-            }
-          }).filter((part) => part !== void 0)
-        });
-        break;
-      }
-      case "tool": {
-        systemMessagesAllowed = false;
-        const parts = [];
-        for (const part of content) {
-          if (part.type === "tool-approval-response") {
-            continue;
-          }
-          const partProviderOpts = readProviderOpts(part);
-          const serverToolCallId = (partProviderOpts == null ? void 0 : partProviderOpts.serverToolCallId) != null ? String(partProviderOpts.serverToolCallId) : void 0;
-          const serverToolType = (partProviderOpts == null ? void 0 : partProviderOpts.serverToolType) != null ? String(partProviderOpts.serverToolType) : void 0;
-          if (serverToolCallId && serverToolType) {
-            const serverThoughtSignature = (partProviderOpts == null ? void 0 : partProviderOpts.thoughtSignature) != null ? String(partProviderOpts.thoughtSignature) : void 0;
-            if (contents.length > 0) {
-              const lastContent = contents[contents.length - 1];
-              if (lastContent.role === "model") {
-                lastContent.parts.push({
-                  toolResponse: {
-                    toolType: serverToolType,
-                    response: part.output.type === "json" ? part.output.value : {},
-                    id: serverToolCallId
-                  },
-                  thoughtSignature: serverThoughtSignature
-                });
-                continue;
-              }
-            }
-          }
-          const output = part.output;
-          if (output.type === "content") {
-            if (supportsFunctionResponseParts) {
-              appendToolResultParts(
-                parts,
-                part.toolName,
-                output.value,
-                part.toolCallId,
-                includeFunctionCallIds
-              );
-            } else {
-              appendLegacyToolResultParts(
-                parts,
-                part.toolName,
-                output.value,
-                part.toolCallId,
-                includeFunctionCallIds
-              );
-            }
-          } else {
-            parts.push({
-              functionResponse: {
-                ...includeFunctionCallIds && part.toolCallId != null ? { id: part.toolCallId } : {},
-                name: part.toolName,
-                response: {
-                  name: part.toolName,
-                  content: output.type === "execution-denied" ? (_f = output.reason) != null ? _f : "Tool call execution denied." : output.value
-                }
-              }
-            });
-          }
-        }
-        contents.push({
-          role: "user",
-          parts
-        });
-        break;
-      }
-    }
-  }
-  if (isGemmaModel && systemInstructionParts.length > 0 && contents.length > 0 && contents[0].role === "user") {
-    const systemText = systemInstructionParts.map((part) => part.text).join("\n\n");
-    contents[0].parts.unshift({ text: systemText + "\n\n" });
-  }
-  if (sentinelInjected && onWarning != null) {
-    const uniqueToolNames = Array.from(new Set(missingSignatureToolNames));
-    onWarning({
-      type: "other",
-      message: `Replayed ${missingSignatureToolNames.length} \`functionCall\` part(s) for a Gemini 3 model without a \`thoughtSignature\` (tools: ${uniqueToolNames.map((name25) => `\`${name25}\``).join(", ")}). Injected the documented \`skip_thought_signature_validator\` sentinel to keep the request from failing with HTTP 400. The likely cause is application code that drops \`providerOptions.google.thoughtSignature\` when persisting or serializing assistant tool-call messages. See https://ai.google.dev/gemini-api/docs/thought-signatures.`
-    });
-  }
-  return {
-    systemInstruction: systemInstructionParts.length > 0 && !isGemmaModel ? { parts: systemInstructionParts } : void 0,
-    contents
-  };
-}
-function getModelPath(modelId) {
-  return modelId.includes("/") ? modelId : `models/${modelId}`;
-}
-var googleLanguageModelOptions = lazySchema(
-  () => zodSchema(
-    external_exports.object({
-      responseModalities: external_exports.array(external_exports.enum(["TEXT", "IMAGE"])).optional(),
-      thinkingConfig: external_exports.object({
-        thinkingBudget: external_exports.number().optional(),
-        includeThoughts: external_exports.boolean().optional(),
-        // https://ai.google.dev/gemini-api/docs/gemini-3?thinking=high#thinking_level
-        thinkingLevel: external_exports.enum(["minimal", "low", "medium", "high"]).optional()
-      }).optional(),
-      /**
-       * Optional.
-       * The name of the cached content used as context to serve the prediction.
-       * Format: cachedContents/{cachedContent}
-       */
-      cachedContent: external_exports.string().optional(),
-      /**
-       * Optional. Enable structured output. Default is true.
-       *
-       * This is useful when the JSON Schema contains elements that are
-       * not supported by the OpenAPI schema version that
-       * Google uses. You can use this to disable
-       * structured outputs if you need to.
-       */
-      structuredOutputs: external_exports.boolean().optional(),
-      /**
-       * Optional. A list of unique safety settings for blocking unsafe content.
-       */
-      safetySettings: external_exports.array(
-        external_exports.object({
-          category: external_exports.enum([
-            "HARM_CATEGORY_UNSPECIFIED",
-            "HARM_CATEGORY_HATE_SPEECH",
-            "HARM_CATEGORY_DANGEROUS_CONTENT",
-            "HARM_CATEGORY_HARASSMENT",
-            "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-            "HARM_CATEGORY_CIVIC_INTEGRITY"
-          ]),
-          threshold: external_exports.enum([
-            "HARM_BLOCK_THRESHOLD_UNSPECIFIED",
-            "BLOCK_LOW_AND_ABOVE",
-            "BLOCK_MEDIUM_AND_ABOVE",
-            "BLOCK_ONLY_HIGH",
-            "BLOCK_NONE",
-            "OFF"
-          ])
-        })
-      ).optional(),
-      threshold: external_exports.enum([
-        "HARM_BLOCK_THRESHOLD_UNSPECIFIED",
-        "BLOCK_LOW_AND_ABOVE",
-        "BLOCK_MEDIUM_AND_ABOVE",
-        "BLOCK_ONLY_HIGH",
-        "BLOCK_NONE",
-        "OFF"
-      ]).optional(),
-      /**
-       * Optional. Enables timestamp understanding for audio-only files.
-       *
-       * https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/audio-understanding
-       */
-      audioTimestamp: external_exports.boolean().optional(),
-      /**
-       * Optional. Defines labels used in billing reports. Available on Vertex AI only.
-       *
-       * https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/add-labels-to-api-calls
-       */
-      labels: external_exports.record(external_exports.string(), external_exports.string()).optional(),
-      /**
-       * Optional. If specified, the media resolution specified will be used.
-       *
-       * https://ai.google.dev/api/generate-content#MediaResolution
-       */
-      mediaResolution: external_exports.enum([
-        "MEDIA_RESOLUTION_UNSPECIFIED",
-        "MEDIA_RESOLUTION_LOW",
-        "MEDIA_RESOLUTION_MEDIUM",
-        "MEDIA_RESOLUTION_HIGH"
-      ]).optional(),
-      /**
-       * Optional. Configures the image generation aspect ratio for Gemini models.
-       *
-       * https://ai.google.dev/gemini-api/docs/image-generation#aspect_ratios
-       */
-      imageConfig: external_exports.object({
-        aspectRatio: external_exports.enum([
-          "1:1",
-          "2:3",
-          "3:2",
-          "3:4",
-          "4:3",
-          "4:5",
-          "5:4",
-          "9:16",
-          "16:9",
-          "21:9",
-          "1:8",
-          "8:1",
-          "1:4",
-          "4:1"
-        ]).optional(),
-        imageSize: external_exports.enum(["1K", "2K", "4K", "512"]).optional(),
-        /**
-         * Optional. Controls the generation of people in images.
-         * Vertex AI only.
-         */
-        personGeneration: external_exports.enum([
-          "PERSON_GENERATION_UNSPECIFIED",
-          "ALLOW_ALL",
-          "ALLOW_ADULT",
-          "ALLOW_NONE"
-        ]).optional(),
-        /**
-         * Optional. Controls whether generation of prominent people
-         * (celebrities) is allowed. When set together with
-         * `personGeneration`, `personGeneration` takes precedence.
-         * Vertex AI only.
-         *
-         * https://docs.cloud.google.com/vertex-ai/generative-ai/docs/reference/rest/v1/GenerationConfig
-         */
-        prominentPeople: external_exports.enum([
-          "PROMINENT_PEOPLE_UNSPECIFIED",
-          "ALLOW_PROMINENT_PEOPLE",
-          "BLOCK_PROMINENT_PEOPLE"
-        ]).optional(),
-        /**
-         * Optional. The image output format for generated images.
-         * Vertex AI only.
-         */
-        imageOutputOptions: external_exports.object({
-          mimeType: external_exports.enum(["image/jpeg", "image/png"]).optional(),
-          compressionQuality: external_exports.number().optional()
-        }).optional()
-      }).optional(),
-      /**
-       * Optional. Configuration for grounding retrieval.
-       * Used to provide location context for Google Maps and Google Search grounding.
-       *
-       * https://cloud.google.com/vertex-ai/generative-ai/docs/grounding/grounding-with-google-maps
-       */
-      retrievalConfig: external_exports.object({
-        latLng: external_exports.object({
-          latitude: external_exports.number(),
-          longitude: external_exports.number()
-        }).optional()
-      }).optional(),
-      /**
-       * Optional. When set to true, function call arguments will be streamed
-       * incrementally via partialArgs in streaming responses. Only supported
-       * on the Vertex AI API (not the Gemini API) and only for Gemini 3+
-       * models.
-       *
-       * @default false
-       *
-       * https://docs.cloud.google.com/vertex-ai/generative-ai/docs/multimodal/function-calling#streaming-fc
-       */
-      streamFunctionCallArguments: external_exports.boolean().optional(),
-      /**
-       * Optional. The service tier to use for the request. Sent as the
-       * `serviceTier` body field. Gemini API only.
-       */
-      serviceTier: external_exports.enum(["standard", "flex", "priority"]).optional(),
-      /**
-       * Optional. Vertex AI only. Sent as the
-       * `X-Vertex-AI-LLM-Shared-Request-Type` request header to select a
-       * shared (PayGo) tier. With Provisioned Throughput allocated and
-       * `requestType` unset, the request falls back to this tier only if
-       * PT capacity is exhausted.
-       *
-       * https://docs.cloud.google.com/vertex-ai/generative-ai/docs/priority-paygo
-       * https://docs.cloud.google.com/vertex-ai/generative-ai/docs/flex-paygo
-       */
-      sharedRequestType: external_exports.enum(["priority", "flex", "standard"]).optional(),
-      /**
-       * Optional. Vertex AI only. Sent as the `X-Vertex-AI-LLM-Request-Type`
-       * request header. Set to `'shared'` together with `sharedRequestType`
-       * to bypass Provisioned Throughput entirely.
-       *
-       * https://docs.cloud.google.com/vertex-ai/generative-ai/docs/priority-paygo
-       */
-      requestType: external_exports.enum(["shared"]).optional()
-    })
-  )
-);
-var gemini1ModelPattern = /(^|\/)gemini-1(?:[.-]|$)/i;
-var gemini2ModelPattern = /(^|\/)gemini-2(?:[.-]|$)/i;
-var gemini25ModelPattern = /(^|\/)gemini-2\.5(?:[.-]|$)/i;
-var geminiModelPattern = /(^|\/)gemini-/i;
-function isKnownPreGemini2Model(modelId) {
-  return gemini1ModelPattern.test(modelId) || /(^|\/)gemini-pro(?:-vision)?$/i.test(modelId) || /(^|\/)gemini-robotics-er-1\.5(?:[.-]|$)/i.test(modelId);
-}
-function getGoogleModelCapabilities(modelId) {
-  const isGeminiModel2 = geminiModelPattern.test(modelId);
-  const isGemini2Model = gemini2ModelPattern.test(modelId);
-  const isKnownPreGemini2 = isKnownPreGemini2Model(modelId);
-  const isKnownOlderModel = isKnownPreGemini2 || isGemini2Model;
-  const usesGemini3Features = isGeminiModel2 && !isKnownOlderModel;
-  return {
-    supportsGemini2Tools: isGeminiModel2 && !isKnownPreGemini2 || modelId.toLowerCase().includes("nano-banana"),
-    supportsFileSearch: gemini25ModelPattern.test(modelId) || usesGemini3Features,
-    usesGemini3Features
-  };
-}
-function prepareTools({
-  tools,
-  toolChoice,
-  modelId,
-  isVertexProvider = false
-}) {
-  var _a25, _b18;
-  tools = (tools == null ? void 0 : tools.length) ? tools : void 0;
-  const toolWarnings = [];
-  const { supportsGemini2Tools, supportsFileSearch, usesGemini3Features } = getGoogleModelCapabilities(modelId);
-  if (tools == null) {
-    return { tools: void 0, toolConfig: void 0, toolWarnings };
-  }
-  const hasFunctionTools = tools.some((tool2) => tool2.type === "function");
-  const hasProviderTools = tools.some((tool2) => tool2.type === "provider");
-  if (hasFunctionTools && hasProviderTools && !usesGemini3Features) {
-    toolWarnings.push({
-      type: "unsupported",
-      feature: `combination of function and provider-defined tools`
-    });
-  }
-  if (hasProviderTools) {
-    const googleTools2 = [];
-    const ProviderTools = tools.filter((tool2) => tool2.type === "provider");
-    ProviderTools.forEach((tool2) => {
-      switch (tool2.id) {
-        case "google.google_search":
-          if (supportsGemini2Tools) {
-            googleTools2.push({ googleSearch: { ...tool2.args } });
-          } else {
-            toolWarnings.push({
-              type: "unsupported",
-              feature: `provider-defined tool ${tool2.id}`,
-              details: "Google Search requires Gemini 2.0 or newer."
-            });
-          }
-          break;
-        case "google.enterprise_web_search":
-          if (supportsGemini2Tools) {
-            googleTools2.push({ enterpriseWebSearch: {} });
-          } else {
-            toolWarnings.push({
-              type: "unsupported",
-              feature: `provider-defined tool ${tool2.id}`,
-              details: "Enterprise Web Search requires Gemini 2.0 or newer."
-            });
-          }
-          break;
-        case "google.url_context":
-          if (supportsGemini2Tools) {
-            googleTools2.push({ urlContext: {} });
-          } else {
-            toolWarnings.push({
-              type: "unsupported",
-              feature: `provider-defined tool ${tool2.id}`,
-              details: "The URL context tool is not supported with other Gemini models than Gemini 2."
-            });
-          }
-          break;
-        case "google.code_execution":
-          if (supportsGemini2Tools) {
-            googleTools2.push({ codeExecution: {} });
-          } else {
-            toolWarnings.push({
-              type: "unsupported",
-              feature: `provider-defined tool ${tool2.id}`,
-              details: "The code execution tool is not supported with other Gemini models than Gemini 2."
-            });
-          }
-          break;
-        case "google.file_search":
-          if (supportsFileSearch) {
-            googleTools2.push({ fileSearch: { ...tool2.args } });
-          } else {
-            toolWarnings.push({
-              type: "unsupported",
-              feature: `provider-defined tool ${tool2.id}`,
-              details: "The file search tool is only supported with Gemini 2.5 models and Gemini 3 models."
-            });
-          }
-          break;
-        case "google.vertex_rag_store":
-          if (supportsGemini2Tools) {
-            googleTools2.push({
-              retrieval: {
-                vertex_rag_store: {
-                  rag_resources: {
-                    rag_corpus: tool2.args.ragCorpus
-                  },
-                  similarity_top_k: tool2.args.topK
-                }
-              }
-            });
-          } else {
-            toolWarnings.push({
-              type: "unsupported",
-              feature: `provider-defined tool ${tool2.id}`,
-              details: "The RAG store tool is not supported with other Gemini models than Gemini 2."
-            });
-          }
-          break;
-        case "google.google_maps":
-          if (supportsGemini2Tools) {
-            googleTools2.push({ googleMaps: {} });
-          } else {
-            toolWarnings.push({
-              type: "unsupported",
-              feature: `provider-defined tool ${tool2.id}`,
-              details: "The Google Maps grounding tool is not supported with Gemini models other than Gemini 2 or newer."
-            });
-          }
-          break;
-        default:
-          toolWarnings.push({
-            type: "unsupported",
-            feature: `provider-defined tool ${tool2.id}`
-          });
-          break;
-      }
-    });
-    if (hasFunctionTools && usesGemini3Features && googleTools2.length > 0) {
-      const functionDeclarations2 = [];
-      for (const tool2 of tools) {
-        if (tool2.type === "function") {
-          functionDeclarations2.push({
-            name: tool2.name,
-            description: (_a25 = tool2.description) != null ? _a25 : "",
-            parameters: convertJSONSchemaToOpenAPISchema(tool2.inputSchema)
-          });
-        }
-      }
-      const combinedToolConfig = {
-        functionCallingConfig: { mode: "VALIDATED" },
-        ...!isVertexProvider && {
-          includeServerSideToolInvocations: true
-        }
-      };
-      if (toolChoice != null) {
-        switch (toolChoice.type) {
-          case "auto":
-            break;
-          case "none":
-            combinedToolConfig.functionCallingConfig = { mode: "NONE" };
-            break;
-          case "required":
-            combinedToolConfig.functionCallingConfig = { mode: "ANY" };
-            break;
-          case "tool":
-            combinedToolConfig.functionCallingConfig = {
-              mode: "ANY",
-              allowedFunctionNames: [toolChoice.toolName]
-            };
-            break;
-        }
-      }
-      return {
-        tools: [...googleTools2, { functionDeclarations: functionDeclarations2 }],
-        toolConfig: combinedToolConfig,
-        toolWarnings
-      };
-    }
-    return {
-      tools: googleTools2.length > 0 ? googleTools2 : void 0,
-      toolConfig: void 0,
-      toolWarnings
-    };
-  }
-  const functionDeclarations = [];
-  let hasStrictTools = false;
-  for (const tool2 of tools) {
-    switch (tool2.type) {
-      case "function":
-        functionDeclarations.push({
-          name: tool2.name,
-          description: (_b18 = tool2.description) != null ? _b18 : "",
-          parameters: convertJSONSchemaToOpenAPISchema(tool2.inputSchema)
-        });
-        if (tool2.strict === true) {
-          hasStrictTools = true;
-        }
-        break;
-      default:
-        toolWarnings.push({
-          type: "unsupported",
-          feature: `function tool ${tool2.name}`
-        });
-        break;
-    }
-  }
-  if (toolChoice == null) {
-    return {
-      tools: [{ functionDeclarations }],
-      toolConfig: hasStrictTools ? { functionCallingConfig: { mode: "VALIDATED" } } : void 0,
-      toolWarnings
-    };
-  }
-  const type = toolChoice.type;
-  switch (type) {
-    case "auto":
-      return {
-        tools: [{ functionDeclarations }],
-        toolConfig: {
-          functionCallingConfig: {
-            mode: hasStrictTools ? "VALIDATED" : "AUTO"
-          }
-        },
-        toolWarnings
-      };
-    case "none":
-      return {
-        tools: [{ functionDeclarations }],
-        toolConfig: { functionCallingConfig: { mode: "NONE" } },
-        toolWarnings
-      };
-    case "required":
-      return {
-        tools: [{ functionDeclarations }],
-        toolConfig: {
-          functionCallingConfig: {
-            mode: "ANY"
-          }
-        },
-        toolWarnings
-      };
-    case "tool":
-      return {
-        tools: [{ functionDeclarations }],
-        toolConfig: {
-          functionCallingConfig: {
-            mode: "ANY",
-            allowedFunctionNames: [toolChoice.toolName]
-          }
-        },
-        toolWarnings
-      };
-    default: {
-      const _exhaustiveCheck = type;
-      throw new UnsupportedFunctionalityError({
-        functionality: `tool choice type: ${_exhaustiveCheck}`
-      });
-    }
-  }
-}
-var GoogleJSONAccumulator = class {
-  constructor() {
-    this.accumulatedArgs = {};
-    this.jsonText = "";
-    this.pathStack = [];
-    this.stringOpen = false;
-  }
-  /**
-   * Input: [{jsonPath:"$.brightness",numberValue:50}]
-   * Output: { currentJSON:{brightness:50}, textDelta:'{"brightness":50' }
-   */
-  processPartialArgs(partialArgs) {
-    let delta = "";
-    for (const arg of partialArgs) {
-      const rawPath = arg.jsonPath.replace(/^\$\./, "");
-      if (!rawPath) continue;
-      const segments = parsePath(rawPath);
-      const existingValue = getNestedValue(this.accumulatedArgs, segments);
-      const isStringContinuation = arg.stringValue != null && existingValue !== void 0;
-      if (isStringContinuation) {
-        const escaped = JSON.stringify(arg.stringValue).slice(1, -1);
-        setNestedValue(
-          this.accumulatedArgs,
-          segments,
-          existingValue + arg.stringValue
-        );
-        delta += escaped;
-        continue;
-      }
-      const resolved = resolvePartialArgValue(arg);
-      if (resolved == null) continue;
-      setNestedValue(this.accumulatedArgs, segments, resolved.value);
-      delta += this.emitNavigationTo(segments, arg, resolved.json);
-    }
-    this.jsonText += delta;
-    return {
-      currentJSON: this.accumulatedArgs,
-      textDelta: delta
-    };
-  }
-  /**
-   * Input: jsonText='{"brightness":50', accumulatedArgs={brightness:50}
-   * Output: { finalJSON:'{"brightness":50}', closingDelta:'}' }
-   */
-  finalize() {
-    const finalArgs = JSON.stringify(this.accumulatedArgs);
-    const closingDelta = finalArgs.slice(this.jsonText.length);
-    return { finalJSON: finalArgs, closingDelta };
-  }
-  /**
-   * Input: pathStack=[] (first call) or pathStack=[root,...] (subsequent calls)
-   * Output: '{' (first call) or '' (subsequent calls)
-   */
-  ensureRoot() {
-    if (this.pathStack.length === 0) {
-      this.pathStack.push({ segment: "", isArray: false, childCount: 0 });
-      return "{";
-    }
-    return "";
-  }
-  /**
-   * Emits the JSON text fragment needed to navigate from the current open
-   * path to the new leaf at `targetSegments`, then writes the value.
-   *
-   * Input: targetSegments=["recipe","name"], arg={jsonPath:"$.recipe.name",stringValue:"Lasagna"}, valueJson='"Lasagna"'
-   * Output: '{"recipe":{"name":"Lasagna"'
-   */
-  emitNavigationTo(targetSegments, arg, valueJson) {
-    let fragment = "";
-    if (this.stringOpen) {
-      fragment += '"';
-      this.stringOpen = false;
-    }
-    fragment += this.ensureRoot();
-    const targetContainerSegments = targetSegments.slice(0, -1);
-    const leafSegment = targetSegments[targetSegments.length - 1];
-    const commonDepth = this.findCommonStackDepth(targetContainerSegments);
-    fragment += this.closeDownTo(commonDepth);
-    fragment += this.openDownTo(targetContainerSegments, leafSegment);
-    fragment += this.emitLeaf(leafSegment, arg, valueJson);
-    return fragment;
-  }
-  /**
-   * Returns the stack depth to preserve when navigating to a new target
-   * container path. Always >= 1 (the root is never popped).
-   *
-   * Input: stack=[root,"recipe","ingredients",0], target=["recipe","ingredients",1]
-   * Output: 3 (keep root+"recipe"+"ingredients")
-   */
-  findCommonStackDepth(targetContainer) {
-    const maxDepth = Math.min(
-      this.pathStack.length - 1,
-      targetContainer.length
-    );
-    let common = 0;
-    for (let i = 0; i < maxDepth; i++) {
-      if (this.pathStack[i + 1].segment === targetContainer[i]) {
-        common++;
-      } else {
-        break;
-      }
-    }
-    return common + 1;
-  }
-  /**
-   * Closes containers from the current stack depth back down to `targetDepth`.
-   *
-   * Input: this.pathStack=[root,"recipe","ingredients",0], targetDepth=3
-   * Output: '}'
-   */
-  closeDownTo(targetDepth) {
-    let fragment = "";
-    while (this.pathStack.length > targetDepth) {
-      const entry = this.pathStack.pop();
-      fragment += entry.isArray ? "]" : "}";
-    }
-    return fragment;
-  }
-  /**
-   * Opens containers from the current stack depth down to the full target
-   * container path, emitting opening `{`, `[`, keys, and commas as needed.
-   * `leafSegment` is used to determine if the innermost container is an array.
-   *
-   * Input: this.pathStack=[root], targetContainer=["recipe","ingredients"], leafSegment=0
-   * Output: '"recipe":{"ingredients":['
-   */
-  openDownTo(targetContainer, leafSegment) {
-    let fragment = "";
-    const startIdx = this.pathStack.length - 1;
-    for (let i = startIdx; i < targetContainer.length; i++) {
-      const pathSegment = targetContainer[i];
-      const parentEntry = this.pathStack[this.pathStack.length - 1];
-      if (parentEntry.childCount > 0) {
-        fragment += ",";
-      }
-      parentEntry.childCount++;
-      if (typeof pathSegment === "string") {
-        fragment += `${JSON.stringify(pathSegment)}:`;
-      }
-      const childSeg = i + 1 < targetContainer.length ? targetContainer[i + 1] : leafSegment;
-      const isArray = typeof childSeg === "number";
-      fragment += isArray ? "[" : "{";
-      this.pathStack.push({ segment: pathSegment, isArray, childCount: 0 });
-    }
-    return fragment;
-  }
-  /**
-   * Emits the comma, key, and value for a leaf entry in the current container.
-   *
-   * Input: leafSegment="name", arg={stringValue:"Lasagna"}, valueJson='"Lasagna"'
-   * Output: '"name":"Lasagna"' (or ',"name":"Lasagna"' if container.childCount > 0)
-   */
-  emitLeaf(leafSegment, arg, valueJson) {
-    let fragment = "";
-    const container = this.pathStack[this.pathStack.length - 1];
-    if (container.childCount > 0) {
-      fragment += ",";
-    }
-    container.childCount++;
-    if (typeof leafSegment === "string") {
-      fragment += `${JSON.stringify(leafSegment)}:`;
-    }
-    if (arg.stringValue != null && arg.willContinue) {
-      fragment += valueJson.slice(0, -1);
-      this.stringOpen = true;
-    } else {
-      fragment += valueJson;
-    }
-    return fragment;
-  }
-};
-function parsePath(rawPath) {
-  const segments = [];
-  for (const part of rawPath.split(".")) {
-    const bracketIdx = part.indexOf("[");
-    if (bracketIdx === -1) {
-      segments.push(part);
-    } else {
-      if (bracketIdx > 0) segments.push(part.slice(0, bracketIdx));
-      for (const m of part.matchAll(/\[(\d+)\]/g)) {
-        segments.push(parseInt(m[1], 10));
-      }
-    }
-  }
-  return segments;
-}
-var hasOwn = Object.prototype.hasOwnProperty;
-function hasOwnProperty(obj, key) {
-  return hasOwn.call(obj, key);
-}
-function defineOwnProperty(obj, key, value) {
-  Object.defineProperty(obj, key, {
-    value,
-    enumerable: true,
-    configurable: true,
-    writable: true
-  });
-}
-function getNestedValue(obj, segments) {
-  let current = obj;
-  for (const pathSegment of segments) {
-    if (current == null || typeof current !== "object") return void 0;
-    const currentRecord = current;
-    if (!hasOwnProperty(currentRecord, pathSegment)) return void 0;
-    current = currentRecord[pathSegment];
-  }
-  return current;
-}
-function setNestedValue(obj, segments, value) {
-  let current = obj;
-  for (let i = 0; i < segments.length - 1; i++) {
-    const pathSegment = segments[i];
-    const nextSeg = segments[i + 1];
-    if (!hasOwnProperty(current, pathSegment) || current[pathSegment] == null) {
-      defineOwnProperty(
-        current,
-        pathSegment,
-        typeof nextSeg === "number" ? [] : {}
-      );
-    }
-    current = current[pathSegment];
-  }
-  defineOwnProperty(current, segments[segments.length - 1], value);
-}
-function resolvePartialArgValue(arg) {
-  var _a25, _b18;
-  const value = (_b18 = (_a25 = arg.stringValue) != null ? _a25 : arg.numberValue) != null ? _b18 : arg.boolValue;
-  if (value != null) return { value, json: JSON.stringify(value) };
-  if ("nullValue" in arg) return { value: null, json: "null" };
-  return void 0;
-}
-function mapGoogleFinishReason({
-  finishReason,
-  hasToolCalls
-}) {
-  switch (finishReason) {
-    case "STOP":
-      return hasToolCalls ? "tool-calls" : "stop";
-    case "MAX_TOKENS":
-      return "length";
-    case "IMAGE_SAFETY":
-    case "RECITATION":
-    case "SAFETY":
-    case "BLOCKLIST":
-    case "PROHIBITED_CONTENT":
-    case "SPII":
-      return "content-filter";
-    case "MALFORMED_FUNCTION_CALL":
-      return "error";
-    case "FINISH_REASON_UNSPECIFIED":
-    case "OTHER":
-    default:
-      return "other";
-  }
-}
-var configurableSafetySettingCategories = [
-  "HARM_CATEGORY_HATE_SPEECH",
-  "HARM_CATEGORY_DANGEROUS_CONTENT",
-  "HARM_CATEGORY_HARASSMENT",
-  "HARM_CATEGORY_SEXUALLY_EXPLICIT"
-];
-var GoogleLanguageModel = class _GoogleLanguageModel {
-  constructor(modelId, config2) {
-    this.specificationVersion = "v4";
-    var _a25;
-    this.modelId = modelId;
-    this.config = config2;
-    this.generateId = (_a25 = config2.generateId) != null ? _a25 : generateId;
-  }
-  static [WORKFLOW_SERIALIZE](model) {
-    return serializeModelOptions({
-      modelId: model.modelId,
-      config: model.config
-    });
-  }
-  static [WORKFLOW_DESERIALIZE](options) {
-    return new _GoogleLanguageModel(options.modelId, options.config);
-  }
-  get provider() {
-    return this.config.provider;
-  }
-  get supportedUrls() {
-    var _a25, _b18, _c;
-    return (_c = (_b18 = (_a25 = this.config).supportedUrls) == null ? void 0 : _b18.call(_a25)) != null ? _c : {};
-  }
-  async getArgs({
-    prompt,
-    maxOutputTokens,
-    temperature,
-    topP,
-    topK,
-    frequencyPenalty,
-    presencePenalty,
-    stopSequences,
-    responseFormat,
-    seed,
-    tools,
-    toolChoice,
-    reasoning,
-    providerOptions
-  }, { isStreaming = false } = {}) {
-    var _a25, _b18, _c;
-    const warnings = [];
-    const providerOptionsNames = this.config.provider.includes("vertex") ? ["googleVertex", "vertex"] : ["google"];
-    let googleOptions;
-    for (const name25 of providerOptionsNames) {
-      googleOptions = await parseProviderOptions({
-        provider: name25,
-        providerOptions,
-        schema: googleLanguageModelOptions
-      });
-      if (googleOptions != null) break;
-    }
-    if (googleOptions == null && !providerOptionsNames.includes("google")) {
-      googleOptions = await parseProviderOptions({
-        provider: "google",
-        providerOptions,
-        schema: googleLanguageModelOptions
-      });
-    }
-    const isVertexProvider = this.config.provider.startsWith("google.vertex.");
-    if ((tools == null ? void 0 : tools.some(
-      (tool2) => tool2.type === "provider" && tool2.id === "google.vertex_rag_store"
-    )) && !isVertexProvider) {
-      warnings.push({
-        type: "other",
-        message: `The 'vertex_rag_store' tool is only supported with the Google Vertex provider and might not be supported or could behave unexpectedly with the current Google provider (${this.config.provider}).`
-      });
-    }
-    if ((googleOptions == null ? void 0 : googleOptions.streamFunctionCallArguments) && !isVertexProvider) {
-      warnings.push({
-        type: "other",
-        message: `'streamFunctionCallArguments' is only supported on the Vertex AI API and will be ignored with the current Google provider (${this.config.provider}). See https://docs.cloud.google.com/vertex-ai/generative-ai/docs/multimodal/function-calling#streaming-fc`
-      });
-    }
-    if ((googleOptions == null ? void 0 : googleOptions.serviceTier) && isVertexProvider) {
-      warnings.push({
-        type: "other",
-        message: "'serviceTier' is a Gemini API option and is not supported on Vertex AI. Use 'sharedRequestType' (and optionally 'requestType') instead. See https://docs.cloud.google.com/vertex-ai/generative-ai/docs/priority-paygo"
-      });
-    }
-    if (((googleOptions == null ? void 0 : googleOptions.sharedRequestType) || (googleOptions == null ? void 0 : googleOptions.requestType)) && !isVertexProvider) {
-      warnings.push({
-        type: "other",
-        message: `'sharedRequestType' and 'requestType' are Vertex AI options and are ignored with the current Google provider (${this.config.provider}).`
-      });
-    }
-    const vertexPaygoHeaders = isVertexProvider && ((googleOptions == null ? void 0 : googleOptions.sharedRequestType) || (googleOptions == null ? void 0 : googleOptions.requestType)) ? {
-      ...googleOptions.sharedRequestType && {
-        "X-Vertex-AI-LLM-Shared-Request-Type": googleOptions.sharedRequestType
-      },
-      ...googleOptions.requestType && {
-        "X-Vertex-AI-LLM-Request-Type": googleOptions.requestType
-      }
-    } : void 0;
-    const bodyServiceTier = isVertexProvider ? void 0 : googleOptions == null ? void 0 : googleOptions.serviceTier;
-    let imageConfig = googleOptions == null ? void 0 : googleOptions.imageConfig;
-    if (imageConfig != null && !isVertexProvider) {
-      const {
-        personGeneration,
-        prominentPeople,
-        imageOutputOptions,
-        ...geminiApiImageConfig
-      } = imageConfig;
-      const droppedImageConfigFields = Object.entries({
-        personGeneration,
-        prominentPeople,
-        imageOutputOptions
-      }).filter(([, value]) => value != null).map(([key]) => `'imageConfig.${key}'`);
-      if (droppedImageConfigFields.length > 0) {
-        warnings.push({
-          type: "other",
-          message: `${droppedImageConfigFields.join(", ")} ${droppedImageConfigFields.length === 1 ? "is a Vertex AI option and is" : "are Vertex AI options and are"} ignored with the current Google provider (${this.config.provider}).`
-        });
-        imageConfig = geminiApiImageConfig;
-      }
-    }
-    const isGemmaModel = this.modelId.toLowerCase().startsWith("gemma-");
-    const { usesGemini3Features } = getGoogleModelCapabilities(this.modelId);
-    const { contents, systemInstruction } = convertToGoogleMessages(prompt, {
-      isGemmaModel,
-      isGemini3Model: usesGemini3Features,
-      onWarning: (warning) => warnings.push(warning),
-      providerOptionsNames,
-      supportsFunctionResponseParts: usesGemini3Features,
-      includeFunctionCallIds: !isVertexProvider
-    });
-    const {
-      tools: googleTools2,
-      toolConfig: googleToolConfig,
-      toolWarnings
-    } = prepareTools({
-      tools,
-      toolChoice,
-      modelId: this.modelId,
-      isVertexProvider
-    });
-    const resolvedThinking = resolveThinkingConfig({
-      reasoning,
-      modelId: this.modelId,
-      warnings
-    });
-    const thinkingConfig = (googleOptions == null ? void 0 : googleOptions.thinkingConfig) || resolvedThinking ? { ...resolvedThinking, ...googleOptions == null ? void 0 : googleOptions.thinkingConfig } : void 0;
-    const streamFunctionCallArguments = isStreaming && isVertexProvider ? (_a25 = googleOptions == null ? void 0 : googleOptions.streamFunctionCallArguments) != null ? _a25 : false : void 0;
-    const safetyThreshold = googleOptions == null ? void 0 : googleOptions.threshold;
-    const safetySettings = (_b18 = googleOptions == null ? void 0 : googleOptions.safetySettings) != null ? _b18 : safetyThreshold != null ? configurableSafetySettingCategories.map((category) => ({
-      category,
-      threshold: safetyThreshold
-    })) : void 0;
-    const toolConfig = googleToolConfig || streamFunctionCallArguments || (googleOptions == null ? void 0 : googleOptions.retrievalConfig) ? {
-      ...googleToolConfig,
-      ...streamFunctionCallArguments && {
-        functionCallingConfig: {
-          ...googleToolConfig == null ? void 0 : googleToolConfig.functionCallingConfig,
-          streamFunctionCallArguments: true
-        }
-      },
-      ...(googleOptions == null ? void 0 : googleOptions.retrievalConfig) && {
-        retrievalConfig: googleOptions.retrievalConfig
-      }
-    } : void 0;
-    return {
-      args: {
-        generationConfig: {
-          // standardized settings:
-          maxOutputTokens,
-          temperature,
-          topK,
-          topP,
-          frequencyPenalty,
-          presencePenalty,
-          stopSequences,
-          seed,
-          // response format:
-          responseMimeType: (responseFormat == null ? void 0 : responseFormat.type) === "json" ? "application/json" : void 0,
-          responseSchema: (responseFormat == null ? void 0 : responseFormat.type) === "json" && responseFormat.schema != null && // Google GenAI does not support all OpenAPI Schema features,
-          // so this is needed as an escape hatch:
-          // TODO convert into provider option
-          ((_c = googleOptions == null ? void 0 : googleOptions.structuredOutputs) != null ? _c : true) ? convertJSONSchemaToOpenAPISchema(responseFormat.schema) : void 0,
-          ...(googleOptions == null ? void 0 : googleOptions.audioTimestamp) && {
-            audioTimestamp: googleOptions.audioTimestamp
-          },
-          // provider options:
-          responseModalities: googleOptions == null ? void 0 : googleOptions.responseModalities,
-          thinkingConfig,
-          ...(googleOptions == null ? void 0 : googleOptions.mediaResolution) && {
-            mediaResolution: googleOptions.mediaResolution
-          },
-          ...imageConfig && { imageConfig }
-        },
-        contents,
-        systemInstruction: isGemmaModel ? void 0 : systemInstruction,
-        safetySettings,
-        tools: googleTools2,
-        toolConfig,
-        cachedContent: googleOptions == null ? void 0 : googleOptions.cachedContent,
-        labels: googleOptions == null ? void 0 : googleOptions.labels,
-        serviceTier: bodyServiceTier
-      },
-      warnings: [...warnings, ...toolWarnings],
-      providerOptionsNames,
-      extraHeaders: vertexPaygoHeaders
-    };
-  }
-  async doGenerate(options) {
-    var _a25, _b18, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s;
-    const { args, warnings, providerOptionsNames, extraHeaders } = await this.getArgs(options);
-    const wrapProviderMetadata = (payload) => Object.fromEntries(
-      providerOptionsNames.map((name25) => [name25, payload])
-    );
-    const mergedHeaders = combineHeaders(
-      this.config.headers ? await resolve(this.config.headers) : void 0,
-      options.headers,
-      extraHeaders
-    );
-    const {
-      responseHeaders,
-      value: response,
-      rawValue: rawResponse
-    } = await postJsonToApi({
-      url: `${this.config.baseURL}/${getModelPath(
-        this.modelId
-      )}:generateContent`,
-      headers: mergedHeaders,
-      body: args,
-      failedResponseHandler: googleFailedResponseHandler,
-      successfulResponseHandler: createJsonResponseHandler(responseSchema),
-      abortSignal: options.abortSignal,
-      fetch: this.config.fetch
-    });
-    const candidate = response.candidates[0];
-    const content = [];
-    const parts = (_b18 = (_a25 = candidate.content) == null ? void 0 : _a25.parts) != null ? _b18 : [];
-    const usageMetadata = response.usageMetadata;
-    let lastCodeExecutionToolCallId;
-    let lastServerToolCallId;
-    for (const part of parts) {
-      if ("executableCode" in part && ((_c = part.executableCode) == null ? void 0 : _c.code)) {
-        const toolCallId = this.config.generateId();
-        lastCodeExecutionToolCallId = toolCallId;
-        content.push({
-          type: "tool-call",
-          toolCallId,
-          toolName: "code_execution",
-          input: JSON.stringify(part.executableCode),
-          providerExecuted: true
-        });
-      } else if ("codeExecutionResult" in part && part.codeExecutionResult) {
-        content.push({
-          type: "tool-result",
-          // Results correspond to the most recent executable code part.
-          toolCallId: lastCodeExecutionToolCallId,
-          toolName: "code_execution",
-          result: {
-            outcome: part.codeExecutionResult.outcome,
-            output: (_d = part.codeExecutionResult.output) != null ? _d : ""
-          }
-        });
-      } else if ("text" in part && part.text != null) {
-        const thoughtSignatureMetadata = part.thoughtSignature ? wrapProviderMetadata({
-          thoughtSignature: part.thoughtSignature
-        }) : void 0;
-        if (part.text.length === 0) {
-          if (thoughtSignatureMetadata != null && content.length > 0) {
-            const lastContent = content[content.length - 1];
-            lastContent.providerMetadata = thoughtSignatureMetadata;
-          }
-        } else {
-          content.push({
-            type: part.thought === true ? "reasoning" : "text",
-            text: part.text,
-            providerMetadata: thoughtSignatureMetadata
-          });
-        }
-      } else if ("functionCall" in part && part.functionCall.name != null) {
-        content.push({
-          type: "tool-call",
-          toolCallId: (_e = part.functionCall.id) != null ? _e : this.config.generateId(),
-          toolName: part.functionCall.name,
-          input: JSON.stringify((_f = part.functionCall.args) != null ? _f : {}),
-          providerMetadata: part.thoughtSignature ? wrapProviderMetadata({
-            thoughtSignature: part.thoughtSignature
-          }) : void 0
-        });
-      } else if ("inlineData" in part) {
-        const hasThought = part.thought === true;
-        const hasThoughtSignature = !!part.thoughtSignature;
-        content.push({
-          type: hasThought ? "reasoning-file" : "file",
-          data: { type: "data", data: part.inlineData.data },
-          mediaType: part.inlineData.mimeType,
-          providerMetadata: hasThoughtSignature ? wrapProviderMetadata({
-            thoughtSignature: part.thoughtSignature
-          }) : void 0
-        });
-      } else if ("toolCall" in part && part.toolCall) {
-        const toolCallId = (_g = part.toolCall.id) != null ? _g : this.config.generateId();
-        lastServerToolCallId = toolCallId;
-        content.push({
-          type: "tool-call",
-          toolCallId,
-          toolName: `server:${part.toolCall.toolType}`,
-          input: JSON.stringify((_h = part.toolCall.args) != null ? _h : {}),
-          providerExecuted: true,
-          dynamic: true,
-          providerMetadata: part.thoughtSignature ? wrapProviderMetadata({
-            thoughtSignature: part.thoughtSignature,
-            serverToolCallId: toolCallId,
-            serverToolType: part.toolCall.toolType
-          }) : wrapProviderMetadata({
-            serverToolCallId: toolCallId,
-            serverToolType: part.toolCall.toolType
-          })
-        });
-      } else if ("toolResponse" in part && part.toolResponse) {
-        const responseToolCallId = (_i = lastServerToolCallId != null ? lastServerToolCallId : part.toolResponse.id) != null ? _i : this.config.generateId();
-        content.push({
-          type: "tool-result",
-          toolCallId: responseToolCallId,
-          toolName: `server:${part.toolResponse.toolType}`,
-          result: (_j = part.toolResponse.response) != null ? _j : {},
-          providerMetadata: part.thoughtSignature ? wrapProviderMetadata({
-            thoughtSignature: part.thoughtSignature,
-            serverToolCallId: responseToolCallId,
-            serverToolType: part.toolResponse.toolType
-          }) : wrapProviderMetadata({
-            serverToolCallId: responseToolCallId,
-            serverToolType: part.toolResponse.toolType
-          })
-        });
-        lastServerToolCallId = void 0;
-      }
-    }
-    const sources = (_k = extractSources({
-      groundingMetadata: candidate.groundingMetadata,
-      generateId: this.config.generateId
-    })) != null ? _k : [];
-    for (const source of sources) {
-      content.push(source);
-    }
-    return {
-      content,
-      finishReason: {
-        unified: mapGoogleFinishReason({
-          finishReason: candidate.finishReason,
-          // Only count client-executed tool calls for finish reason determination.
-          hasToolCalls: content.some(
-            (part) => part.type === "tool-call" && !part.providerExecuted
-          )
-        }),
-        raw: (_l = candidate.finishReason) != null ? _l : void 0
-      },
-      usage: convertGoogleUsage(usageMetadata),
-      warnings,
-      providerMetadata: wrapProviderMetadata({
-        promptFeedback: (_m = response.promptFeedback) != null ? _m : null,
-        groundingMetadata: (_n = candidate.groundingMetadata) != null ? _n : null,
-        urlContextMetadata: (_o = candidate.urlContextMetadata) != null ? _o : null,
-        safetyRatings: (_p = candidate.safetyRatings) != null ? _p : null,
-        usageMetadata: usageMetadata != null ? usageMetadata : null,
-        finishMessage: (_q = candidate.finishMessage) != null ? _q : null,
-        serviceTier: (_r = usageMetadata == null ? void 0 : usageMetadata.serviceTier) != null ? _r : null
-      }),
-      request: { body: args },
-      response: {
-        // TODO timestamp, model id
-        id: (_s = response.responseId) != null ? _s : void 0,
-        headers: responseHeaders,
-        body: rawResponse
-      }
-    };
-  }
-  async doStream(options) {
-    const { args, warnings, providerOptionsNames, extraHeaders } = await this.getArgs(options, { isStreaming: true });
-    const wrapProviderMetadata = (payload) => Object.fromEntries(
-      providerOptionsNames.map((name25) => [name25, payload])
-    );
-    const headers = combineHeaders(
-      this.config.headers ? await resolve(this.config.headers) : void 0,
-      options.headers,
-      extraHeaders
-    );
-    const { responseHeaders, value: response } = await postJsonToApi({
-      url: `${this.config.baseURL}/${getModelPath(
-        this.modelId
-      )}:streamGenerateContent?alt=sse`,
-      headers,
-      body: args,
-      failedResponseHandler: googleFailedResponseHandler,
-      successfulResponseHandler: createEventSourceResponseHandler(chunkSchema),
-      abortSignal: options.abortSignal,
-      fetch: this.config.fetch
-    });
-    let finishReason = {
-      unified: "other",
-      raw: void 0
-    };
-    let usage = void 0;
-    let providerMetadata = void 0;
-    let lastGroundingMetadata = null;
-    let lastUrlContextMetadata = null;
-    const generateId3 = this.config.generateId;
-    let hasToolCalls = false;
-    let hasEmittedResponseMetadata = false;
-    let currentTextBlockId = null;
-    let currentReasoningBlockId = null;
-    let blockCounter = 0;
-    const emittedSourceUrls = /* @__PURE__ */ new Set();
-    let lastCodeExecutionToolCallId;
-    let lastServerToolCallId;
-    const activeStreamingToolCalls = [];
-    const finishActiveStreamingToolCall = (controller) => {
-      const active = activeStreamingToolCalls.pop();
-      if (active == null) {
-        return;
-      }
-      const { finalJSON, closingDelta } = active.accumulator.finalize();
-      if (closingDelta.length > 0) {
-        controller.enqueue({
-          type: "tool-input-delta",
-          id: active.toolCallId,
-          delta: closingDelta,
-          providerMetadata: active.providerMetadata
-        });
-      }
-      controller.enqueue({
-        type: "tool-input-end",
-        id: active.toolCallId,
-        providerMetadata: active.providerMetadata
-      });
-      controller.enqueue({
-        type: "tool-call",
-        toolCallId: active.toolCallId,
-        toolName: active.toolName,
-        input: finalJSON,
-        providerMetadata: active.providerMetadata
-      });
-      hasToolCalls = true;
-    };
-    return {
-      stream: response.pipeThrough(
-        new TransformStream({
-          start(controller) {
-            controller.enqueue({ type: "stream-start", warnings });
-          },
-          transform(chunk, controller) {
-            var _a25, _b18, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p;
-            if (options.includeRawChunks) {
-              controller.enqueue({ type: "raw", rawValue: chunk.rawValue });
-            }
-            if (!chunk.success) {
-              controller.enqueue({ type: "error", error: chunk.error });
-              return;
-            }
-            const value = chunk.value;
-            if (!hasEmittedResponseMetadata && value.responseId != null) {
-              hasEmittedResponseMetadata = true;
-              controller.enqueue({
-                type: "response-metadata",
-                id: value.responseId
-              });
-            }
-            const usageMetadata = value.usageMetadata;
-            if (usageMetadata != null) {
-              usage = usageMetadata;
-            }
-            const candidate = (_a25 = value.candidates) == null ? void 0 : _a25[0];
-            if (candidate == null) {
-              return;
-            }
-            const content = candidate.content;
-            if (candidate.groundingMetadata != null) {
-              lastGroundingMetadata = candidate.groundingMetadata;
-            }
-            if (candidate.urlContextMetadata != null) {
-              lastUrlContextMetadata = candidate.urlContextMetadata;
-            }
-            const sources = extractSources({
-              groundingMetadata: candidate.groundingMetadata,
-              generateId: generateId3
-            });
-            if (sources != null) {
-              for (const source of sources) {
-                if (source.sourceType === "url" && !emittedSourceUrls.has(source.url)) {
-                  emittedSourceUrls.add(source.url);
-                  controller.enqueue(source);
-                }
-              }
-            }
-            if (content != null) {
-              const parts = (_b18 = content.parts) != null ? _b18 : [];
-              for (const part of parts) {
-                if ("executableCode" in part && ((_c = part.executableCode) == null ? void 0 : _c.code)) {
-                  const toolCallId = generateId3();
-                  lastCodeExecutionToolCallId = toolCallId;
-                  controller.enqueue({
-                    type: "tool-call",
-                    toolCallId,
-                    toolName: "code_execution",
-                    input: JSON.stringify(part.executableCode),
-                    providerExecuted: true
-                  });
-                } else if ("codeExecutionResult" in part && part.codeExecutionResult) {
-                  const toolCallId = lastCodeExecutionToolCallId;
-                  if (toolCallId) {
-                    controller.enqueue({
-                      type: "tool-result",
-                      toolCallId,
-                      toolName: "code_execution",
-                      result: {
-                        outcome: part.codeExecutionResult.outcome,
-                        output: (_d = part.codeExecutionResult.output) != null ? _d : ""
-                      }
-                    });
-                  }
-                } else if ("text" in part && part.text != null) {
-                  const thoughtSignatureMetadata = part.thoughtSignature ? wrapProviderMetadata({
-                    thoughtSignature: part.thoughtSignature
-                  }) : void 0;
-                  if (part.text.length === 0) {
-                    if (thoughtSignatureMetadata != null && currentTextBlockId !== null) {
-                      controller.enqueue({
-                        type: "text-delta",
-                        id: currentTextBlockId,
-                        delta: "",
-                        providerMetadata: thoughtSignatureMetadata
-                      });
-                    }
-                  } else if (part.thought === true) {
-                    if (currentTextBlockId !== null) {
-                      controller.enqueue({
-                        type: "text-end",
-                        id: currentTextBlockId
-                      });
-                      currentTextBlockId = null;
-                    }
-                    if (currentReasoningBlockId === null) {
-                      currentReasoningBlockId = String(blockCounter++);
-                      controller.enqueue({
-                        type: "reasoning-start",
-                        id: currentReasoningBlockId,
-                        providerMetadata: thoughtSignatureMetadata
-                      });
-                    }
-                    controller.enqueue({
-                      type: "reasoning-delta",
-                      id: currentReasoningBlockId,
-                      delta: part.text,
-                      providerMetadata: thoughtSignatureMetadata
-                    });
-                  } else {
-                    if (currentReasoningBlockId !== null) {
-                      controller.enqueue({
-                        type: "reasoning-end",
-                        id: currentReasoningBlockId
-                      });
-                      currentReasoningBlockId = null;
-                    }
-                    if (currentTextBlockId === null) {
-                      currentTextBlockId = String(blockCounter++);
-                      controller.enqueue({
-                        type: "text-start",
-                        id: currentTextBlockId,
-                        providerMetadata: thoughtSignatureMetadata
-                      });
-                    }
-                    controller.enqueue({
-                      type: "text-delta",
-                      id: currentTextBlockId,
-                      delta: part.text,
-                      providerMetadata: thoughtSignatureMetadata
-                    });
-                  }
-                } else if ("inlineData" in part) {
-                  if (currentTextBlockId !== null) {
-                    controller.enqueue({
-                      type: "text-end",
-                      id: currentTextBlockId
-                    });
-                    currentTextBlockId = null;
-                  }
-                  if (currentReasoningBlockId !== null) {
-                    controller.enqueue({
-                      type: "reasoning-end",
-                      id: currentReasoningBlockId
-                    });
-                    currentReasoningBlockId = null;
-                  }
-                  const hasThought = part.thought === true;
-                  const hasThoughtSignature = !!part.thoughtSignature;
-                  const fileMeta = hasThoughtSignature ? wrapProviderMetadata({
-                    thoughtSignature: part.thoughtSignature
-                  }) : void 0;
-                  controller.enqueue({
-                    type: hasThought ? "reasoning-file" : "file",
-                    mediaType: part.inlineData.mimeType,
-                    data: { type: "data", data: part.inlineData.data },
-                    providerMetadata: fileMeta
-                  });
-                } else if ("toolCall" in part && part.toolCall) {
-                  const toolCallId = (_e = part.toolCall.id) != null ? _e : generateId3();
-                  lastServerToolCallId = toolCallId;
-                  const serverMeta = wrapProviderMetadata({
-                    ...part.thoughtSignature ? { thoughtSignature: part.thoughtSignature } : {},
-                    serverToolCallId: toolCallId,
-                    serverToolType: part.toolCall.toolType
-                  });
-                  controller.enqueue({
-                    type: "tool-call",
-                    toolCallId,
-                    toolName: `server:${part.toolCall.toolType}`,
-                    input: JSON.stringify((_f = part.toolCall.args) != null ? _f : {}),
-                    providerExecuted: true,
-                    dynamic: true,
-                    providerMetadata: serverMeta
-                  });
-                } else if ("toolResponse" in part && part.toolResponse) {
-                  const responseToolCallId = (_g = lastServerToolCallId != null ? lastServerToolCallId : part.toolResponse.id) != null ? _g : generateId3();
-                  const serverMeta = wrapProviderMetadata({
-                    ...part.thoughtSignature ? { thoughtSignature: part.thoughtSignature } : {},
-                    serverToolCallId: responseToolCallId,
-                    serverToolType: part.toolResponse.toolType
-                  });
-                  controller.enqueue({
-                    type: "tool-result",
-                    toolCallId: responseToolCallId,
-                    toolName: `server:${part.toolResponse.toolType}`,
-                    result: (_h = part.toolResponse.response) != null ? _h : {},
-                    providerMetadata: serverMeta
-                  });
-                  lastServerToolCallId = void 0;
-                }
-              }
-              for (const part of parts) {
-                if (!("functionCall" in part)) continue;
-                const providerMeta = part.thoughtSignature ? wrapProviderMetadata({
-                  thoughtSignature: part.thoughtSignature
-                }) : void 0;
-                const isStreamingChunk = part.functionCall.partialArgs != null || part.functionCall.name != null && part.functionCall.willContinue === true;
-                const isTerminalChunk = part.functionCall.name == null && part.functionCall.args == null && part.functionCall.partialArgs == null && part.functionCall.willContinue == null;
-                const isCompleteCall = part.functionCall.name != null && part.functionCall.args != null && part.functionCall.partialArgs == null;
-                const isNoArgsCompleteCall = part.functionCall.name != null && part.functionCall.args == null && part.functionCall.partialArgs == null && part.functionCall.willContinue !== true;
-                if (isStreamingChunk) {
-                  if (part.functionCall.name != null) {
-                    const toolCallId = (_i = part.functionCall.id) != null ? _i : generateId3();
-                    const accumulator = new GoogleJSONAccumulator();
-                    activeStreamingToolCalls.push({
-                      toolCallId,
-                      toolName: part.functionCall.name,
-                      accumulator,
-                      providerMetadata: providerMeta
-                    });
-                    controller.enqueue({
-                      type: "tool-input-start",
-                      id: toolCallId,
-                      toolName: part.functionCall.name,
-                      providerMetadata: providerMeta
-                    });
-                    if (part.functionCall.partialArgs != null) {
-                      const partialArgs = part.functionCall.partialArgs;
-                      const { textDelta } = accumulator.processPartialArgs(partialArgs);
-                      if (textDelta.length > 0) {
-                        controller.enqueue({
-                          type: "tool-input-delta",
-                          id: toolCallId,
-                          delta: textDelta,
-                          providerMetadata: providerMeta
-                        });
-                      }
-                      if (part.functionCall.willContinue !== true && partialArgs.every((arg) => arg.willContinue !== true)) {
-                        finishActiveStreamingToolCall(controller);
-                      }
-                    }
-                  } else if (part.functionCall.partialArgs != null && activeStreamingToolCalls.length > 0) {
-                    const active = activeStreamingToolCalls[activeStreamingToolCalls.length - 1];
-                    const partialArgs = part.functionCall.partialArgs;
-                    const { textDelta } = active.accumulator.processPartialArgs(partialArgs);
-                    if (textDelta.length > 0) {
-                      controller.enqueue({
-                        type: "tool-input-delta",
-                        id: active.toolCallId,
-                        delta: textDelta,
-                        providerMetadata: providerMeta
-                      });
-                    }
-                    if (part.functionCall.willContinue !== true && partialArgs.every((arg) => arg.willContinue !== true)) {
-                      finishActiveStreamingToolCall(controller);
-                    }
-                  }
-                } else if (isTerminalChunk && activeStreamingToolCalls.length > 0) {
-                  finishActiveStreamingToolCall(controller);
-                } else if (isCompleteCall) {
-                  const toolCallId = (_j = part.functionCall.id) != null ? _j : generateId3();
-                  const toolName = part.functionCall.name;
-                  const args2 = typeof part.functionCall.args === "string" ? part.functionCall.args : JSON.stringify((_k = part.functionCall.args) != null ? _k : {});
-                  controller.enqueue({
-                    type: "tool-input-start",
-                    id: toolCallId,
-                    toolName,
-                    providerMetadata: providerMeta
-                  });
-                  controller.enqueue({
-                    type: "tool-input-delta",
-                    id: toolCallId,
-                    delta: args2,
-                    providerMetadata: providerMeta
-                  });
-                  controller.enqueue({
-                    type: "tool-input-end",
-                    id: toolCallId,
-                    providerMetadata: providerMeta
-                  });
-                  controller.enqueue({
-                    type: "tool-call",
-                    toolCallId,
-                    toolName,
-                    input: args2,
-                    providerMetadata: providerMeta
-                  });
-                  hasToolCalls = true;
-                } else if (isNoArgsCompleteCall) {
-                  const toolCallId = (_l = part.functionCall.id) != null ? _l : generateId3();
-                  const toolName = part.functionCall.name;
-                  controller.enqueue({
-                    type: "tool-input-start",
-                    id: toolCallId,
-                    toolName,
-                    providerMetadata: providerMeta
-                  });
-                  controller.enqueue({
-                    type: "tool-input-end",
-                    id: toolCallId,
-                    providerMetadata: providerMeta
-                  });
-                  controller.enqueue({
-                    type: "tool-call",
-                    toolCallId,
-                    toolName,
-                    input: "{}",
-                    providerMetadata: providerMeta
-                  });
-                  hasToolCalls = true;
-                }
-              }
-            }
-            if (candidate.finishReason != null) {
-              finishReason = {
-                unified: mapGoogleFinishReason({
-                  finishReason: candidate.finishReason,
-                  hasToolCalls
-                }),
-                raw: candidate.finishReason
-              };
-              providerMetadata = wrapProviderMetadata({
-                promptFeedback: (_m = value.promptFeedback) != null ? _m : null,
-                groundingMetadata: lastGroundingMetadata,
-                urlContextMetadata: lastUrlContextMetadata,
-                safetyRatings: (_n = candidate.safetyRatings) != null ? _n : null,
-                usageMetadata: usageMetadata != null ? usageMetadata : null,
-                finishMessage: (_o = candidate.finishMessage) != null ? _o : null,
-                serviceTier: (_p = usage == null ? void 0 : usage.serviceTier) != null ? _p : null
-              });
-            }
-          },
-          flush(controller) {
-            if (currentTextBlockId !== null) {
-              controller.enqueue({
-                type: "text-end",
-                id: currentTextBlockId
-              });
-            }
-            if (currentReasoningBlockId !== null) {
-              controller.enqueue({
-                type: "reasoning-end",
-                id: currentReasoningBlockId
-              });
-            }
-            controller.enqueue({
-              type: "finish",
-              finishReason,
-              usage: convertGoogleUsage(usage),
-              providerMetadata
-            });
-          }
-        })
-      ),
-      response: { headers: responseHeaders },
-      request: { body: args }
-    };
-  }
-};
-function getMaxOutputTokensForGemini25Model() {
-  return 65536;
-}
-function getMaxThinkingTokensForGemini25Model(modelId) {
-  const id = modelId.toLowerCase();
-  if (id.includes("2.5-pro") || id.includes("gemini-3-pro-image")) {
-    return 32768;
-  }
-  return 24576;
-}
-function resolveThinkingConfig({
-  reasoning,
-  modelId,
-  warnings
-}) {
-  if (!isCustomReasoning(reasoning)) {
-    return void 0;
-  }
-  if (getGoogleModelCapabilities(modelId).usesGemini3Features && !modelId.includes("gemini-3-pro-image")) {
-    return resolveGemini3ThinkingConfig({ reasoning, modelId, warnings });
-  }
-  return resolveGemini25ThinkingConfig({ reasoning, modelId, warnings });
-}
-function resolveGemini3ThinkingConfig({
-  reasoning,
-  modelId,
-  warnings
-}) {
-  const minimumThinkingLevel = /(^|\/)gemini-3\.7-flash$/i.test(modelId) ? "low" : "minimal";
-  if (reasoning === "none") {
-    return { thinkingLevel: minimumThinkingLevel };
-  }
-  const thinkingLevel = mapReasoningToProviderEffort({
-    reasoning,
-    effortMap: {
-      minimal: minimumThinkingLevel,
-      low: "low",
-      medium: "medium",
-      high: "high",
-      xhigh: "high"
-    },
-    warnings
-  });
-  if (thinkingLevel == null) {
-    return void 0;
-  }
-  return { thinkingLevel };
-}
-function resolveGemini25ThinkingConfig({
-  reasoning,
-  modelId,
-  warnings
-}) {
-  if (reasoning === "none") {
-    return { thinkingBudget: 0 };
-  }
-  const thinkingBudget = mapReasoningToProviderBudget({
-    reasoning,
-    maxOutputTokens: getMaxOutputTokensForGemini25Model(),
-    maxReasoningBudget: getMaxThinkingTokensForGemini25Model(modelId),
-    minReasoningBudget: 0,
-    warnings
-  });
-  if (thinkingBudget == null) {
-    return void 0;
-  }
-  return { thinkingBudget };
-}
-function extractSources({
-  groundingMetadata,
-  generateId: generateId3
-}) {
-  var _a25, _b18, _c, _d, _e, _f;
-  if (!(groundingMetadata == null ? void 0 : groundingMetadata.groundingChunks)) {
-    return void 0;
-  }
-  const sources = [];
-  for (const chunk of groundingMetadata.groundingChunks) {
-    if (chunk.web != null) {
-      sources.push({
-        type: "source",
-        sourceType: "url",
-        id: generateId3(),
-        url: chunk.web.uri,
-        title: (_a25 = chunk.web.title) != null ? _a25 : void 0
-      });
-    } else if (chunk.image != null) {
-      sources.push({
-        type: "source",
-        sourceType: "url",
-        id: generateId3(),
-        // Google requires attribution to the source URI, not the actual image URI.
-        // TODO: add another type in v7 to allow both the image and source URL to be included separately
-        url: chunk.image.sourceUri,
-        title: (_b18 = chunk.image.title) != null ? _b18 : void 0
-      });
-    } else if (chunk.retrievedContext != null) {
-      const uri = chunk.retrievedContext.uri;
-      const fileSearchStore = chunk.retrievedContext.fileSearchStore;
-      if (uri && (uri.startsWith("http://") || uri.startsWith("https://"))) {
-        sources.push({
-          type: "source",
-          sourceType: "url",
-          id: generateId3(),
-          url: uri,
-          title: (_c = chunk.retrievedContext.title) != null ? _c : void 0
-        });
-      } else if (uri) {
-        const title = (_d = chunk.retrievedContext.title) != null ? _d : "Unknown Document";
-        let mediaType = "application/octet-stream";
-        let filename = void 0;
-        if (uri.endsWith(".pdf")) {
-          mediaType = "application/pdf";
-          filename = uri.split("/").pop();
-        } else if (uri.endsWith(".txt")) {
-          mediaType = "text/plain";
-          filename = uri.split("/").pop();
-        } else if (uri.endsWith(".docx")) {
-          mediaType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-          filename = uri.split("/").pop();
-        } else if (uri.endsWith(".doc")) {
-          mediaType = "application/msword";
-          filename = uri.split("/").pop();
-        } else if (uri.match(/\.(md|markdown)$/)) {
-          mediaType = "text/markdown";
-          filename = uri.split("/").pop();
-        } else {
-          filename = uri.split("/").pop();
-        }
-        sources.push({
-          type: "source",
-          sourceType: "document",
-          id: generateId3(),
-          mediaType,
-          title,
-          filename
-        });
-      } else if (fileSearchStore) {
-        const title = (_e = chunk.retrievedContext.title) != null ? _e : "Unknown Document";
-        sources.push({
-          type: "source",
-          sourceType: "document",
-          id: generateId3(),
-          mediaType: "application/octet-stream",
-          title,
-          filename: fileSearchStore.split("/").pop()
-        });
-      }
-    } else if (chunk.maps != null) {
-      if (chunk.maps.uri) {
-        sources.push({
-          type: "source",
-          sourceType: "url",
-          id: generateId3(),
-          url: chunk.maps.uri,
-          title: (_f = chunk.maps.title) != null ? _f : void 0
-        });
-      }
-    }
-  }
-  return sources.length > 0 ? sources : void 0;
-}
-var getGroundingMetadataSchema = () => external_exports.object({
-  webSearchQueries: external_exports.array(external_exports.string()).nullish(),
-  imageSearchQueries: external_exports.array(external_exports.string()).nullish(),
-  retrievalQueries: external_exports.array(external_exports.string()).nullish(),
-  searchEntryPoint: external_exports.object({ renderedContent: external_exports.string() }).nullish(),
-  groundingChunks: external_exports.array(
-    external_exports.object({
-      web: external_exports.object({ uri: external_exports.string(), title: external_exports.string().nullish() }).nullish(),
-      image: external_exports.object({
-        sourceUri: external_exports.string(),
-        imageUri: external_exports.string(),
-        title: external_exports.string().nullish(),
-        domain: external_exports.string().nullish()
-      }).nullish(),
-      retrievedContext: external_exports.object({
-        uri: external_exports.string().nullish(),
-        title: external_exports.string().nullish(),
-        text: external_exports.string().nullish(),
-        fileSearchStore: external_exports.string().nullish()
-      }).nullish(),
-      maps: external_exports.object({
-        uri: external_exports.string().nullish(),
-        title: external_exports.string().nullish(),
-        text: external_exports.string().nullish(),
-        placeId: external_exports.string().nullish()
-      }).nullish()
-    })
-  ).nullish(),
-  groundingSupports: external_exports.array(
-    external_exports.object({
-      segment: external_exports.object({
-        startIndex: external_exports.number().nullish(),
-        endIndex: external_exports.number().nullish(),
-        text: external_exports.string().nullish()
-      }).nullish(),
-      segment_text: external_exports.string().nullish(),
-      groundingChunkIndices: external_exports.array(external_exports.number()).nullish(),
-      supportChunkIndices: external_exports.array(external_exports.number()).nullish(),
-      confidenceScores: external_exports.array(external_exports.number()).nullish(),
-      confidenceScore: external_exports.array(external_exports.number()).nullish()
-    })
-  ).nullish(),
-  retrievalMetadata: external_exports.union([
-    external_exports.object({
-      webDynamicRetrievalScore: external_exports.number()
-    }),
-    external_exports.object({})
-  ]).nullish()
-});
-var partialArgSchema = external_exports.object({
-  jsonPath: external_exports.string(),
-  stringValue: external_exports.string().nullish(),
-  numberValue: external_exports.number().nullish(),
-  boolValue: external_exports.boolean().nullish(),
-  nullValue: external_exports.unknown().nullish(),
-  willContinue: external_exports.boolean().nullish()
-});
-var getContentSchema = () => external_exports.object({
-  parts: external_exports.array(
-    external_exports.union([
-      // note: order matters since text can be fully empty
-      external_exports.object({
-        functionCall: external_exports.object({
-          id: external_exports.string().nullish(),
-          name: external_exports.string().nullish(),
-          args: external_exports.unknown().nullish(),
-          partialArgs: external_exports.array(partialArgSchema).nullish(),
-          willContinue: external_exports.boolean().nullish()
-        }),
-        thoughtSignature: external_exports.string().nullish()
-      }),
-      external_exports.object({
-        inlineData: external_exports.object({
-          mimeType: external_exports.string(),
-          data: external_exports.string()
-        }),
-        thought: external_exports.boolean().nullish(),
-        thoughtSignature: external_exports.string().nullish()
-      }),
-      external_exports.object({
-        toolCall: external_exports.object({
-          toolType: external_exports.string(),
-          args: external_exports.unknown().nullish(),
-          id: external_exports.string()
-        }),
-        thoughtSignature: external_exports.string().nullish()
-      }),
-      external_exports.object({
-        toolResponse: external_exports.object({
-          toolType: external_exports.string(),
-          response: external_exports.unknown().nullish(),
-          id: external_exports.string()
-        }),
-        thoughtSignature: external_exports.string().nullish()
-      }),
-      external_exports.object({
-        executableCode: external_exports.object({
-          language: external_exports.string(),
-          code: external_exports.string()
-        }).nullish(),
-        codeExecutionResult: external_exports.object({
-          outcome: external_exports.string(),
-          output: external_exports.string().nullish()
-        }).nullish(),
-        text: external_exports.string().nullish(),
-        thought: external_exports.boolean().nullish(),
-        thoughtSignature: external_exports.string().nullish()
-      })
-    ])
-  ).nullish()
-});
-var getSafetyRatingSchema = () => external_exports.object({
-  category: external_exports.string().nullish(),
-  probability: external_exports.string().nullish(),
-  probabilityScore: external_exports.number().nullish(),
-  severity: external_exports.string().nullish(),
-  severityScore: external_exports.number().nullish(),
-  blocked: external_exports.boolean().nullish()
-});
-var tokenDetailsSchema = external_exports.array(
-  external_exports.object({
-    modality: external_exports.string(),
-    tokenCount: external_exports.number()
-  })
-).nullish();
-var usageSchema = external_exports.object({
-  cachedContentTokenCount: external_exports.number().nullish(),
-  thoughtsTokenCount: external_exports.number().nullish(),
-  promptTokenCount: external_exports.number().nullish(),
-  candidatesTokenCount: external_exports.number().nullish(),
-  totalTokenCount: external_exports.number().nullish(),
-  // https://cloud.google.com/vertex-ai/generative-ai/docs/reference/rest/v1/GenerateContentResponse#TrafficType
-  trafficType: external_exports.string().nullish(),
-  serviceTier: external_exports.string().nullish(),
-  // https://ai.google.dev/api/generate-content#Modality
-  promptTokensDetails: tokenDetailsSchema,
-  candidatesTokensDetails: tokenDetailsSchema
-});
-var getUrlContextMetadataSchema = () => external_exports.object({
-  urlMetadata: external_exports.array(
-    external_exports.object({
-      retrievedUrl: external_exports.string(),
-      urlRetrievalStatus: external_exports.string()
-    })
-  ).nullish()
-});
-var responseSchema = lazySchema(
-  () => zodSchema(
-    external_exports.object({
-      responseId: external_exports.string().nullish(),
-      candidates: external_exports.array(
-        external_exports.object({
-          content: getContentSchema().nullish().or(external_exports.object({}).strict()),
-          finishReason: external_exports.string().nullish(),
-          finishMessage: external_exports.string().nullish(),
-          safetyRatings: external_exports.array(getSafetyRatingSchema()).nullish(),
-          groundingMetadata: getGroundingMetadataSchema().nullish(),
-          urlContextMetadata: getUrlContextMetadataSchema().nullish()
-        })
-      ),
-      usageMetadata: usageSchema.nullish(),
-      promptFeedback: external_exports.object({
-        blockReason: external_exports.string().nullish(),
-        safetyRatings: external_exports.array(getSafetyRatingSchema()).nullish()
-      }).nullish()
-    })
-  )
-);
-var chunkSchema = lazySchema(
-  () => zodSchema(
-    external_exports.object({
-      responseId: external_exports.string().nullish(),
-      candidates: external_exports.array(
-        external_exports.object({
-          content: getContentSchema().nullish(),
-          finishReason: external_exports.string().nullish(),
-          finishMessage: external_exports.string().nullish(),
-          safetyRatings: external_exports.array(getSafetyRatingSchema()).nullish(),
-          groundingMetadata: getGroundingMetadataSchema().nullish(),
-          urlContextMetadata: getUrlContextMetadataSchema().nullish()
-        })
-      ).nullish(),
-      usageMetadata: usageSchema.nullish(),
-      promptFeedback: external_exports.object({
-        blockReason: external_exports.string().nullish(),
-        safetyRatings: external_exports.array(getSafetyRatingSchema()).nullish()
-      }).nullish()
-    })
-  )
-);
-var codeExecution = createProviderExecutedToolFactory({
-  id: "google.code_execution",
-  inputSchema: external_exports.object({
-    language: external_exports.string().describe("The programming language of the code."),
-    code: external_exports.string().describe("The code to be executed.")
-  }),
-  outputSchema: external_exports.object({
-    outcome: external_exports.string().describe('The outcome of the execution (e.g., "OUTCOME_OK").'),
-    output: external_exports.string().describe("The output from the code execution.")
-  })
-});
-var enterpriseWebSearch = createProviderExecutedToolFactory({
-  id: "google.enterprise_web_search",
-  inputSchema: lazySchema(() => zodSchema(external_exports.object({}))),
-  outputSchema: lazySchema(() => zodSchema(external_exports.object({})))
-});
-var fileSearchArgsBaseSchema = external_exports.looseObject({
-  /** The names of the file_search_stores to retrieve from.
-   *  Example: `fileSearchStores/my-file-search-store-123`
-   */
-  fileSearchStoreNames: external_exports.array(external_exports.string()).describe(
-    "The names of the file_search_stores to retrieve from. Example: `fileSearchStores/my-file-search-store-123`"
-  ),
-  /** The number of file search retrieval chunks to retrieve. */
-  topK: external_exports.number().int().positive().describe("The number of file search retrieval chunks to retrieve.").optional(),
-  /** Metadata filter to apply to the file search retrieval documents.
-   *  See https://google.aip.dev/160 for the syntax of the filter expression.
-   */
-  metadataFilter: external_exports.string().describe(
-    "Metadata filter to apply to the file search retrieval documents. See https://google.aip.dev/160 for the syntax of the filter expression."
-  ).optional()
-});
-var fileSearch = createProviderExecutedToolFactory({
-  id: "google.file_search",
-  inputSchema: lazySchema(() => zodSchema(external_exports.object({}))),
-  outputSchema: lazySchema(() => zodSchema(external_exports.object({})))
-});
-var googleMaps = createProviderExecutedToolFactory({
-  id: "google.google_maps",
-  inputSchema: lazySchema(() => zodSchema(external_exports.object({}))),
-  outputSchema: lazySchema(() => zodSchema(external_exports.object({})))
-});
-var googleSearchToolArgsBaseSchema = external_exports.looseObject({
-  searchTypes: external_exports.object({
-    webSearch: external_exports.object({}).optional(),
-    imageSearch: external_exports.object({}).optional()
-  }).optional(),
-  timeRangeFilter: external_exports.object({
-    startTime: external_exports.string(),
-    endTime: external_exports.string()
-  }).optional()
-});
-var googleSearch = createProviderExecutedToolFactory({
-  id: "google.google_search",
-  inputSchema: lazySchema(() => zodSchema(external_exports.object({}))),
-  outputSchema: lazySchema(() => zodSchema(external_exports.object({})))
-});
-var urlContext = createProviderExecutedToolFactory({
-  id: "google.url_context",
-  inputSchema: lazySchema(() => zodSchema(external_exports.object({}))),
-  outputSchema: lazySchema(() => zodSchema(external_exports.object({})))
-});
-var vertexRagStore = createProviderExecutedToolFactory({
-  id: "google.vertex_rag_store",
-  inputSchema: lazySchema(() => zodSchema(external_exports.object({}))),
-  outputSchema: lazySchema(() => zodSchema(external_exports.object({})))
-});
-var googleTools = {
-  /**
-   * Creates a Google search tool that gives Google direct access to real-time web content.
-   * Must have name "google_search".
-   */
-  googleSearch,
-  /**
-   * Creates an Enterprise Web Search tool for grounding responses using a compliance-focused web index.
-   * Designed for highly-regulated industries (finance, healthcare, public sector).
-   * Does not log customer data and supports VPC service controls.
-   * Must have name "enterprise_web_search".
-   *
-   * @note Only available on Vertex AI. Requires Gemini 2.0 or newer.
-   *
-   * @see https://cloud.google.com/vertex-ai/generative-ai/docs/grounding/web-grounding-enterprise
-   */
-  enterpriseWebSearch,
-  /**
-   * Creates a Google Maps grounding tool that gives the model access to Google Maps data.
-   * Must have name "google_maps".
-   *
-   * @see https://ai.google.dev/gemini-api/docs/maps-grounding
-   * @see https://cloud.google.com/vertex-ai/generative-ai/docs/grounding/grounding-with-google-maps
-   */
-  googleMaps,
-  /**
-   * Creates a URL context tool that gives Google direct access to real-time web content.
-   * Must have name "url_context".
-   */
-  urlContext,
-  /**
-   * Enables Retrieval Augmented Generation (RAG) via the Gemini File Search tool.
-   * Must have name "file_search".
-   *
-   * @param fileSearchStoreNames - Fully-qualified File Search store resource names.
-   * @param metadataFilter - Optional filter expression to restrict the files that can be retrieved.
-   * @param topK - Optional result limit for the number of chunks returned from File Search.
-   *
-   * @see https://ai.google.dev/gemini-api/docs/file-search
-   */
-  fileSearch,
-  /**
-   * A tool that enables the model to generate and run Python code.
-   * Must have name "code_execution".
-   *
-   * @note Ensure the selected model supports Code Execution.
-   * Multi-tool usage with the code execution tool is typically compatible with Gemini >=2 models.
-   *
-   * @see https://ai.google.dev/gemini-api/docs/code-execution (Google AI)
-   * @see https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/code-execution-api (Vertex AI)
-   */
-  codeExecution,
-  /**
-   * Creates a Vertex RAG Store tool that enables the model to perform RAG searches against a Vertex RAG Store.
-   * Must have name "vertex_rag_store".
-   */
-  vertexRagStore
-};
-var googleImageModelOptionsSchema = lazySchema(
-  () => zodSchema(
-    external_exports.object({
-      personGeneration: external_exports.enum(["dont_allow", "allow_adult", "allow_all"]).nullish(),
-      aspectRatio: external_exports.enum(["1:1", "3:4", "4:3", "9:16", "16:9"]).nullish(),
-      /**
-       * Enable Google Search grounding for Gemini image models. The value is
-       * forwarded as the args of the `google.tools.googleSearch` provider
-       * tool on the underlying language-model call. Pass `{}` for defaults.
-       *
-       * `generateImage` does not accept a `tools` parameter, so this is the
-       * dedicated escape hatch for grounding image generation the same way
-       * `generateText` does.
-       */
-      googleSearch: googleSearchToolArgsBaseSchema.optional()
-    })
-  )
-);
-var GoogleImageModel = class _GoogleImageModel {
-  constructor(modelId, settings, config2) {
-    this.modelId = modelId;
-    this.settings = settings;
-    this.config = config2;
-    this.specificationVersion = "v4";
-  }
-  static [WORKFLOW_SERIALIZE](model) {
-    return serializeModelOptions({
-      modelId: model.modelId,
-      config: model.config
-    });
-  }
-  static [WORKFLOW_DESERIALIZE](options) {
-    return new _GoogleImageModel(options.modelId, {}, options.config);
-  }
-  get maxImagesPerCall() {
-    if (this.settings.maxImagesPerCall != null) {
-      return this.settings.maxImagesPerCall;
-    }
-    if (isGeminiModel(this.modelId)) {
-      return 10;
-    }
-    return 4;
-  }
-  get provider() {
-    return this.config.provider;
-  }
-  async doGenerate(options) {
-    if (isGeminiModel(this.modelId)) {
-      return this.doGenerateGemini(options);
-    }
-    return this.doGenerateImagen(options);
-  }
-  async doGenerateImagen(options) {
-    var _a25, _b18, _c;
-    const {
-      prompt,
-      n = 1,
-      size,
-      aspectRatio = "1:1",
-      seed,
-      providerOptions,
-      headers,
-      abortSignal,
-      files,
-      mask
-    } = options;
-    const warnings = [];
-    if (files != null && files.length > 0) {
-      throw new Error(
-        "Google Gemini API does not support image editing with Imagen models. Use Google Vertex AI (@ai-sdk/google-vertex) for image editing capabilities."
-      );
-    }
-    if (mask != null) {
-      throw new Error(
-        "Google Gemini API does not support image editing with masks. Use Google Vertex AI (@ai-sdk/google-vertex) for image editing capabilities."
-      );
-    }
-    if (size != null) {
-      warnings.push({
-        type: "unsupported",
-        feature: "size",
-        details: "This model does not support the `size` option. Use `aspectRatio` instead."
-      });
-    }
-    if (seed != null) {
-      warnings.push({
-        type: "unsupported",
-        feature: "seed",
-        details: "This model does not support the `seed` option through this provider."
-      });
-    }
-    const googleOptions = await parseProviderOptions({
-      provider: "google",
-      providerOptions,
-      schema: googleImageModelOptionsSchema
-    });
-    const currentDate = (_c = (_b18 = (_a25 = this.config._internal) == null ? void 0 : _a25.currentDate) == null ? void 0 : _b18.call(_a25)) != null ? _c : /* @__PURE__ */ new Date();
-    const parameters = {
-      sampleCount: n
-    };
-    if (aspectRatio != null) {
-      parameters.aspectRatio = aspectRatio;
-    }
-    if (googleOptions) {
-      const { googleSearch: imagenGoogleSearch, ...imagenOptions } = googleOptions;
-      if (imagenGoogleSearch != null) {
-        warnings.push({
-          type: "unsupported",
-          feature: "googleSearch",
-          details: "Google Search grounding is only supported on Gemini image models."
-        });
-      }
-      Object.assign(parameters, imagenOptions);
-    }
-    const body = {
-      instances: [{ prompt }],
-      parameters
-    };
-    const { responseHeaders, value: response } = await postJsonToApi({
-      url: `${this.config.baseURL}/models/${this.modelId}:predict`,
-      headers: combineHeaders(
-        this.config.headers ? await resolve(this.config.headers) : void 0,
-        headers
-      ),
-      body,
-      failedResponseHandler: googleFailedResponseHandler,
-      successfulResponseHandler: createJsonResponseHandler(
-        googleImageResponseSchema
-      ),
-      abortSignal,
-      fetch: this.config.fetch
-    });
-    return {
-      images: response.predictions.map(
-        (p) => p.bytesBase64Encoded
-      ),
-      warnings,
-      providerMetadata: {
-        google: {
-          images: response.predictions.map(() => ({
-            // Add any prediction-specific metadata here
-          }))
-        }
-      },
-      response: {
-        timestamp: currentDate,
-        modelId: this.modelId,
-        headers: responseHeaders
-      }
-    };
-  }
-  async doGenerateGemini(options) {
-    var _a25, _b18, _c, _d, _e, _f, _g, _h, _i, _j, _k;
-    const {
-      prompt,
-      n,
-      size,
-      aspectRatio,
-      seed,
-      providerOptions,
-      headers,
-      abortSignal,
-      files,
-      mask
-    } = options;
-    const warnings = [];
-    if (mask != null) {
-      throw new Error(
-        "Gemini image models do not support mask-based image editing."
-      );
-    }
-    if (n != null && n > 1) {
-      throw new Error(
-        "Gemini image models do not support generating a set number of images per call. Use n=1 or omit the n parameter."
-      );
-    }
-    if (size != null) {
-      warnings.push({
-        type: "unsupported",
-        feature: "size",
-        details: "This model does not support the `size` option. Use `aspectRatio` instead."
-      });
-    }
-    const userContent = [];
-    if (prompt != null) {
-      userContent.push({ type: "text", text: prompt });
-    }
-    if (files != null && files.length > 0) {
-      for (const file2 of files) {
-        if (file2.type === "url") {
-          userContent.push({
-            type: "file",
-            data: { type: "url", url: new URL(file2.url) },
-            mediaType: "image/*"
-          });
-        } else {
-          userContent.push({
-            type: "file",
-            data: {
-              type: "data",
-              data: typeof file2.data === "string" ? file2.data : new Uint8Array(file2.data)
-            },
-            mediaType: file2.mediaType
-          });
-        }
-      }
-    }
-    const languageModelPrompt = [
-      { role: "user", content: userContent }
-    ];
-    const googleImageOptions = await parseProviderOptions({
-      provider: "google",
-      providerOptions,
-      schema: googleImageModelOptionsSchema
-    });
-    const { googleSearch: _strippedGoogleSearch, ...passthroughGoogleOptions } = (_a25 = providerOptions == null ? void 0 : providerOptions.google) != null ? _a25 : {};
-    const languageModel = new GoogleLanguageModel(this.modelId, {
-      provider: this.config.provider,
-      baseURL: this.config.baseURL,
-      headers: (_b18 = this.config.headers) != null ? _b18 : {},
-      fetch: this.config.fetch,
-      generateId: (_c = this.config.generateId) != null ? _c : generateId
-    });
-    const result = await languageModel.doGenerate({
-      prompt: languageModelPrompt,
-      seed,
-      providerOptions: {
-        google: {
-          responseModalities: ["IMAGE"],
-          imageConfig: aspectRatio ? {
-            aspectRatio
-          } : void 0,
-          ...passthroughGoogleOptions
-        }
-      },
-      tools: (googleImageOptions == null ? void 0 : googleImageOptions.googleSearch) != null ? [
-        {
-          type: "provider",
-          id: "google.google_search",
-          name: "google_search",
-          args: googleImageOptions.googleSearch
-        }
-      ] : void 0,
-      headers,
-      abortSignal
-    });
-    const currentDate = (_f = (_e = (_d = this.config._internal) == null ? void 0 : _d.currentDate) == null ? void 0 : _e.call(_d)) != null ? _f : /* @__PURE__ */ new Date();
-    const images = [];
-    for (const part of result.content) {
-      if (part.type === "file" && part.mediaType.startsWith("image/") && part.data.type === "data") {
-        images.push(convertToBase64(part.data.data));
-      }
-    }
-    const languageModelGoogleMetadata = (_h = (_g = result.providerMetadata) == null ? void 0 : _g.google) != null ? _h : {};
-    return {
-      images,
-      warnings,
-      providerMetadata: {
-        google: {
-          ...languageModelGoogleMetadata,
-          images: images.map(() => ({}))
-        }
-      },
-      response: {
-        timestamp: currentDate,
-        modelId: this.modelId,
-        headers: (_i = result.response) == null ? void 0 : _i.headers
-      },
-      usage: result.usage ? {
-        inputTokens: result.usage.inputTokens.total,
-        outputTokens: result.usage.outputTokens.total,
-        totalTokens: ((_j = result.usage.inputTokens.total) != null ? _j : 0) + ((_k = result.usage.outputTokens.total) != null ? _k : 0)
-      } : void 0
-    };
-  }
-};
-function isGeminiModel(modelId) {
-  return modelId.startsWith("gemini-");
-}
-var googleImageResponseSchema = lazySchema(
-  () => zodSchema(
-    external_exports.object({
-      predictions: external_exports.array(external_exports.object({ bytesBase64Encoded: external_exports.string() })).default([])
-    })
-  )
-);
-var GoogleFiles = class {
-  constructor(config2) {
-    this.config = config2;
-    this.specificationVersion = "v4";
-  }
-  get provider() {
-    return this.config.provider;
-  }
-  async uploadFile(options) {
-    var _a25, _b18, _c, _d;
-    const googleOptions = await parseProviderOptions({
-      provider: "google",
-      providerOptions: options.providerOptions,
-      schema: googleFilesUploadOptionsSchema
-    });
-    const resolvedHeaders = this.config.headers();
-    const fetchFn = (_a25 = this.config.fetch) != null ? _a25 : globalThis.fetch;
-    const warnings = [];
-    if (options.filename != null) {
-      warnings.push({ type: "unsupported", feature: "filename" });
-    }
-    const fileBytes = convertInlineFileDataToUint8Array(options.data);
-    const mediaType = options.mediaType;
-    const displayName = googleOptions == null ? void 0 : googleOptions.displayName;
-    const baseOrigin = this.config.baseURL.replace(/\/v1beta$/, "");
-    const initResponse = await fetchFn(`${baseOrigin}/upload/v1beta/files`, {
-      method: "POST",
-      headers: {
-        ...resolvedHeaders,
-        "X-Goog-Upload-Protocol": "resumable",
-        "X-Goog-Upload-Command": "start",
-        "X-Goog-Upload-Header-Content-Length": String(fileBytes.length),
-        "X-Goog-Upload-Header-Content-Type": mediaType,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        file: {
-          ...displayName != null ? { display_name: displayName } : {}
-        }
-      })
-    });
-    if (!initResponse.ok) {
-      const errorBody = await initResponse.text();
-      throw new AISDKError({
-        name: "GOOGLE_FILES_UPLOAD_ERROR",
-        message: `Failed to initiate resumable upload: ${initResponse.status} ${errorBody}`
-      });
-    }
-    const uploadUrl = initResponse.headers.get("x-goog-upload-url");
-    if (!uploadUrl) {
-      throw new AISDKError({
-        name: "GOOGLE_FILES_UPLOAD_ERROR",
-        message: "No upload URL returned from initiation request"
-      });
-    }
-    const uploadResponse = await fetchFn(uploadUrl, {
-      method: "POST",
-      headers: {
-        "X-Goog-Upload-Offset": "0",
-        "X-Goog-Upload-Command": "upload, finalize"
-      },
-      body: fileBytes
-    });
-    if (!uploadResponse.ok) {
-      const errorBody = await uploadResponse.text();
-      throw new AISDKError({
-        name: "GOOGLE_FILES_UPLOAD_ERROR",
-        message: `Failed to upload file data: ${uploadResponse.status} ${errorBody}`
-      });
-    }
-    const uploadResult = await uploadResponse.json();
-    let file2 = uploadResult.file;
-    const pollIntervalMs = (_b18 = googleOptions == null ? void 0 : googleOptions.pollIntervalMs) != null ? _b18 : 2e3;
-    const pollTimeoutMs = (_c = googleOptions == null ? void 0 : googleOptions.pollTimeoutMs) != null ? _c : 3e5;
-    const startTime = Date.now();
-    while (file2.state === "PROCESSING") {
-      if (Date.now() - startTime > pollTimeoutMs) {
-        throw new AISDKError({
-          name: "GOOGLE_FILES_UPLOAD_TIMEOUT",
-          message: `File processing timed out after ${pollTimeoutMs}ms`
-        });
-      }
-      await delay(pollIntervalMs);
-      const { value: fileStatus } = await getFromApi({
-        url: `${this.config.baseURL}/${file2.name}`,
-        validateUrl: false,
-        headers: combineHeaders(resolvedHeaders),
-        successfulResponseHandler: createJsonResponseHandler(
-          googleFileResponseSchema
-        ),
-        failedResponseHandler: googleFailedResponseHandler,
-        fetch: this.config.fetch
-      });
-      file2 = fileStatus;
-    }
-    if (file2.state === "FAILED") {
-      throw new AISDKError({
-        name: "GOOGLE_FILES_UPLOAD_FAILED",
-        message: `File processing failed for ${file2.name}`
-      });
-    }
-    return {
-      warnings,
-      providerReference: { google: file2.uri },
-      mediaType: (_d = file2.mimeType) != null ? _d : options.mediaType,
-      providerMetadata: {
-        google: {
-          name: file2.name,
-          displayName: file2.displayName,
-          mimeType: file2.mimeType,
-          sizeBytes: file2.sizeBytes,
-          state: file2.state,
-          uri: file2.uri,
-          ...file2.createTime != null ? { createTime: file2.createTime } : {},
-          ...file2.updateTime != null ? { updateTime: file2.updateTime } : {},
-          ...file2.expirationTime != null ? { expirationTime: file2.expirationTime } : {},
-          ...file2.sha256Hash != null ? { sha256Hash: file2.sha256Hash } : {}
-        }
-      }
-    };
-  }
-};
-var googleFileResponseSchema = lazySchema(
-  () => zodSchema(
-    external_exports.object({
-      name: external_exports.string(),
-      displayName: external_exports.string().nullish(),
-      mimeType: external_exports.string(),
-      sizeBytes: external_exports.string().nullish(),
-      createTime: external_exports.string().nullish(),
-      updateTime: external_exports.string().nullish(),
-      expirationTime: external_exports.string().nullish(),
-      sha256Hash: external_exports.string().nullish(),
-      uri: external_exports.string(),
-      state: external_exports.string()
-    })
-  )
-);
-var googleFilesUploadOptionsSchema = lazySchema(
-  () => zodSchema(
-    external_exports.looseObject({
-      displayName: external_exports.string().nullish(),
-      pollIntervalMs: external_exports.number().positive().nullish(),
-      pollTimeoutMs: external_exports.number().positive().nullish()
-    })
-  )
-);
-var googleVideoModelOptionsSchema = lazySchema(
-  () => zodSchema(
-    external_exports.looseObject({
-      pollIntervalMs: external_exports.number().positive().nullish(),
-      pollTimeoutMs: external_exports.number().positive().nullish(),
-      personGeneration: external_exports.enum(["dont_allow", "allow_adult", "allow_all"]).nullish(),
-      negativePrompt: external_exports.string().nullish(),
-      referenceImages: external_exports.array(
-        external_exports.object({
-          bytesBase64Encoded: external_exports.string().nullish(),
-          gcsUri: external_exports.string().nullish()
-        })
-      ).nullish()
-    })
-  )
-);
-function getFirstFrameImage(options) {
-  var _a25, _b18;
-  return (_b18 = (_a25 = options.frameImages) == null ? void 0 : _a25.find((frame) => frame.frameType === "first_frame")) == null ? void 0 : _b18.image;
-}
-function resolveStartImage(options) {
-  var _a25;
-  return (_a25 = getFirstFrameImage(options)) != null ? _a25 : options.image;
-}
-function getLastFrameImage(options) {
-  var _a25, _b18;
-  return (_b18 = (_a25 = options.frameImages) == null ? void 0 : _a25.find((frame) => frame.frameType === "last_frame")) == null ? void 0 : _b18.image;
-}
-function getInputReferences(options) {
-  if (options.frameImages != null && options.frameImages.length > 0) {
-    return void 0;
-  }
-  return options.inputReferences != null && options.inputReferences.length > 0 ? options.inputReferences : void 0;
-}
-function convertFileToGoogleImage(file2, warnings) {
-  if (file2.type === "url") {
-    if (file2.url.startsWith("gs://")) {
-      return {
-        gcsUri: file2.url,
-        mimeType: "image/png"
-      };
-    }
-    warnings.push({
-      type: "unsupported",
-      feature: "URL-based image input",
-      details: "Google Generative AI video models require base64-encoded images or GCS URIs. URL will be ignored."
-    });
-    return void 0;
-  }
-  const base64Data = typeof file2.data === "string" ? file2.data : convertUint8ArrayToBase64(file2.data);
-  return {
-    bytesBase64Encoded: base64Data,
-    mimeType: file2.mediaType || "image/png"
-  };
-}
-function convertProviderReferenceImage(refImg) {
-  if (refImg.bytesBase64Encoded) {
-    return {
-      image: {
-        bytesBase64Encoded: refImg.bytesBase64Encoded,
-        mimeType: "image/png"
-      },
-      referenceType: "asset"
-    };
-  }
-  if (refImg.gcsUri) {
-    return {
-      image: {
-        gcsUri: refImg.gcsUri,
-        mimeType: "image/png"
-      },
-      referenceType: "asset"
-    };
-  }
-  return refImg;
-}
-function convertInputReferenceImage(file2, warnings) {
-  const image = convertFileToGoogleImage(file2, warnings);
-  return image != null ? { image, referenceType: "asset" } : void 0;
-}
-var GoogleVideoModel = class {
-  constructor(modelId, config2) {
-    this.modelId = modelId;
-    this.config = config2;
-    this.specificationVersion = "v4";
-  }
-  get provider() {
-    return this.config.provider;
-  }
-  get maxVideosPerCall() {
-    return 4;
-  }
-  async buildRequest(options) {
-    const warnings = [];
-    const googleOptions = await parseProviderOptions({
-      provider: "google",
-      providerOptions: options.providerOptions,
-      schema: googleVideoModelOptionsSchema
-    });
-    const instances = [{}];
-    const instance = instances[0];
-    if (options.prompt != null) {
-      instance.prompt = options.prompt;
-    }
-    const startImage = resolveStartImage(options);
-    if (startImage != null) {
-      const image = convertFileToGoogleImage(startImage, warnings);
-      if (image != null) {
-        instance.image = image;
-      }
-    }
-    const lastFrameImage = getLastFrameImage(options);
-    if (lastFrameImage != null) {
-      const lastFrame = convertFileToGoogleImage(lastFrameImage, warnings);
-      if (lastFrame != null) {
-        instance.lastFrame = lastFrame;
-      }
-    }
-    const inputReferences = getInputReferences(options);
-    if (inputReferences != null) {
-      instance.referenceImages = inputReferences.flatMap((reference) => {
-        const converted = convertInputReferenceImage(reference, warnings);
-        return converted != null ? [converted] : [];
-      });
-    } else if ((googleOptions == null ? void 0 : googleOptions.referenceImages) != null) {
-      instance.referenceImages = googleOptions.referenceImages.map(
-        (refImg) => convertProviderReferenceImage(refImg)
-      );
-    }
-    const parameters = {
-      sampleCount: options.n
-    };
-    if (options.aspectRatio) {
-      parameters.aspectRatio = options.aspectRatio;
-    }
-    if (options.resolution) {
-      const resolutionMap = {
-        "1280x720": "720p",
-        "1920x1080": "1080p",
-        "3840x2160": "4k"
-      };
-      parameters.resolution = resolutionMap[options.resolution] || options.resolution;
-    }
-    if (options.duration) {
-      parameters.durationSeconds = options.duration;
-    }
-    if (options.seed) {
-      parameters.seed = options.seed;
-    }
-    if (googleOptions != null) {
-      const opts = googleOptions;
-      if (opts.personGeneration !== void 0 && opts.personGeneration !== null) {
-        parameters.personGeneration = opts.personGeneration;
-      }
-      if (opts.negativePrompt !== void 0 && opts.negativePrompt !== null) {
-        parameters.negativePrompt = opts.negativePrompt;
-      }
-      for (const [key, value] of Object.entries(opts)) {
-        if (![
-          "pollIntervalMs",
-          "pollTimeoutMs",
-          "personGeneration",
-          "negativePrompt",
-          "referenceImages"
-        ].includes(key)) {
-          parameters[key] = value;
-        }
-      }
-    }
-    return { instances, parameters, warnings, googleOptions };
-  }
-  async buildCompletedResult(finalOperation, responseHeaders, warnings, currentDate) {
-    var _a25, _b18;
-    const response = finalOperation.response;
-    if (!((_a25 = response == null ? void 0 : response.generateVideoResponse) == null ? void 0 : _a25.generatedSamples) || response.generateVideoResponse.generatedSamples.length === 0) {
-      throw new AISDKError({
-        name: "GOOGLE_VIDEO_GENERATION_ERROR",
-        message: `No videos in response. Response: ${JSON.stringify(finalOperation)}`
-      });
-    }
-    const videos = [];
-    const videoMetadata = [];
-    const resolvedHeaders = await resolve(this.config.headers);
-    const apiKey = resolvedHeaders == null ? void 0 : resolvedHeaders["x-goog-api-key"];
-    for (const generatedSample of response.generateVideoResponse.generatedSamples) {
-      if ((_b18 = generatedSample.video) == null ? void 0 : _b18.uri) {
-        const urlWithAuth = apiKey && isSameOrigin(generatedSample.video.uri, this.config.baseURL) ? `${generatedSample.video.uri}${generatedSample.video.uri.includes("?") ? "&" : "?"}key=${apiKey}` : generatedSample.video.uri;
-        videos.push({
-          type: "url",
-          url: urlWithAuth,
-          mediaType: "video/mp4"
-        });
-        videoMetadata.push({
-          uri: generatedSample.video.uri
-        });
-      }
-    }
-    if (videos.length === 0) {
-      throw new AISDKError({
-        name: "GOOGLE_VIDEO_GENERATION_ERROR",
-        message: "No valid videos in response"
-      });
-    }
-    return {
-      status: "completed",
-      videos,
-      warnings,
-      response: {
-        timestamp: currentDate,
-        modelId: this.modelId,
-        headers: responseHeaders
-      },
-      providerMetadata: {
-        google: {
-          videos: videoMetadata
-        }
-      }
-    };
-  }
-  async doStart(options) {
-    var _a25, _b18, _c;
-    const currentDate = (_c = (_b18 = (_a25 = this.config._internal) == null ? void 0 : _a25.currentDate) == null ? void 0 : _b18.call(_a25)) != null ? _c : /* @__PURE__ */ new Date();
-    const { instances, parameters, warnings } = await this.buildRequest(options);
-    const { value: operation, responseHeaders } = await postJsonToApi({
-      url: `${this.config.baseURL}/models/${this.modelId}:predictLongRunning`,
-      headers: combineHeaders(
-        await resolve(this.config.headers),
-        options.headers
-      ),
-      body: {
-        instances,
-        parameters
-      },
-      successfulResponseHandler: createJsonResponseHandler(
-        googleOperationSchema
-      ),
-      failedResponseHandler: googleFailedResponseHandler,
-      abortSignal: options.abortSignal,
-      fetch: this.config.fetch
-    });
-    const operationName = operation.name;
-    if (!operationName) {
-      throw new AISDKError({
-        name: "GOOGLE_VIDEO_GENERATION_ERROR",
-        message: "No operation name returned from API"
-      });
-    }
-    return {
-      operation: { operationName },
-      warnings,
-      response: {
-        timestamp: currentDate,
-        modelId: this.modelId,
-        headers: responseHeaders
-      }
-    };
-  }
-  async doStatus(options) {
-    var _a25, _b18, _c;
-    const currentDate = (_c = (_b18 = (_a25 = this.config._internal) == null ? void 0 : _a25.currentDate) == null ? void 0 : _b18.call(_a25)) != null ? _c : /* @__PURE__ */ new Date();
-    const { operationName } = options.operation;
-    const { value: statusOperation, responseHeaders } = await getFromApi({
-      url: `${this.config.baseURL}/${operationName}`,
-      validateUrl: false,
-      headers: combineHeaders(
-        await resolve(this.config.headers),
-        options.headers
-      ),
-      successfulResponseHandler: createJsonResponseHandler(
-        googleOperationSchema
-      ),
-      failedResponseHandler: googleFailedResponseHandler,
-      abortSignal: options.abortSignal,
-      fetch: this.config.fetch
-    });
-    if (!statusOperation.done) {
-      return {
-        status: "pending",
-        response: {
-          timestamp: currentDate,
-          modelId: this.modelId,
-          headers: responseHeaders
-        }
-      };
-    }
-    if (statusOperation.error) {
-      return {
-        status: "error",
-        error: `Video generation failed: ${statusOperation.error.message}`,
-        response: {
-          timestamp: currentDate,
-          modelId: this.modelId,
-          headers: responseHeaders
-        }
-      };
-    }
-    return this.buildCompletedResult(
-      statusOperation,
-      responseHeaders,
-      [],
-      currentDate
-    );
-  }
-};
-var googleOperationSchema = external_exports.object({
-  name: external_exports.string().nullish(),
-  done: external_exports.boolean().nullish(),
-  error: external_exports.object({
-    code: external_exports.number().nullish(),
-    message: external_exports.string(),
-    status: external_exports.string().nullish()
-  }).nullish(),
-  response: external_exports.object({
-    generateVideoResponse: external_exports.object({
-      generatedSamples: external_exports.array(
-        external_exports.object({
-          video: external_exports.object({
-            uri: external_exports.string().nullish()
-          }).nullish()
-        })
-      ).nullish()
-    }).nullish()
-  }).nullish()
-});
-var googleSpeechResponseSchema = lazySchema(
-  () => zodSchema(
-    external_exports.object({
-      candidates: external_exports.array(
-        external_exports.object({
-          content: external_exports.object({
-            parts: external_exports.array(
-              external_exports.object({
-                inlineData: external_exports.object({
-                  mimeType: external_exports.string().nullish(),
-                  data: external_exports.string().nullish()
-                }).nullish()
-              })
-            ).nullish()
-          }).nullish()
-        })
-      ).nullish()
-    })
-  )
-);
-var prebuiltVoiceConfigSchema = external_exports.object({
-  voiceName: external_exports.string()
-});
-var voiceConfigSchema = external_exports.object({
-  prebuiltVoiceConfig: prebuiltVoiceConfigSchema
-});
-var googleSpeechProviderOptionsSchema = lazySchema(
-  () => zodSchema(
-    external_exports.object({
-      /**
-       * Multi-speaker configuration for dialogue audio. When provided, this
-       * overrides the top-level `voice`. The Gemini TTS API supports up to two
-       * speakers; each speaker name must match a name used in the input text.
-       *
-       * https://ai.google.dev/gemini-api/docs/speech-generation#multi-speaker
-       */
-      multiSpeakerVoiceConfig: external_exports.object({
-        speakerVoiceConfigs: external_exports.array(
-          external_exports.object({
-            speaker: external_exports.string(),
-            voiceConfig: voiceConfigSchema
-          })
-        )
-      }).optional()
-    })
-  )
-);
-var DEFAULT_VOICE = "Kore";
-var DEFAULT_SAMPLE_RATE = 24e3;
-var GoogleSpeechModel = class _GoogleSpeechModel {
-  constructor(modelId, config2) {
-    this.modelId = modelId;
-    this.config = config2;
-    this.specificationVersion = "v4";
-  }
-  static [WORKFLOW_SERIALIZE](model) {
-    return serializeModelOptions({
-      modelId: model.modelId,
-      config: model.config
-    });
-  }
-  static [WORKFLOW_DESERIALIZE](options) {
-    return new _GoogleSpeechModel(options.modelId, options.config);
-  }
-  get provider() {
-    return this.config.provider;
-  }
-  async getArgs({
-    text: text2,
-    voice = DEFAULT_VOICE,
-    outputFormat,
-    instructions,
-    speed,
-    language,
-    providerOptions
-  }) {
-    const warnings = [];
-    const providerOptionsNames = this.config.provider.includes("vertex") ? ["googleVertex", "vertex"] : ["google"];
-    let googleOptions;
-    for (const name25 of providerOptionsNames) {
-      googleOptions = await parseProviderOptions({
-        provider: name25,
-        providerOptions,
-        schema: googleSpeechProviderOptionsSchema
-      });
-      if (googleOptions != null) {
-        break;
-      }
-    }
-    if (googleOptions == null && !providerOptionsNames.includes("google")) {
-      googleOptions = await parseProviderOptions({
-        provider: "google",
-        providerOptions,
-        schema: googleSpeechProviderOptionsSchema
-      });
-    }
-    const multiSpeakerVoiceConfig = googleOptions == null ? void 0 : googleOptions.multiSpeakerVoiceConfig;
-    const speechConfig = multiSpeakerVoiceConfig ? { multiSpeakerVoiceConfig } : { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } };
-    let promptText = text2;
-    if (instructions != null) {
-      if (multiSpeakerVoiceConfig) {
-        warnings.push({
-          type: "unsupported",
-          feature: "instructions",
-          details: "Google Gemini TTS ignores `instructions` when `multiSpeakerVoiceConfig` is set, because prepending them would break multi-speaker transcript parsing."
-        });
-      } else {
-        promptText = `${instructions}: ${text2}`;
-      }
-    }
-    if (speed != null) {
-      warnings.push({
-        type: "unsupported",
-        feature: "speed",
-        details: "Google Gemini TTS models do not support the `speed` option. It was ignored."
-      });
-    }
-    if (language != null) {
-      warnings.push({
-        type: "unsupported",
-        feature: "language",
-        details: "Google Gemini TTS models do not support the `language` option. Language is detected automatically from the input text."
-      });
-    }
-    let resolvedOutputFormat = "wav";
-    if (outputFormat === "pcm") {
-      resolvedOutputFormat = "pcm";
-    } else if (outputFormat != null && outputFormat !== "wav") {
-      warnings.push({
-        type: "unsupported",
-        feature: "outputFormat",
-        details: `Unsupported output format: ${outputFormat}. Using wav instead.`
-      });
-    }
-    const requestBody = {
-      contents: [{ role: "user", parts: [{ text: promptText }] }],
-      generationConfig: {
-        responseModalities: ["AUDIO"],
-        speechConfig
-      }
-    };
-    return { requestBody, warnings, outputFormat: resolvedOutputFormat };
-  }
-  async doGenerate(options) {
-    var _a25, _b18, _c, _d, _e, _f, _g, _h, _i;
-    const currentDate = (_c = (_b18 = (_a25 = this.config._internal) == null ? void 0 : _a25.currentDate) == null ? void 0 : _b18.call(_a25)) != null ? _c : /* @__PURE__ */ new Date();
-    const { requestBody, warnings, outputFormat } = await this.getArgs(options);
-    const {
-      value: response,
-      responseHeaders,
-      rawValue: rawResponse
-    } = await postJsonToApi({
-      url: `${this.config.baseURL}/models/${this.modelId}:generateContent`,
-      headers: combineHeaders(
-        this.config.headers ? await resolve(this.config.headers) : void 0,
-        options.headers
-      ),
-      body: requestBody,
-      failedResponseHandler: googleFailedResponseHandler,
-      successfulResponseHandler: createJsonResponseHandler(
-        googleSpeechResponseSchema
-      ),
-      abortSignal: options.abortSignal,
-      fetch: this.config.fetch
-    });
-    let base64Audio;
-    let mimeType;
-    for (const candidate of (_d = response.candidates) != null ? _d : []) {
-      for (const part of (_f = (_e = candidate.content) == null ? void 0 : _e.parts) != null ? _f : []) {
-        if ((_g = part.inlineData) == null ? void 0 : _g.data) {
-          base64Audio = part.inlineData.data;
-          mimeType = (_h = part.inlineData.mimeType) != null ? _h : void 0;
-          break;
-        }
-      }
-      if (base64Audio != null) {
-        break;
-      }
-    }
-    const sampleRate = (_i = parseSampleRate(mimeType)) != null ? _i : DEFAULT_SAMPLE_RATE;
-    const pcm = base64Audio != null ? convertBase64ToUint8Array(base64Audio) : new Uint8Array(0);
-    const audio = outputFormat === "pcm" || pcm.length === 0 ? pcm : addWavHeader(pcm, sampleRate);
-    if (outputFormat === "pcm" && pcm.length > 0) {
-      warnings.push({
-        type: "unsupported",
-        feature: "outputFormat",
-        details: `Returning raw PCM audio (signed 16-bit little-endian, mono, ${sampleRate} Hz). These bytes have no container header and are not directly playable; see providerMetadata.google for the sample rate and mime type.`
-      });
-    }
-    return {
-      audio,
-      warnings,
-      request: {
-        body: JSON.stringify(requestBody)
-      },
-      response: {
-        timestamp: currentDate,
-        modelId: this.modelId,
-        headers: responseHeaders,
-        body: rawResponse
-      },
-      providerMetadata: {
-        google: {
-          sampleRate,
-          mimeType: mimeType != null ? mimeType : null
-        }
-      }
-    };
-  }
-};
-function parseSampleRate(mimeType) {
-  if (mimeType == null) {
-    return void 0;
-  }
-  const match2 = /rate=(\d+)/.exec(mimeType);
-  return match2 ? Number.parseInt(match2[1], 10) : void 0;
-}
-function addWavHeader(pcm, sampleRate) {
-  const numChannels = 1;
-  const bitsPerSample = 16;
-  const blockAlign = numChannels * bitsPerSample / 8;
-  const byteRate = sampleRate * blockAlign;
-  const dataSize = pcm.length;
-  const buffer = new ArrayBuffer(44 + dataSize);
-  const view = new DataView(buffer);
-  writeAscii(view, 0, "RIFF");
-  view.setUint32(4, 36 + dataSize, true);
-  writeAscii(view, 8, "WAVE");
-  writeAscii(view, 12, "fmt ");
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, numChannels, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, byteRate, true);
-  view.setUint16(32, blockAlign, true);
-  view.setUint16(34, bitsPerSample, true);
-  writeAscii(view, 36, "data");
-  view.setUint32(40, dataSize, true);
-  const out = new Uint8Array(buffer);
-  out.set(pcm, 44);
-  return out;
-}
-function writeAscii(view, offset, text2) {
-  for (let i = 0; i < text2.length; i++) {
-    view.setUint8(offset + i, text2.charCodeAt(i));
-  }
-}
-function convertGoogleInteractionsUsage(usage) {
-  var _a25, _b18, _c, _d, _e, _f, _g, _h;
-  if (usage == null) {
-    return createNullLanguageModelUsage();
-  }
-  const totalInput = (_a25 = usage.total_input_tokens) != null ? _a25 : 0;
-  const totalOutput = (_b18 = usage.total_output_tokens) != null ? _b18 : 0;
-  const totalThought = (_c = usage.total_thought_tokens) != null ? _c : 0;
-  const totalCached = (_d = usage.total_cached_tokens) != null ? _d : 0;
-  return {
-    inputTokens: {
-      total: (_e = usage.total_input_tokens) != null ? _e : void 0,
-      noCache: usage.total_input_tokens == null ? void 0 : totalInput - totalCached,
-      cacheRead: (_f = usage.total_cached_tokens) != null ? _f : void 0,
-      cacheWrite: void 0
-    },
-    outputTokens: {
-      total: usage.total_output_tokens == null && usage.total_thought_tokens == null ? void 0 : totalOutput + totalThought,
-      text: (_g = usage.total_output_tokens) != null ? _g : void 0,
-      reasoning: (_h = usage.total_thought_tokens) != null ? _h : void 0
-    },
-    raw: usage
-  };
-}
-function getGoogleInteractionsOutputTokensByModality(usage) {
-  const byModality = usage == null ? void 0 : usage.output_tokens_by_modality;
-  if (byModality == null) {
-    return void 0;
-  }
-  const result = {};
-  for (const entry of byModality) {
-    if ((entry == null ? void 0 : entry.modality) != null && entry.tokens != null) {
-      result[entry.modality] = entry.tokens;
-    }
-  }
-  return Object.keys(result).length > 0 ? result : void 0;
-}
-var KNOWN_DOC_EXTENSIONS = {
-  pdf: "application/pdf",
-  txt: "text/plain",
-  md: "text/markdown",
-  markdown: "text/markdown",
-  doc: "application/msword",
-  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-};
-function inferDocMediaType(uriOrName) {
-  const lower = uriOrName.toLowerCase();
-  for (const [ext, media] of Object.entries(KNOWN_DOC_EXTENSIONS)) {
-    if (lower.endsWith(`.${ext}`)) return media;
-  }
-  return "application/octet-stream";
-}
-function basename(uriOrName) {
-  const parts = uriOrName.split("/");
-  const last = parts[parts.length - 1];
-  return last && last.length > 0 ? last : void 0;
-}
-function annotationToSource({
-  annotation,
-  generateId: generateId3
-}) {
-  var _a25, _b18, _c, _d, _e;
-  switch (annotation.type) {
-    case "url_citation": {
-      const urlCitation = annotation;
-      if (urlCitation.url == null || urlCitation.url.length === 0) {
-        return void 0;
-      }
-      return {
-        type: "source",
-        sourceType: "url",
-        id: generateId3(),
-        url: urlCitation.url,
-        ...urlCitation.title != null ? { title: urlCitation.title } : {}
-      };
-    }
-    case "file_citation": {
-      const fileCitation = annotation;
-      const uri = (_b18 = (_a25 = fileCitation.url) != null ? _a25 : fileCitation.document_uri) != null ? _b18 : fileCitation.file_name;
-      if (uri == null || uri.length === 0) return void 0;
-      if (uri.startsWith("http://") || uri.startsWith("https://")) {
-        return {
-          type: "source",
-          sourceType: "url",
-          id: generateId3(),
-          url: uri,
-          ...fileCitation.file_name != null ? { title: fileCitation.file_name } : {}
-        };
-      }
-      const filename = (_c = fileCitation.file_name) != null ? _c : basename(uri);
-      const mediaType = inferDocMediaType(uri);
-      return {
-        type: "source",
-        sourceType: "document",
-        id: generateId3(),
-        mediaType,
-        title: (_e = (_d = fileCitation.file_name) != null ? _d : filename) != null ? _e : uri,
-        ...filename != null ? { filename } : {}
-      };
-    }
-    case "place_citation": {
-      const placeCitation = annotation;
-      if (placeCitation.url == null || placeCitation.url.length === 0) {
-        return void 0;
-      }
-      return {
-        type: "source",
-        sourceType: "url",
-        id: generateId3(),
-        url: placeCitation.url,
-        ...placeCitation.name != null ? { title: placeCitation.name } : {}
-      };
-    }
-    default:
-      return void 0;
-  }
-}
-function builtinToolResultToSources({
-  block,
-  generateId: generateId3
-}) {
-  var _a25, _b18, _c, _d, _e, _f, _g, _h, _i, _j, _k;
-  const sources = [];
-  switch (block.type) {
-    case "url_context_result": {
-      const result = (_a25 = block.result) != null ? _a25 : [];
-      for (const entry of result) {
-        if ((entry == null ? void 0 : entry.url) == null || entry.url.length === 0) continue;
-        if (entry.status != null && entry.status !== "success") continue;
-        sources.push({
-          type: "source",
-          sourceType: "url",
-          id: generateId3(),
-          url: entry.url
-        });
-      }
-      break;
-    }
-    case "google_search_result": {
-      const result = (_b18 = block.result) != null ? _b18 : [];
-      for (const entry of result) {
-        const url2 = entry == null ? void 0 : entry.url;
-        if (url2 == null || url2.length === 0) continue;
-        sources.push({
-          type: "source",
-          sourceType: "url",
-          id: generateId3(),
-          url: url2,
-          ...entry.title != null ? { title: entry.title } : {}
-        });
-      }
-      break;
-    }
-    case "google_maps_result": {
-      const result = (_c = block.result) != null ? _c : [];
-      for (const entry of result) {
-        for (const place of (_d = entry.places) != null ? _d : []) {
-          if (place.url == null || place.url.length === 0) continue;
-          sources.push({
-            type: "source",
-            sourceType: "url",
-            id: generateId3(),
-            url: place.url,
-            ...place.name != null ? { title: place.name } : {}
-          });
-        }
-      }
-      break;
-    }
-    case "file_search_result": {
-      const result = (_e = block.result) != null ? _e : [];
-      for (const raw2 of result) {
-        if (raw2 == null || typeof raw2 !== "object") continue;
-        const entry = raw2;
-        const uri = (_g = (_f = entry.url) != null ? _f : entry.document_uri) != null ? _g : entry.file_name;
-        if (uri == null || uri.length === 0) continue;
-        if (uri.startsWith("http://") || uri.startsWith("https://")) {
-          sources.push({
-            type: "source",
-            sourceType: "url",
-            id: generateId3(),
-            url: uri,
-            ...entry.title != null ? { title: entry.title } : {}
-          });
-          continue;
-        }
-        const filename = (_h = entry.file_name) != null ? _h : basename(uri);
-        const mediaType = inferDocMediaType(uri);
-        sources.push({
-          type: "source",
-          sourceType: "document",
-          id: generateId3(),
-          mediaType,
-          title: (_k = (_j = (_i = entry.title) != null ? _i : entry.file_name) != null ? _j : filename) != null ? _k : uri,
-          ...filename != null ? { filename } : {}
-        });
-      }
-      break;
-    }
-    default:
-      break;
-  }
-  return sources;
-}
-function annotationsToSources({
-  annotations,
-  generateId: generateId3
-}) {
-  var _a25;
-  if (annotations == null) return [];
-  const seen = /* @__PURE__ */ new Set();
-  const sources = [];
-  for (const annotation of annotations) {
-    const source = annotationToSource({ annotation, generateId: generateId3 });
-    if (source == null) continue;
-    const key = source.sourceType === "url" ? `url:${source.url}` : `doc:${(_a25 = source.filename) != null ? _a25 : source.title}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    sources.push(source);
-  }
-  return sources;
-}
-function mapGoogleInteractionsFinishReason({
-  status,
-  hasFunctionCall
-}) {
-  switch (status) {
-    case "completed":
-      return hasFunctionCall ? "tool-calls" : "stop";
-    case "requires_action":
-      return "tool-calls";
-    case "failed":
-      return "error";
-    case "incomplete":
-      return "length";
-    case "cancelled":
-      return "other";
-    case "in_progress":
-    default:
-      return "other";
-  }
-}
-var BUILTIN_TOOL_CALL_TYPES = /* @__PURE__ */ new Set([
-  "google_search_call",
-  "code_execution_call",
-  "url_context_call",
-  "file_search_call",
-  "google_maps_call",
-  "mcp_server_tool_call"
-]);
-var BUILTIN_TOOL_RESULT_TYPES = /* @__PURE__ */ new Set([
-  "google_search_result",
-  "code_execution_result",
-  "url_context_result",
-  "file_search_result",
-  "google_maps_result",
-  "mcp_server_tool_result"
-]);
-function builtinToolNameFromCallType(type) {
-  return type.replace(/_call$/, "");
-}
-function builtinToolNameFromResultType(type) {
-  return type.replace(/_result$/, "");
-}
-function buildGoogleInteractionsStreamTransform({
-  warnings,
-  generateId: generateId3,
-  includeRawChunks,
-  serviceTier: headerServiceTier
-}) {
-  let interactionId;
-  let usage;
-  let serviceTier = headerServiceTier;
-  let finishStatus;
-  let hasFunctionCall = false;
-  const openBlocks = /* @__PURE__ */ new Map();
-  const emittedSourceKeys = /* @__PURE__ */ new Set();
-  function sourceKey(source) {
-    var _a25;
-    return source.sourceType === "url" ? `url:${source.url}` : `doc:${(_a25 = source.filename) != null ? _a25 : source.title}`;
-  }
-  return new TransformStream({
-    start(controller) {
-      controller.enqueue({ type: "stream-start", warnings });
-    },
-    transform(chunk, controller) {
-      var _a25, _b18, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t;
-      if (includeRawChunks) {
-        controller.enqueue({ type: "raw", rawValue: chunk.rawValue });
-      }
-      if (!chunk.success) {
-        finishStatus = "failed";
-        controller.enqueue({ type: "error", error: chunk.error });
-        return;
-      }
-      const value = chunk.value;
-      const eventType = value.event_type;
-      switch (eventType) {
-        case "interaction.created": {
-          const event = value;
-          const interaction = event.interaction;
-          interactionId = (interaction == null ? void 0 : interaction.id) != null && interaction.id.length > 0 ? interaction.id : void 0;
-          const created = interaction == null ? void 0 : interaction.created;
-          let timestamp;
-          if (typeof created === "string") {
-            const parsed = new Date(created);
-            if (!Number.isNaN(parsed.getTime())) {
-              timestamp = parsed;
-            }
-          }
-          controller.enqueue({
-            type: "response-metadata",
-            ...interactionId != null ? { id: interactionId } : {},
-            modelId: interaction == null ? void 0 : interaction.model,
-            ...timestamp ? { timestamp } : {}
-          });
-          break;
-        }
-        case "step.start": {
-          const event = value;
-          const step = event.step;
-          const index = event.index;
-          const blockId = `${interactionId != null ? interactionId : "interaction"}:${index}`;
-          const stepType = step == null ? void 0 : step.type;
-          if (stepType === "model_output") {
-            const initial = (_a25 = step == null ? void 0 : step.content) == null ? void 0 : _a25[0];
-            if ((initial == null ? void 0 : initial.type) === "text") {
-              openBlocks.set(index, {
-                kind: "text",
-                id: blockId,
-                emittedSourceKeys: /* @__PURE__ */ new Set()
-              });
-              controller.enqueue({ type: "text-start", id: blockId });
-              const initialSources = annotationsToSources({
-                annotations: initial.annotations,
-                generateId: generateId3
-              });
-              for (const source of initialSources) {
-                const key = sourceKey(source);
-                if (emittedSourceKeys.has(key)) continue;
-                emittedSourceKeys.add(key);
-                controller.enqueue(source);
-              }
-            } else if ((initial == null ? void 0 : initial.type) === "image") {
-              openBlocks.set(index, {
-                kind: "image",
-                id: blockId,
-                ...initial.data != null ? { data: initial.data } : {},
-                ...initial.mime_type != null ? { mimeType: initial.mime_type } : {},
-                ...initial.uri != null ? { uri: initial.uri } : {}
-              });
-            } else {
-              openBlocks.set(index, {
-                kind: "pending_model_output",
-                id: blockId
-              });
-            }
-          } else if (stepType === "thought") {
-            const signature = step == null ? void 0 : step.signature;
-            openBlocks.set(index, {
-              kind: "reasoning",
-              id: blockId,
-              ...signature != null ? { signature } : {}
-            });
-            controller.enqueue({ type: "reasoning-start", id: blockId });
-            if (Array.isArray(step == null ? void 0 : step.summary)) {
-              for (const item of step.summary) {
-                if ((item == null ? void 0 : item.type) === "text" && typeof item.text === "string") {
-                  controller.enqueue({
-                    type: "reasoning-delta",
-                    id: blockId,
-                    delta: item.text
-                  });
-                }
-              }
-            }
-          } else if (stepType === "function_call") {
-            const toolCallId = (_b18 = step == null ? void 0 : step.id) != null ? _b18 : blockId;
-            const toolName = (_c = step == null ? void 0 : step.name) != null ? _c : "unknown";
-            hasFunctionCall = true;
-            const state = {
-              kind: "function_call",
-              id: blockId,
-              toolCallId,
-              toolName,
-              argumentsAccum: "",
-              ...(step == null ? void 0 : step.signature) != null ? { signature: step.signature } : {}
-            };
-            openBlocks.set(index, state);
-            controller.enqueue({
-              type: "tool-input-start",
-              id: toolCallId,
-              toolName
-            });
-          } else if (stepType != null && BUILTIN_TOOL_CALL_TYPES.has(stepType)) {
-            const toolName = stepType === "mcp_server_tool_call" ? (_d = step == null ? void 0 : step.name) != null ? _d : "mcp_server_tool" : builtinToolNameFromCallType(stepType);
-            const toolCallId = (_e = step == null ? void 0 : step.id) != null ? _e : blockId;
-            const state = {
-              kind: "builtin_tool_call",
-              id: blockId,
-              blockType: stepType,
-              toolCallId,
-              toolName,
-              arguments: (_f = step == null ? void 0 : step.arguments) != null ? _f : {},
-              callEmitted: false
-            };
-            openBlocks.set(index, state);
-          } else if (stepType != null && BUILTIN_TOOL_RESULT_TYPES.has(stepType)) {
-            const toolName = stepType === "mcp_server_tool_result" ? (_g = step == null ? void 0 : step.name) != null ? _g : "mcp_server_tool" : builtinToolNameFromResultType(stepType);
-            const callId = (_h = step == null ? void 0 : step.call_id) != null ? _h : blockId;
-            const state = {
-              kind: "builtin_tool_result",
-              id: blockId,
-              blockType: stepType,
-              callId,
-              toolName,
-              result: (_i = step == null ? void 0 : step.result) != null ? _i : null,
-              ...(step == null ? void 0 : step.is_error) != null ? { isError: step.is_error } : {},
-              resultEmitted: false
-            };
-            openBlocks.set(index, state);
-          } else {
-            openBlocks.set(index, { kind: "unknown", id: blockId });
-          }
-          break;
-        }
-        case "step.delta": {
-          const event = value;
-          let open = openBlocks.get(event.index);
-          if (open == null) break;
-          const dtype = (_j = event.delta) == null ? void 0 : _j.type;
-          if (open.kind === "pending_model_output") {
-            if (dtype === "text" || dtype === "text_annotation" || dtype === "text_annotation_delta") {
-              const promoted = {
-                kind: "text",
-                id: open.id,
-                emittedSourceKeys: /* @__PURE__ */ new Set()
-              };
-              openBlocks.set(event.index, promoted);
-              open = promoted;
-              controller.enqueue({ type: "text-start", id: promoted.id });
-            }
-          }
-          if (dtype === "image" && (open.kind === "pending_model_output" || open.kind === "text" || open.kind === "image")) {
-            const imageDelta = event.delta;
-            const google2 = {};
-            if (interactionId != null) google2.interactionId = interactionId;
-            const providerMetadata = Object.keys(google2).length > 0 ? { google: google2 } : void 0;
-            if ((imageDelta == null ? void 0 : imageDelta.data) != null && imageDelta.data.length > 0) {
-              controller.enqueue({
-                type: "file",
-                mediaType: (_k = imageDelta.mime_type) != null ? _k : "image/png",
-                data: { type: "data", data: imageDelta.data },
-                ...providerMetadata ? { providerMetadata } : {}
-              });
-            } else if ((imageDelta == null ? void 0 : imageDelta.uri) != null && imageDelta.uri.length > 0) {
-              controller.enqueue({
-                type: "file",
-                mediaType: (_l = imageDelta.mime_type) != null ? _l : "image/png",
-                data: { type: "url", url: new URL(imageDelta.uri) },
-                ...providerMetadata ? { providerMetadata } : {}
-              });
-            }
-            if (open.kind === "image") {
-              open.data = void 0;
-              open.uri = void 0;
-            }
-            break;
-          }
-          if (dtype === "video" && (open.kind === "pending_model_output" || open.kind === "text")) {
-            const videoDelta = event.delta;
-            const google2 = {};
-            if (interactionId != null) google2.interactionId = interactionId;
-            const providerMetadata = Object.keys(google2).length > 0 ? { google: google2 } : void 0;
-            if ((videoDelta == null ? void 0 : videoDelta.data) != null && videoDelta.data.length > 0) {
-              controller.enqueue({
-                type: "file",
-                mediaType: (_m = videoDelta.mime_type) != null ? _m : "video/mp4",
-                data: { type: "data", data: videoDelta.data },
-                ...providerMetadata ? { providerMetadata } : {}
-              });
-            } else if ((videoDelta == null ? void 0 : videoDelta.uri) != null && videoDelta.uri.length > 0) {
-              controller.enqueue({
-                type: "file",
-                mediaType: (_n = videoDelta.mime_type) != null ? _n : "video/mp4",
-                data: { type: "url", url: new URL(videoDelta.uri) },
-                ...providerMetadata ? { providerMetadata } : {}
-              });
-            }
-            break;
-          }
-          const delta = event.delta;
-          if (open.kind === "text" && (delta == null ? void 0 : delta.type) === "text") {
-            const text2 = (_o = delta.text) != null ? _o : "";
-            if (text2.length > 0) {
-              controller.enqueue({
-                type: "text-delta",
-                id: open.id,
-                delta: text2
-              });
-            }
-          } else if (open.kind === "text" && ((delta == null ? void 0 : delta.type) === "text_annotation" || (delta == null ? void 0 : delta.type) === "text_annotation_delta")) {
-            const sources = annotationsToSources({
-              annotations: delta.annotations,
-              generateId: generateId3
-            });
-            for (const source of sources) {
-              const key = sourceKey(source);
-              if (emittedSourceKeys.has(key)) continue;
-              emittedSourceKeys.add(key);
-              open.emittedSourceKeys.add(key);
-              controller.enqueue(source);
-            }
-          } else if (open.kind === "image" && (delta == null ? void 0 : delta.type) === "image") {
-            if (delta.data != null) open.data = delta.data;
-            if (delta.mime_type != null) open.mimeType = delta.mime_type;
-            if (delta.uri != null) open.uri = delta.uri;
-          } else if (open.kind === "reasoning") {
-            if ((delta == null ? void 0 : delta.type) === "thought_summary") {
-              const item = delta.content;
-              if ((item == null ? void 0 : item.type) === "text" && typeof item.text === "string") {
-                controller.enqueue({
-                  type: "reasoning-delta",
-                  id: open.id,
-                  delta: item.text
-                });
-              }
-            } else if ((delta == null ? void 0 : delta.type) === "thought_signature") {
-              const signature = delta.signature;
-              if (signature != null) {
-                open.signature = signature;
-              }
-            }
-          } else if (open.kind === "function_call" && (delta == null ? void 0 : delta.type) === "arguments_delta") {
-            const slice = typeof delta.arguments === "string" ? delta.arguments : "";
-            if (slice.length > 0) {
-              open.argumentsAccum += slice;
-              controller.enqueue({
-                type: "tool-input-delta",
-                id: open.toolCallId,
-                delta: slice
-              });
-            }
-            if (delta.id != null) {
-              open.toolCallId = delta.id;
-            }
-            if (delta.signature != null) {
-              open.signature = delta.signature;
-            }
-            hasFunctionCall = true;
-          } else if (open.kind === "builtin_tool_call" && (delta == null ? void 0 : delta.type) === open.blockType) {
-            if (delta.id != null) open.toolCallId = delta.id;
-            if (delta.arguments != null && typeof delta.arguments === "object") {
-              open.arguments = delta.arguments;
-            }
-            if (delta.name != null && open.blockType === "mcp_server_tool_call") {
-              open.toolName = delta.name;
-            }
-          } else if (open.kind === "builtin_tool_result" && (delta == null ? void 0 : delta.type) === open.blockType) {
-            if (delta.call_id != null) open.callId = delta.call_id;
-            if (delta.result !== void 0) open.result = delta.result;
-            if (delta.is_error != null) open.isError = delta.is_error;
-            if (delta.name != null && open.blockType === "mcp_server_tool_result") {
-              open.toolName = delta.name;
-            }
-          }
-          break;
-        }
-        case "step.stop": {
-          const event = value;
-          const open = openBlocks.get(event.index);
-          if (open == null) break;
-          if (open.kind === "text") {
-            const textProviderMetadata = interactionId != null ? { google: { interactionId } } : void 0;
-            controller.enqueue({
-              type: "text-end",
-              id: open.id,
-              ...textProviderMetadata ? { providerMetadata: textProviderMetadata } : {}
-            });
-          } else if (open.kind === "reasoning") {
-            const google2 = {};
-            if (open.signature != null) google2.signature = open.signature;
-            if (interactionId != null) google2.interactionId = interactionId;
-            const providerMetadata = Object.keys(google2).length > 0 ? { google: google2 } : void 0;
-            controller.enqueue({
-              type: "reasoning-end",
-              id: open.id,
-              ...providerMetadata ? { providerMetadata } : {}
-            });
-          } else if (open.kind === "image") {
-            const google2 = {};
-            if (interactionId != null) google2.interactionId = interactionId;
-            const providerMetadata = Object.keys(google2).length > 0 ? { google: google2 } : void 0;
-            if (open.data != null && open.data.length > 0) {
-              controller.enqueue({
-                type: "file",
-                mediaType: (_p = open.mimeType) != null ? _p : "image/png",
-                data: { type: "data", data: open.data },
-                ...providerMetadata ? { providerMetadata } : {}
-              });
-            } else if (open.uri != null && open.uri.length > 0) {
-              controller.enqueue({
-                type: "file",
-                mediaType: (_q = open.mimeType) != null ? _q : "image/png",
-                data: { type: "url", url: new URL(open.uri) },
-                ...providerMetadata ? { providerMetadata } : {}
-              });
-            }
-          } else if (open.kind === "function_call") {
-            const accumulated = open.argumentsAccum.length > 0 ? open.argumentsAccum : "{}";
-            controller.enqueue({
-              type: "tool-input-end",
-              id: open.toolCallId
-            });
-            const google2 = {};
-            if (open.signature != null) google2.signature = open.signature;
-            if (interactionId != null) google2.interactionId = interactionId;
-            const providerMetadata = Object.keys(google2).length > 0 ? { google: google2 } : void 0;
-            controller.enqueue({
-              type: "tool-call",
-              toolCallId: open.toolCallId,
-              toolName: open.toolName,
-              input: accumulated,
-              ...providerMetadata ? { providerMetadata } : {}
-            });
-          } else if (open.kind === "builtin_tool_call" && !open.callEmitted) {
-            controller.enqueue({
-              type: "tool-call",
-              toolCallId: open.toolCallId,
-              toolName: open.toolName,
-              input: JSON.stringify((_r = open.arguments) != null ? _r : {}),
-              providerExecuted: true
-            });
-            open.callEmitted = true;
-          } else if (open.kind === "builtin_tool_result" && !open.resultEmitted) {
-            controller.enqueue({
-              type: "tool-result",
-              toolCallId: open.callId,
-              toolName: open.toolName,
-              result: (_s = open.result) != null ? _s : null
-            });
-            open.resultEmitted = true;
-            const sources = builtinToolResultToSources({
-              block: {
-                type: open.blockType,
-                call_id: open.callId,
-                result: open.result
-              },
-              generateId: generateId3
-            });
-            for (const source of sources) {
-              const key = sourceKey(source);
-              if (emittedSourceKeys.has(key)) continue;
-              emittedSourceKeys.add(key);
-              controller.enqueue(source);
-            }
-          }
-          openBlocks.delete(event.index);
-          break;
-        }
-        case "interaction.status_update":
-        case "interaction.in_progress":
-        case "interaction.requires_action": {
-          const event = value;
-          if (event.status != null) {
-            finishStatus = event.status;
-          } else if (eventType === "interaction.requires_action") {
-            finishStatus = "requires_action";
-          } else {
-            finishStatus = "in_progress";
-          }
-          break;
-        }
-        case "interaction.completed": {
-          const event = value;
-          const interaction = event.interaction;
-          if ((interaction == null ? void 0 : interaction.id) != null && interaction.id.length > 0) {
-            interactionId = interaction.id;
-          }
-          if ((interaction == null ? void 0 : interaction.status) != null) {
-            finishStatus = interaction.status;
-          }
-          if ((interaction == null ? void 0 : interaction.usage) != null) {
-            usage = interaction.usage;
-          }
-          if ((interaction == null ? void 0 : interaction.service_tier) != null) {
-            serviceTier = interaction.service_tier;
-          }
-          break;
-        }
-        case "error": {
-          const event = value;
-          finishStatus = "failed";
-          const errorPayload = (_t = event.error) != null ? _t : {
-            message: "Unknown interaction error"
-          };
-          controller.enqueue({ type: "error", error: errorPayload });
-          break;
-        }
-        default:
-          break;
-      }
-    },
-    flush(controller) {
-      const finishReason = {
-        unified: mapGoogleInteractionsFinishReason({
-          status: finishStatus,
-          hasFunctionCall
-        }),
-        raw: finishStatus
-      };
-      const outputTokensByModality = getGoogleInteractionsOutputTokensByModality(usage);
-      const providerMetadata = {
-        google: {
-          ...interactionId != null ? { interactionId } : {},
-          ...serviceTier != null ? { serviceTier } : {},
-          ...outputTokensByModality != null ? { outputTokensByModality } : {}
-        }
-      };
-      controller.enqueue({
-        type: "finish",
-        finishReason,
-        usage: convertGoogleInteractionsUsage(usage),
-        providerMetadata
-      });
-    }
-  });
-}
-function convertToGoogleInteractionsInput({
-  prompt,
-  previousInteractionId,
-  store,
-  mediaResolution
-}) {
-  var _a25, _b18, _c, _d, _e, _f, _g;
-  const warnings = [];
-  const incoherentCombo = previousInteractionId != null && store === false;
-  const shouldCompact = previousInteractionId != null && store !== false;
-  if (incoherentCombo) {
-    warnings.push({
-      type: "other",
-      message: "google.interactions: providerOptions.google.previousInteractionId was set together with store: false. These are incoherent (the prior interaction cannot be referenced when nothing was stored on the server); the full history will be sent and previous_interaction_id will still be emitted."
-    });
-  }
-  const compactedPrompt = shouldCompact ? compactPromptForPreviousInteraction({
-    prompt,
-    previousInteractionId
-  }) : prompt;
-  const systemTexts = [];
-  const steps = [];
-  for (const message of compactedPrompt) {
-    switch (message.role) {
-      case "system": {
-        systemTexts.push(message.content);
-        break;
-      }
-      case "user": {
-        const content = [];
-        for (const part of message.content) {
-          if (part.type === "text") {
-            content.push({ type: "text", text: part.text });
-          } else if (part.type === "file") {
-            const fileBlock = convertFilePartToContent({
-              part,
-              warnings,
-              mediaResolution
-            });
-            if (fileBlock != null) {
-              content.push(fileBlock);
-            }
-          }
-        }
-        const merged = mergeAdjacentTextContent(content);
-        if (merged.length > 0) {
-          steps.push({ type: "user_input", content: merged });
-        }
-        break;
-      }
-      case "assistant": {
-        let pendingModelOutput = [];
-        const flushModelOutput = () => {
-          if (pendingModelOutput.length > 0) {
-            steps.push({ type: "model_output", content: pendingModelOutput });
-            pendingModelOutput = [];
-          }
-        };
-        for (const part of message.content) {
-          if (part.type === "text") {
-            pendingModelOutput.push({ type: "text", text: part.text });
-          } else if (part.type === "reasoning") {
-            flushModelOutput();
-            const signature = (_b18 = (_a25 = part.providerOptions) == null ? void 0 : _a25.google) == null ? void 0 : _b18.signature;
-            steps.push({
-              type: "thought",
-              ...signature != null ? { signature } : {},
-              summary: part.text.length > 0 ? [{ type: "text", text: part.text }] : void 0
-            });
-          } else if (part.type === "file") {
-            const fileBlock = convertFilePartToContent({
-              part,
-              warnings,
-              mediaResolution
-            });
-            if (fileBlock != null) {
-              pendingModelOutput.push(fileBlock);
-            }
-          } else if (part.type === "tool-call") {
-            flushModelOutput();
-            const signature = (_d = (_c = part.providerOptions) == null ? void 0 : _c.google) == null ? void 0 : _d.signature;
-            const args = typeof part.input === "string" ? safeParseToolArgs(part.input) : (_e = part.input) != null ? _e : {};
-            steps.push({
-              type: "function_call",
-              id: part.toolCallId,
-              name: part.toolName,
-              arguments: args,
-              ...signature != null ? { signature } : {}
-            });
-          } else {
-            warnings.push({
-              type: "other",
-              message: `google.interactions: unsupported assistant content part type "${part.type}"; part dropped.`
-            });
-          }
-        }
-        flushModelOutput();
-        break;
-      }
-      case "tool": {
-        const content = [];
-        for (const part of message.content) {
-          if (part.type !== "tool-result") {
-            warnings.push({
-              type: "other",
-              message: `google.interactions: unsupported tool message part type "${part.type}"; part dropped.`
-            });
-            continue;
-          }
-          const block = convertToolResultPart({
-            toolCallId: part.toolCallId,
-            toolName: part.toolName,
-            output: part.output,
-            signature: (_g = (_f = part.providerOptions) == null ? void 0 : _f.google) == null ? void 0 : _g.signature,
-            warnings
-          });
-          content.push(block);
-        }
-        if (content.length > 0) {
-          steps.push({ type: "user_input", content });
-        }
-        break;
-      }
-    }
-  }
-  const systemInstruction = systemTexts.length > 0 ? systemTexts.join("\n\n") : void 0;
-  return { input: steps, systemInstruction, warnings };
-}
-function convertFilePartToContent({
-  part,
-  warnings,
-  mediaResolution
-}) {
-  if (part.data.type === "text") {
-    return {
-      type: "text",
-      text: part.data.text
-    };
-  }
-  const topLevel = getTopLevelMediaType(part.mediaType);
-  let kind;
-  switch (topLevel) {
-    case "image":
-      kind = "image";
-      break;
-    case "audio":
-      kind = "audio";
-      break;
-    case "video":
-      kind = "video";
-      break;
-    case "application":
-    case "text":
-      kind = "document";
-      break;
-    default:
-      kind = void 0;
-  }
-  if (kind == null) {
-    warnings.push({
-      type: "other",
-      message: `google.interactions: unsupported file media type "${part.mediaType}"; part dropped.`
-    });
-    return void 0;
-  }
-  const resolutionField = mediaResolution != null && (kind === "image" || kind === "video") ? { resolution: mediaResolution } : {};
-  switch (part.data.type) {
-    case "data": {
-      const mimeType = resolveFullMediaType({ part });
-      return {
-        type: kind,
-        data: convertToBase64(part.data.data),
-        mime_type: mimeType,
-        ...resolutionField
-      };
-    }
-    case "url": {
-      return {
-        type: kind,
-        uri: part.data.url.toString(),
-        ...isFullMediaType(part.mediaType) ? { mime_type: part.mediaType } : {},
-        ...resolutionField
-      };
-    }
-    case "reference": {
-      const uri = resolveProviderReference({
-        reference: part.data.reference,
-        provider: "google"
-      });
-      return {
-        type: kind,
-        uri,
-        ...isFullMediaType(part.mediaType) ? { mime_type: part.mediaType } : {},
-        ...resolutionField
-      };
-    }
-  }
-}
-function compactPromptForPreviousInteraction({
-  prompt,
-  previousInteractionId
-}) {
-  const out = [];
-  const droppedToolCallIds = /* @__PURE__ */ new Set();
-  for (const message of prompt) {
-    if (message.role === "assistant") {
-      const matchesLinkedInteraction = message.content.some((part) => {
-        var _a25, _b18;
-        const partInteractionId = (_b18 = (_a25 = part.providerOptions) == null ? void 0 : _a25.google) == null ? void 0 : _b18.interactionId;
-        return partInteractionId === previousInteractionId;
-      });
-      if (matchesLinkedInteraction) {
-        for (const part of message.content) {
-          if (part.type === "tool-call") {
-            droppedToolCallIds.add(part.toolCallId);
-          }
-        }
-        continue;
-      }
-      out.push(message);
-      continue;
-    }
-    if (message.role === "tool") {
-      const remaining = message.content.filter((part) => {
-        if (part.type !== "tool-result") {
-          return true;
-        }
-        return !droppedToolCallIds.has(part.toolCallId);
-      });
-      if (remaining.length === 0) {
-        continue;
-      }
-      out.push({
-        ...message,
-        content: remaining
-      });
-      continue;
-    }
-    out.push(message);
-  }
-  return out;
-}
-function safeParseToolArgs(input) {
-  try {
-    const parsed = secureJsonParse(input);
-    if (parsed != null && typeof parsed === "object" && !Array.isArray(parsed)) {
-      return parsed;
-    }
-    return { value: parsed };
-  } catch (e) {
-    return { value: input };
-  }
-}
-function convertToolResultPart({
-  toolCallId,
-  toolName,
-  output,
-  signature,
-  warnings
-}) {
-  var _a25;
-  const base = {
-    type: "function_result",
-    call_id: toolCallId,
-    name: toolName,
-    ...signature != null ? { signature } : {}
-  };
-  switch (output.type) {
-    case "text":
-      return { ...base, result: output.value };
-    case "json":
-      return { ...base, result: JSON.stringify(output.value) };
-    case "error-text":
-      return { ...base, is_error: true, result: output.value };
-    case "error-json":
-      return { ...base, is_error: true, result: JSON.stringify(output.value) };
-    case "execution-denied":
-      return {
-        ...base,
-        is_error: true,
-        result: (_a25 = output.reason) != null ? _a25 : "Tool execution denied by user."
-      };
-    case "content": {
-      const blocks = [];
-      for (const item of output.value) {
-        if (item.type === "text") {
-          blocks.push({ type: "text", text: item.text });
-        } else if (item.type === "file") {
-          const topLevel = getTopLevelMediaType(item.mediaType);
-          if (topLevel !== "image") {
-            warnings.push({
-              type: "other",
-              message: `google.interactions: tool-result file with mediaType "${item.mediaType}" is not supported (Interactions \`function_result.result\` accepts only text and image content); part dropped.`
-            });
-            continue;
-          }
-          const imageBlock = filePartToImageBlock({ part: item, warnings });
-          if (imageBlock != null) {
-            blocks.push(imageBlock);
-          }
-        } else {
-          warnings.push({
-            type: "other",
-            message: `google.interactions: tool-result content part type "${item.type}" is not supported; part dropped.`
-          });
-        }
-      }
-      return { ...base, result: blocks };
-    }
-  }
-}
-function filePartToImageBlock({
-  part,
-  warnings
-}) {
-  switch (part.data.type) {
-    case "data": {
-      const mimeType = isFullMediaType(part.mediaType) ? part.mediaType : resolveFullMediaType({
-        part: {
-          type: "file",
-          mediaType: part.mediaType,
-          data: part.data
-        }
-      });
-      return {
-        type: "image",
-        data: convertToBase64(part.data.data),
-        mime_type: mimeType
-      };
-    }
-    case "url":
-      return {
-        type: "image",
-        uri: part.data.url.toString(),
-        ...isFullMediaType(part.mediaType) ? { mime_type: part.mediaType } : {}
-      };
-    case "reference": {
-      const uri = resolveProviderReference({
-        reference: part.data.reference,
-        provider: "google"
-      });
-      return {
-        type: "image",
-        uri,
-        ...isFullMediaType(part.mediaType) ? { mime_type: part.mediaType } : {}
-      };
-    }
-    case "text": {
-      warnings.push({
-        type: "other",
-        message: 'google.interactions: tool-result image part with `data.type === "text"` is not representable as an image; part dropped.'
-      });
-      return void 0;
-    }
-  }
-}
-function mergeAdjacentTextContent(content) {
-  if (content.length < 2) {
-    return content;
-  }
-  const result = [];
-  for (const block of content) {
-    const last = result[result.length - 1];
-    if (block.type === "text" && last != null && last.type === "text" && last.annotations == null && block.annotations == null) {
-      const merged = {
-        type: "text",
-        text: `${last.text}
-
-${block.text}`
-      };
-      result[result.length - 1] = merged;
-      continue;
-    }
-    result.push(block);
-  }
-  return result;
-}
-var tokenByModalitySchema = () => external_exports.object({
-  modality: external_exports.string().nullish(),
-  tokens: external_exports.number().nullish()
-}).loose();
-var usageSchema2 = () => external_exports.object({
-  total_input_tokens: external_exports.number().nullish(),
-  total_output_tokens: external_exports.number().nullish(),
-  total_thought_tokens: external_exports.number().nullish(),
-  total_cached_tokens: external_exports.number().nullish(),
-  total_tool_use_tokens: external_exports.number().nullish(),
-  total_tokens: external_exports.number().nullish(),
-  input_tokens_by_modality: external_exports.array(tokenByModalitySchema()).nullish(),
-  output_tokens_by_modality: external_exports.array(tokenByModalitySchema()).nullish(),
-  cached_tokens_by_modality: external_exports.array(tokenByModalitySchema()).nullish(),
-  tool_use_tokens_by_modality: external_exports.array(tokenByModalitySchema()).nullish(),
-  grounding_tool_count: external_exports.array(
-    external_exports.object({
-      type: external_exports.string().nullish(),
-      count: external_exports.number().nullish()
-    }).loose()
-  ).nullish()
-}).loose();
-var interactionStatusSchema = () => external_exports.enum([
-  "in_progress",
-  "requires_action",
-  "completed",
-  "failed",
-  "cancelled",
-  "incomplete"
-]);
-var annotationSchema = () => {
-  const urlCitation = external_exports.object({
-    type: external_exports.literal("url_citation"),
-    url: external_exports.string().nullish(),
-    title: external_exports.string().nullish(),
-    start_index: external_exports.number().nullish(),
-    end_index: external_exports.number().nullish()
-  }).loose();
-  const fileCitation = external_exports.object({
-    type: external_exports.literal("file_citation"),
-    file_name: external_exports.string().nullish(),
-    document_uri: external_exports.string().nullish(),
-    url: external_exports.string().nullish(),
-    page_number: external_exports.number().nullish(),
-    media_id: external_exports.string().nullish(),
-    start_index: external_exports.number().nullish(),
-    end_index: external_exports.number().nullish(),
-    custom_metadata: external_exports.record(external_exports.string(), external_exports.unknown()).nullish()
-  }).loose();
-  const placeCitation = external_exports.object({
-    type: external_exports.literal("place_citation"),
-    name: external_exports.string().nullish(),
-    url: external_exports.string().nullish(),
-    place_id: external_exports.string().nullish(),
-    start_index: external_exports.number().nullish(),
-    end_index: external_exports.number().nullish()
-  }).loose();
-  return external_exports.union([
-    urlCitation,
-    fileCitation,
-    placeCitation,
-    external_exports.object({ type: external_exports.string() }).loose()
-  ]);
-};
-var thoughtSummaryItemSchema = () => external_exports.object({
-  type: external_exports.string(),
-  text: external_exports.string().nullish(),
-  data: external_exports.string().nullish(),
-  mime_type: external_exports.string().nullish()
-}).loose();
-var contentBlockSchema = () => {
-  const textContent = external_exports.object({
-    type: external_exports.literal("text"),
-    text: external_exports.string(),
-    annotations: external_exports.array(annotationSchema()).nullish()
-  }).loose();
-  const imageContent = external_exports.object({
-    type: external_exports.literal("image"),
-    data: external_exports.string().nullish(),
-    mime_type: external_exports.string().nullish(),
-    resolution: external_exports.enum(["low", "medium", "high", "ultra_high"]).nullish(),
-    uri: external_exports.string().nullish()
-  }).loose();
-  const videoContent = external_exports.object({
-    type: external_exports.literal("video"),
-    data: external_exports.string().nullish(),
-    mime_type: external_exports.string().nullish(),
-    uri: external_exports.string().nullish()
-  }).loose();
-  return external_exports.union([
-    textContent,
-    imageContent,
-    videoContent,
-    external_exports.object({ type: external_exports.string() }).loose()
-  ]);
-};
-var BUILTIN_TOOL_CALL_STEP_TYPES = [
-  "google_search_call",
-  "code_execution_call",
-  "url_context_call",
-  "file_search_call",
-  "google_maps_call",
-  "mcp_server_tool_call"
-];
-var BUILTIN_TOOL_RESULT_STEP_TYPES = [
-  "google_search_result",
-  "code_execution_result",
-  "url_context_result",
-  "file_search_result",
-  "google_maps_result",
-  "mcp_server_tool_result"
-];
-var stepSchema = () => {
-  const userInputStep = external_exports.object({
-    type: external_exports.literal("user_input"),
-    content: external_exports.array(contentBlockSchema()).nullish()
-  }).loose();
-  const modelOutputStep = external_exports.object({
-    type: external_exports.literal("model_output"),
-    content: external_exports.array(contentBlockSchema()).nullish()
-  }).loose();
-  const functionCallStep = external_exports.object({
-    type: external_exports.literal("function_call"),
-    id: external_exports.string(),
-    name: external_exports.string(),
-    arguments: external_exports.record(external_exports.string(), external_exports.unknown()).nullish(),
-    signature: external_exports.string().nullish()
-  }).loose();
-  const thoughtStep = external_exports.object({
-    type: external_exports.literal("thought"),
-    signature: external_exports.string().nullish(),
-    summary: external_exports.array(thoughtSummaryItemSchema()).nullish()
-  }).loose();
-  const builtinToolCallStep = external_exports.object({
-    type: external_exports.enum(BUILTIN_TOOL_CALL_STEP_TYPES),
-    id: external_exports.string(),
-    arguments: external_exports.record(external_exports.string(), external_exports.unknown()).nullish(),
-    name: external_exports.string().nullish(),
-    server_name: external_exports.string().nullish(),
-    search_type: external_exports.string().nullish(),
-    signature: external_exports.string().nullish()
-  }).loose();
-  const builtinToolResultStep = external_exports.object({
-    type: external_exports.enum(BUILTIN_TOOL_RESULT_STEP_TYPES),
-    call_id: external_exports.string(),
-    result: external_exports.unknown().nullish(),
-    is_error: external_exports.boolean().nullish(),
-    name: external_exports.string().nullish(),
-    server_name: external_exports.string().nullish(),
-    signature: external_exports.string().nullish()
-  }).loose();
-  return external_exports.union([
-    userInputStep,
-    modelOutputStep,
-    functionCallStep,
-    thoughtStep,
-    builtinToolCallStep,
-    builtinToolResultStep,
-    external_exports.object({ type: external_exports.string() }).loose()
-  ]);
-};
-var googleInteractionsResponseSchema = lazySchema(
-  () => zodSchema(
-    external_exports.object({
-      /*
-       * `id` is omitted from the response body when `store: false` (fully
-       * stateless mode) — there is no server-side interaction record for the
-       * client to reference. `nullish` lets the schema accept that shape.
-       */
-      id: external_exports.string().nullish(),
-      created: external_exports.string().nullish(),
-      updated: external_exports.string().nullish(),
-      status: interactionStatusSchema(),
-      model: external_exports.string().nullish(),
-      agent: external_exports.string().nullish(),
-      steps: external_exports.array(stepSchema()).nullish(),
-      usage: usageSchema2().nullish(),
-      service_tier: external_exports.string().nullish(),
-      previous_interaction_id: external_exports.string().nullish(),
-      response_modalities: external_exports.array(external_exports.string()).nullish()
-    }).loose()
-  )
-);
-var googleInteractionsEventSchema = lazySchema(
-  () => zodSchema(
-    (() => {
-      const status = interactionStatusSchema();
-      const annotation = annotationSchema();
-      const thoughtSummaryItem = thoughtSummaryItemSchema();
-      const interactionCreatedEvent = external_exports.object({
-        event_type: external_exports.literal("interaction.created"),
-        event_id: external_exports.string().nullish(),
-        interaction: external_exports.object({
-          /*
-           * `id` is omitted when `store: false` (fully stateless mode);
-           * see the matching note on `googleInteractionsResponseSchema.id`.
-           */
-          id: external_exports.string().nullish(),
-          created: external_exports.string().nullish(),
-          model: external_exports.string().nullish(),
-          agent: external_exports.string().nullish(),
-          status: status.nullish()
-        }).loose()
-      }).loose();
-      const stepStartEvent = external_exports.object({
-        event_type: external_exports.literal("step.start"),
-        event_id: external_exports.string().nullish(),
-        index: external_exports.number(),
-        step: stepSchema()
-      }).loose();
-      const stepDeltaText = external_exports.object({
-        type: external_exports.literal("text"),
-        text: external_exports.string()
-      }).loose();
-      const stepDeltaThoughtSummary = external_exports.object({
-        type: external_exports.literal("thought_summary"),
-        content: thoughtSummaryItem.nullish()
-      }).loose();
-      const stepDeltaThoughtSignature = external_exports.object({
-        type: external_exports.literal("thought_signature"),
-        signature: external_exports.string().nullish()
-      }).loose();
-      const stepDeltaArgumentsDelta = external_exports.object({
-        type: external_exports.literal("arguments_delta"),
-        arguments: external_exports.string().nullish(),
-        id: external_exports.string().nullish(),
-        signature: external_exports.string().nullish()
-      }).loose();
-      const stepDeltaTextAnnotation = external_exports.object({
-        type: external_exports.enum(["text_annotation_delta", "text_annotation"]),
-        annotations: external_exports.array(annotation).nullish()
-      }).loose();
-      const stepDeltaImage = external_exports.object({
-        type: external_exports.literal("image"),
-        data: external_exports.string().nullish(),
-        mime_type: external_exports.string().nullish(),
-        resolution: external_exports.enum(["low", "medium", "high", "ultra_high"]).nullish(),
-        uri: external_exports.string().nullish()
-      }).loose();
-      const stepDeltaVideo = external_exports.object({
-        type: external_exports.literal("video"),
-        data: external_exports.string().nullish(),
-        mime_type: external_exports.string().nullish(),
-        uri: external_exports.string().nullish()
-      }).loose();
-      const stepDeltaBuiltinToolCall = external_exports.object({
-        type: external_exports.enum(BUILTIN_TOOL_CALL_STEP_TYPES),
-        id: external_exports.string().nullish(),
-        arguments: external_exports.record(external_exports.string(), external_exports.unknown()).nullish(),
-        name: external_exports.string().nullish(),
-        server_name: external_exports.string().nullish(),
-        search_type: external_exports.string().nullish(),
-        signature: external_exports.string().nullish()
-      }).loose();
-      const stepDeltaBuiltinToolResult = external_exports.object({
-        type: external_exports.enum(BUILTIN_TOOL_RESULT_STEP_TYPES),
-        call_id: external_exports.string().nullish(),
-        result: external_exports.unknown().nullish(),
-        is_error: external_exports.boolean().nullish(),
-        name: external_exports.string().nullish(),
-        server_name: external_exports.string().nullish(),
-        signature: external_exports.string().nullish()
-      }).loose();
-      const stepDeltaUnknown = external_exports.object({ type: external_exports.string() }).loose();
-      const stepDeltaUnion = external_exports.union([
-        stepDeltaText,
-        stepDeltaImage,
-        stepDeltaVideo,
-        stepDeltaThoughtSummary,
-        stepDeltaThoughtSignature,
-        stepDeltaArgumentsDelta,
-        stepDeltaTextAnnotation,
-        stepDeltaBuiltinToolCall,
-        stepDeltaBuiltinToolResult,
-        stepDeltaUnknown
-      ]);
-      const stepDeltaEvent = external_exports.object({
-        event_type: external_exports.literal("step.delta"),
-        event_id: external_exports.string().nullish(),
-        index: external_exports.number(),
-        delta: stepDeltaUnion
-      }).loose();
-      const stepStopEvent = external_exports.object({
-        event_type: external_exports.literal("step.stop"),
-        event_id: external_exports.string().nullish(),
-        index: external_exports.number()
-      }).loose();
-      const interactionStatusUpdateEvent = external_exports.object({
-        event_type: external_exports.literal("interaction.status_update"),
-        event_id: external_exports.string().nullish(),
-        interaction_id: external_exports.string().nullish(),
-        status: status.nullish()
-      }).loose();
-      const interactionInProgressEvent = external_exports.object({
-        event_type: external_exports.literal("interaction.in_progress"),
-        event_id: external_exports.string().nullish(),
-        interaction_id: external_exports.string().nullish(),
-        status: status.nullish()
-      }).loose();
-      const interactionRequiresActionEvent = external_exports.object({
-        event_type: external_exports.literal("interaction.requires_action"),
-        event_id: external_exports.string().nullish(),
-        interaction_id: external_exports.string().nullish(),
-        status: status.nullish()
-      }).loose();
-      const interactionCompletedEvent = external_exports.object({
-        event_type: external_exports.literal("interaction.completed"),
-        event_id: external_exports.string().nullish(),
-        interaction: external_exports.object({
-          id: external_exports.string().nullish(),
-          status: status.nullish(),
-          usage: usageSchema2().nullish(),
-          service_tier: external_exports.string().nullish()
-        }).loose()
-      }).loose();
-      const errorEvent = external_exports.object({
-        event_type: external_exports.literal("error"),
-        event_id: external_exports.string().nullish(),
-        error: external_exports.object({
-          code: external_exports.string().nullish(),
-          message: external_exports.string().nullish()
-        }).loose().nullish()
-      }).loose();
-      const unknownEvent = external_exports.object({ event_type: external_exports.string() }).loose();
-      return external_exports.union([
-        interactionCreatedEvent,
-        stepStartEvent,
-        stepDeltaEvent,
-        stepStopEvent,
-        interactionStatusUpdateEvent,
-        interactionInProgressEvent,
-        interactionRequiresActionEvent,
-        interactionCompletedEvent,
-        errorEvent,
-        unknownEvent
-      ]);
-    })()
-  )
-);
-var googleInteractionsLanguageModelOptions = lazySchema(
-  () => zodSchema(
-    external_exports.object({
-      previousInteractionId: external_exports.string().nullish(),
-      store: external_exports.boolean().nullish(),
-      agent: external_exports.string().nullish(),
-      agentConfig: external_exports.union([
-        external_exports.object({
-          type: external_exports.literal("dynamic")
-        }).loose(),
-        external_exports.object({
-          type: external_exports.literal("deep-research"),
-          thinkingSummaries: external_exports.enum(["auto", "none"]).nullish(),
-          visualization: external_exports.enum(["off", "auto"]).nullish(),
-          collaborativePlanning: external_exports.boolean().nullish()
-        })
-      ]).nullish(),
-      thinkingLevel: external_exports.enum(["minimal", "low", "medium", "high"]).nullish(),
-      thinkingSummaries: external_exports.enum(["auto", "none"]).nullish(),
-      /**
-       * Output-format entries that map directly to the API's `response_format`
-       * array. Use this to request image, audio, or non-JSON text outputs
-       * with full control over `mime_type`, `aspect_ratio`, and `image_size`.
-       *
-       * Entries are sent in order. The AI SDK call-level `responseFormat: {
-       * type: 'json', schema }` still drives JSON-mode and adds a matching
-       * text entry automatically; entries listed here are appended.
-       */
-      responseFormat: external_exports.array(
-        external_exports.union([
-          external_exports.object({
-            type: external_exports.literal("text"),
-            mimeType: external_exports.string().nullish(),
-            schema: external_exports.unknown().nullish()
-          }).loose(),
-          external_exports.object({
-            type: external_exports.literal("image"),
-            mimeType: external_exports.string().nullish(),
-            aspectRatio: external_exports.enum([
-              "1:1",
-              "2:3",
-              "3:2",
-              "3:4",
-              "4:3",
-              "4:5",
-              "5:4",
-              "9:16",
-              "16:9",
-              "21:9",
-              "1:8",
-              "8:1",
-              "1:4",
-              "4:1"
-            ]).nullish(),
-            imageSize: external_exports.enum(["1K", "2K", "4K", "512"]).nullish()
-          }).loose(),
-          external_exports.object({
-            type: external_exports.literal("audio"),
-            mimeType: external_exports.string().nullish()
-          }).loose()
-        ])
-      ).nullish(),
-      /**
-       * @deprecated Use `responseFormat` with a `{ type: 'image', ... }`
-       * entry instead. Retained for backwards compatibility; the SDK
-       * translates it into a matching `response_format` image entry and
-       * emits a warning when set.
-       */
-      imageConfig: external_exports.object({
-        aspectRatio: external_exports.enum([
-          "1:1",
-          "2:3",
-          "3:2",
-          "3:4",
-          "4:3",
-          "4:5",
-          "5:4",
-          "9:16",
-          "16:9",
-          "21:9",
-          "1:8",
-          "8:1",
-          "1:4",
-          "4:1"
-        ]).nullish(),
-        imageSize: external_exports.enum(["1K", "2K", "4K", "512"]).nullish()
-      }).nullish(),
-      mediaResolution: external_exports.enum(["low", "medium", "high", "ultra_high"]).nullish(),
-      responseModalities: external_exports.array(external_exports.enum(["text", "image", "audio", "video", "document"])).nullish(),
-      serviceTier: external_exports.enum(["flex", "standard", "priority"]).nullish(),
-      /**
-       * Alternative to AI SDK `system` message. If both are set, the AI SDK
-       * `system` message wins and a warning is emitted.
-       */
-      systemInstruction: external_exports.string().nullish(),
-      /**
-       * Per-block signature for round-tripping `thought.signature` and
-       * `function_call.signature` blocks. Set by the SDK on output reasoning /
-       * tool-call parts; passed back unchanged on input parts so the API
-       * accepts the prior turn.
-       */
-      signature: external_exports.string().nullish(),
-      /**
-       * Set by the SDK on output assistant messages. The converter uses it to
-       * decide which messages to drop when compacting under
-       * `previousInteractionId`.
-       */
-      interactionId: external_exports.string().nullish(),
-      /**
-       * Maximum time, in milliseconds, to poll a background interaction (agent
-       * call) before giving up. Defaults to 30 minutes. Long-running agents
-       * such as deep research can take tens of minutes — increase if needed.
-       */
-      pollingTimeoutMs: external_exports.number().int().positive().nullish(),
-      /**
-       * Run the interaction in the background. Required for agents whose
-       * server-side workflow cannot complete within a single request/response.
-       * When `true`, the POST returns with a non-terminal status and the SDK
-       * polls `GET /interactions/{id}` until the work completes. Some agents
-       * reject `true`; see the agent's documentation for which mode it
-       * requires.
-       */
-      background: external_exports.boolean().nullish(),
-      /**
-       * Environment configuration for the agent sandbox. Only applies to agent
-       * calls (`google.interactions({ agent })`); ignored on model-id calls.
-       *
-       *   - `"remote"`: provision a fresh sandbox for this call.
-       *   - any other string: an existing `environment_id` to reuse.
-       *   - object: provision a fresh sandbox and optionally preload `sources`
-       *     and/or constrain outbound traffic via `network`.
-       */
-      environment: external_exports.union([
-        external_exports.string(),
-        external_exports.object({
-          type: external_exports.literal("remote"),
-          sources: external_exports.array(
-            external_exports.union([
-              external_exports.object({
-                type: external_exports.literal("gcs"),
-                source: external_exports.string(),
-                target: external_exports.string().nullish()
-              }),
-              external_exports.object({
-                type: external_exports.literal("repository"),
-                source: external_exports.string(),
-                target: external_exports.string().nullish()
-              }),
-              external_exports.object({
-                type: external_exports.literal("inline"),
-                content: external_exports.string(),
-                target: external_exports.string()
-              })
-            ])
-          ).nullish(),
-          network: external_exports.union([
-            external_exports.literal("disabled"),
-            external_exports.object({
-              allowlist: external_exports.array(
-                external_exports.object({
-                  domain: external_exports.string(),
-                  transform: external_exports.array(external_exports.record(external_exports.string(), external_exports.string())).nullish()
-                })
-              )
-            })
-          ]).nullish()
-        })
-      ]).nullish()
-    })
-  )
-);
-function googleProviderMetadata({
-  signature,
-  interactionId
-}) {
-  const google2 = {};
-  if (signature != null) {
-    google2.signature = signature;
-  }
-  if (interactionId != null) {
-    google2.interactionId = interactionId;
-  }
-  return Object.keys(google2).length > 0 ? { providerMetadata: { google: google2 } } : {};
-}
-var BUILTIN_TOOL_CALL_TYPES2 = /* @__PURE__ */ new Set([
-  "google_search_call",
-  "code_execution_call",
-  "url_context_call",
-  "file_search_call",
-  "google_maps_call",
-  "mcp_server_tool_call"
-]);
-var BUILTIN_TOOL_RESULT_TYPES2 = /* @__PURE__ */ new Set([
-  "google_search_result",
-  "code_execution_result",
-  "url_context_result",
-  "file_search_result",
-  "google_maps_result",
-  "mcp_server_tool_result"
-]);
-function builtinToolNameFromCallType2(type) {
-  return type.replace(/_call$/, "");
-}
-function builtinToolNameFromResultType2(type) {
-  return type.replace(/_result$/, "");
-}
-function parseGoogleInteractionsOutputs({
-  steps,
-  generateId: generateId3,
-  interactionId
-}) {
-  var _a25, _b18, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m;
-  const content = [];
-  let hasFunctionCall = false;
-  if (steps == null) {
-    return { content, hasFunctionCall };
-  }
-  for (const step of steps) {
-    if (step == null || typeof step !== "object") continue;
-    const type = step.type;
-    if (typeof type !== "string") continue;
-    switch (type) {
-      case "user_input": {
-        break;
-      }
-      case "model_output": {
-        const blocks = (_a25 = step.content) != null ? _a25 : [];
-        for (const block of blocks) {
-          if (block == null || typeof block !== "object") continue;
-          const blockType = block.type;
-          if (blockType === "text") {
-            const text2 = (_b18 = block.text) != null ? _b18 : "";
-            const annotations = block.annotations;
-            content.push({
-              type: "text",
-              text: text2,
-              ...googleProviderMetadata({ interactionId })
-            });
-            const sources = annotationsToSources({ annotations, generateId: generateId3 });
-            for (const source of sources) {
-              content.push(source);
-            }
-          } else if (blockType === "image") {
-            const image = block;
-            if (image.data != null && image.data.length > 0) {
-              content.push({
-                type: "file",
-                mediaType: (_c = image.mime_type) != null ? _c : "image/png",
-                data: { type: "data", data: image.data },
-                ...googleProviderMetadata({ interactionId })
-              });
-            } else if (image.uri != null && image.uri.length > 0) {
-              content.push({
-                type: "file",
-                mediaType: (_d = image.mime_type) != null ? _d : "image/png",
-                data: { type: "url", url: new URL(image.uri) },
-                ...googleProviderMetadata({ interactionId })
-              });
-            }
-          } else if (blockType === "video") {
-            const video = block;
-            if (video.data != null && video.data.length > 0) {
-              content.push({
-                type: "file",
-                mediaType: (_e = video.mime_type) != null ? _e : "video/mp4",
-                data: { type: "data", data: video.data },
-                ...googleProviderMetadata({ interactionId })
-              });
-            } else if (video.uri != null && video.uri.length > 0) {
-              content.push({
-                type: "file",
-                mediaType: (_f = video.mime_type) != null ? _f : "video/mp4",
-                data: { type: "url", url: new URL(video.uri) },
-                ...googleProviderMetadata({ interactionId })
-              });
-            }
-          }
-        }
-        break;
-      }
-      case "thought": {
-        const thought = step;
-        const summary = Array.isArray(thought.summary) ? thought.summary : [];
-        const text2 = summary.filter(
-          (item) => (item == null ? void 0 : item.type) === "text" && typeof item.text === "string"
-        ).map((item) => item.text).join("\n");
-        content.push({
-          type: "reasoning",
-          text: text2,
-          ...googleProviderMetadata({
-            signature: thought.signature,
-            interactionId
-          })
-        });
-        break;
-      }
-      case "function_call": {
-        hasFunctionCall = true;
-        const call = step;
-        content.push({
-          type: "tool-call",
-          toolCallId: call.id,
-          toolName: call.name,
-          input: JSON.stringify((_g = call.arguments) != null ? _g : {}),
-          ...googleProviderMetadata({
-            signature: call.signature,
-            interactionId
-          })
-        });
-        break;
-      }
-      default: {
-        if (BUILTIN_TOOL_CALL_TYPES2.has(type)) {
-          const call = step;
-          const toolName = type === "mcp_server_tool_call" ? (_h = call.name) != null ? _h : "mcp_server_tool" : builtinToolNameFromCallType2(type);
-          const input = JSON.stringify((_i = call.arguments) != null ? _i : {});
-          content.push({
-            type: "tool-call",
-            toolCallId: (_j = call.id) != null ? _j : generateId3(),
-            toolName,
-            input,
-            providerExecuted: true
-          });
-        } else if (BUILTIN_TOOL_RESULT_TYPES2.has(type)) {
-          const result = step;
-          const toolName = type === "mcp_server_tool_result" ? (_k = result.name) != null ? _k : "mcp_server_tool" : builtinToolNameFromResultType2(type);
-          content.push({
-            type: "tool-result",
-            toolCallId: (_l = result.call_id) != null ? _l : generateId3(),
-            toolName,
-            result: (_m = result.result) != null ? _m : null
-          });
-          const sources = builtinToolResultToSources({
-            block: step,
-            generateId: generateId3
-          });
-          for (const source of sources) {
-            content.push(source);
-          }
-        }
-        break;
-      }
-    }
-  }
-  return { content, hasFunctionCall };
-}
-var getOriginalFetch3 = () => globalThis.fetch;
-async function cancelGoogleInteraction({
-  baseURL,
-  interactionId,
-  headers,
-  fetch: fetch2 = getOriginalFetch3()
-}) {
-  if (interactionId == null || interactionId.length === 0) {
-    return;
-  }
-  const url2 = `${baseURL}/interactions/${encodeURIComponent(interactionId)}/cancel`;
-  try {
-    const response = await fetch2(url2, {
-      method: "POST",
-      headers: withUserAgentSuffix(
-        combineHeaders({ "Content-Type": "application/json" }, headers),
-        getRuntimeEnvironmentUserAgent()
-      ),
-      body: "{}"
-    });
-    try {
-      await response.text();
-    } catch (e) {
-    }
-  } catch (e) {
-  }
-}
-var TERMINAL_STATUSES = /* @__PURE__ */ new Set(["completed", "failed", "cancelled", "incomplete"]);
-function isTerminalStatus(status) {
-  return status != null && TERMINAL_STATUSES.has(status);
-}
-var DEFAULT_INITIAL_DELAY_MS = 1e3;
-var DEFAULT_MAX_DELAY_MS = 1e4;
-var DEFAULT_TIMEOUT_MS = 30 * 60 * 1e3;
-async function pollGoogleInteractionUntilTerminal({
-  baseURL,
-  interactionId,
-  headers,
-  fetch: fetch2,
-  abortSignal,
-  initialDelayMs = DEFAULT_INITIAL_DELAY_MS,
-  maxDelayMs = DEFAULT_MAX_DELAY_MS,
-  timeoutMs = DEFAULT_TIMEOUT_MS
-}) {
-  if (interactionId == null || interactionId.length === 0) {
-    throw new Error(
-      "google.interactions: cannot poll a background interaction without an id. The POST response did not include an interaction id."
-    );
-  }
-  const startedAt = Date.now();
-  let nextDelayMs = initialDelayMs;
-  const url2 = `${baseURL}/interactions/${encodeURIComponent(interactionId)}`;
-  const cancelOnServer = () => cancelGoogleInteraction({ baseURL, interactionId, headers, fetch: fetch2 });
-  try {
-    while (true) {
-      if (abortSignal == null ? void 0 : abortSignal.aborted) {
-        await cancelOnServer();
-        throw new DOMException("Polling was aborted", "AbortError");
-      }
-      if (Date.now() - startedAt > timeoutMs) {
-        throw new Error(
-          `google.interactions: timed out polling interaction ${interactionId} after ${timeoutMs}ms.`
-        );
-      }
-      await delay(nextDelayMs, { abortSignal });
-      const {
-        value: response,
-        rawValue: rawResponse,
-        responseHeaders
-      } = await getFromApi({
-        url: url2,
-        validateUrl: false,
-        headers,
-        failedResponseHandler: googleFailedResponseHandler,
-        successfulResponseHandler: createJsonResponseHandler(
-          googleInteractionsResponseSchema
-        ),
-        abortSignal,
-        fetch: fetch2
-      });
-      if (isTerminalStatus(response.status)) {
-        return { response, rawResponse, responseHeaders };
-      }
-      nextDelayMs = Math.min(nextDelayMs * 2, maxDelayMs);
-    }
-  } catch (error51) {
-    if (isAbortError(error51)) {
-      await cancelOnServer();
-    }
-    throw error51;
-  }
-}
-function prepareGoogleInteractionsTools({
-  tools,
-  toolChoice
-}) {
-  var _a25, _b18, _c, _d;
-  const toolWarnings = [];
-  const normalized = (tools == null ? void 0 : tools.length) ? tools : void 0;
-  if (normalized == null) {
-    return { tools: void 0, toolChoice: void 0, toolWarnings };
-  }
-  const interactionsTools = [];
-  for (const tool2 of normalized) {
-    if (tool2.type === "function") {
-      interactionsTools.push({
-        type: "function",
-        name: tool2.name,
-        description: (_a25 = tool2.description) != null ? _a25 : "",
-        parameters: tool2.inputSchema
-      });
-      continue;
-    }
-    if (tool2.type === "provider") {
-      const args = (_b18 = tool2.args) != null ? _b18 : {};
-      switch (tool2.id) {
-        case "google.google_search": {
-          const searchTypesArg = args.searchTypes;
-          let search_types;
-          if (searchTypesArg != null && typeof searchTypesArg === "object") {
-            const list = [];
-            if (searchTypesArg.webSearch != null) list.push("web_search");
-            if (searchTypesArg.imageSearch != null) list.push("image_search");
-            if (list.length > 0) {
-              search_types = list;
-            }
-          }
-          interactionsTools.push({
-            type: "google_search",
-            ...search_types != null ? { search_types } : {}
-          });
-          break;
-        }
-        case "google.code_execution": {
-          interactionsTools.push({ type: "code_execution" });
-          break;
-        }
-        case "google.url_context": {
-          interactionsTools.push({ type: "url_context" });
-          break;
-        }
-        case "google.file_search": {
-          interactionsTools.push({
-            type: "file_search",
-            ...args.fileSearchStoreNames != null ? {
-              file_search_store_names: args.fileSearchStoreNames
-            } : {},
-            ...args.topK != null ? { top_k: args.topK } : {},
-            ...args.metadataFilter != null ? { metadata_filter: args.metadataFilter } : {}
-          });
-          break;
-        }
-        case "google.google_maps": {
-          interactionsTools.push({
-            type: "google_maps",
-            ...args.latitude != null ? { latitude: args.latitude } : {},
-            ...args.longitude != null ? { longitude: args.longitude } : {},
-            ...args.enableWidget != null ? { enable_widget: args.enableWidget } : {}
-          });
-          break;
-        }
-        case "google.computer_use": {
-          interactionsTools.push({
-            type: "computer_use",
-            environment: (_c = args.environment) != null ? _c : "browser",
-            ...args.excludedPredefinedFunctions != null ? {
-              excludedPredefinedFunctions: args.excludedPredefinedFunctions
-            } : {}
-          });
-          break;
-        }
-        case "google.mcp_server": {
-          interactionsTools.push({
-            type: "mcp_server",
-            ...args.name != null ? { name: args.name } : {},
-            ...args.url != null ? { url: args.url } : {},
-            ...args.headers != null ? { headers: args.headers } : {},
-            ...args.allowedTools != null ? { allowed_tools: args.allowedTools } : {}
-          });
-          break;
-        }
-        case "google.retrieval": {
-          const vertexAiSearchConfig = (_d = args.vertexAiSearchConfig) != null ? _d : void 0;
-          interactionsTools.push({
-            type: "retrieval",
-            ...args.retrievalTypes != null ? {
-              retrieval_types: args.retrievalTypes
-            } : { retrieval_types: ["vertex_ai_search"] },
-            ...vertexAiSearchConfig != null ? { vertex_ai_search_config: vertexAiSearchConfig } : {}
-          });
-          break;
-        }
-        default: {
-          toolWarnings.push({
-            type: "unsupported",
-            feature: `provider-defined tool ${tool2.id}`,
-            details: `provider-defined tool ${tool2.id} is not supported by google.interactions; tool dropped.`
-          });
-          break;
-        }
-      }
-      continue;
-    }
-    toolWarnings.push({
-      type: "unsupported",
-      feature: `tool of type ${tool2.type}`,
-      details: "Only function tools and google.* provider-defined tools are supported by google.interactions; tool dropped."
-    });
-  }
-  const hasFunctionTool = interactionsTools.some((t) => t.type === "function");
-  let mappedToolChoice;
-  if (toolChoice != null && hasFunctionTool) {
-    switch (toolChoice.type) {
-      case "auto":
-        mappedToolChoice = "auto";
-        break;
-      case "required":
-        mappedToolChoice = "any";
-        break;
-      case "none":
-        mappedToolChoice = "none";
-        break;
-      case "tool":
-        mappedToolChoice = {
-          allowed_tools: {
-            mode: "validated",
-            tools: [toolChoice.toolName]
-          }
-        };
-        break;
-    }
-  }
-  return {
-    tools: interactionsTools.length > 0 ? interactionsTools : void 0,
-    toolChoice: mappedToolChoice,
-    toolWarnings
-  };
-}
-var DEFAULT_MAX_RETRIES = 3;
-var DEFAULT_RETRY_DELAY_MS = 500;
-function streamGoogleInteractionEvents({
-  baseURL,
-  interactionId,
-  headers,
-  fetch: fetch2,
-  abortSignal,
-  maxRetries = DEFAULT_MAX_RETRIES,
-  retryDelayMs = DEFAULT_RETRY_DELAY_MS
-}) {
-  if (interactionId.length === 0) {
-    throw new Error(
-      "google.interactions: cannot stream a background interaction without an id."
-    );
-  }
-  const eventSourceHeaders = {
-    ...headers,
-    accept: "text/event-stream"
-  };
-  let lastEventId;
-  let complete = false;
-  let attempt = 0;
-  let receivedAnyEventThisAttempt = false;
-  let currentReader;
-  const internalAbort = new AbortController();
-  const upstreamAbortHandler = () => internalAbort.abort();
-  if (abortSignal != null) {
-    if (abortSignal.aborted) {
-      internalAbort.abort();
-    } else {
-      abortSignal.addEventListener("abort", upstreamAbortHandler, {
-        once: true
-      });
-    }
-  }
-  const effectiveSignal = internalAbort.signal;
-  function buildUrl() {
-    const base = `${baseURL}/interactions/${encodeURIComponent(interactionId)}`;
-    const params = new URLSearchParams({ stream: "true" });
-    if (lastEventId != null) {
-      params.set("last_event_id", lastEventId);
-    }
-    return `${base}?${params.toString()}`;
-  }
-  async function openReader() {
-    const { value: stream } = await getFromApi({
-      url: buildUrl(),
-      validateUrl: false,
-      headers: eventSourceHeaders,
-      failedResponseHandler: googleFailedResponseHandler,
-      successfulResponseHandler: createEventSourceResponseHandler(
-        googleInteractionsEventSchema
-      ),
-      abortSignal: effectiveSignal,
-      fetch: fetch2
-    });
-    return stream.getReader();
-  }
-  return new ReadableStream({
-    async start(controller) {
-      try {
-        while (!complete && !effectiveSignal.aborted) {
-          if (currentReader == null) {
-            try {
-              currentReader = await openReader();
-              receivedAnyEventThisAttempt = false;
-            } catch (error51) {
-              if (isAbortError(error51) || effectiveSignal.aborted) {
-                controller.error(error51);
-                return;
-              }
-              attempt++;
-              if (attempt >= maxRetries) {
-                controller.error(error51);
-                return;
-              }
-              await delay(retryDelayMs * attempt, {
-                abortSignal: effectiveSignal
-              });
-              continue;
-            }
-          }
-          try {
-            const { done, value } = await currentReader.read();
-            if (done) {
-              currentReader = void 0;
-              if (complete) break;
-              if (!receivedAnyEventThisAttempt) {
-                attempt++;
-                if (attempt >= maxRetries) {
-                  controller.error(
-                    new Error(
-                      "google.interactions: SSE stream closed without producing any events."
-                    )
-                  );
-                  return;
-                }
-                await delay(retryDelayMs * attempt, {
-                  abortSignal: effectiveSignal
-                });
-              } else {
-                attempt = 0;
-              }
-              continue;
-            }
-            receivedAnyEventThisAttempt = true;
-            if (value.success) {
-              const streamEvent = value.value;
-              if (typeof streamEvent.event_id === "string" && streamEvent.event_id.length > 0) {
-                lastEventId = streamEvent.event_id;
-              }
-              if (streamEvent.event_type === "interaction.completed" || streamEvent.event_type === "error") {
-                complete = true;
-              }
-            }
-            controller.enqueue(value);
-          } catch (error51) {
-            if (isAbortError(error51) || effectiveSignal.aborted) {
-              controller.error(error51);
-              return;
-            }
-            currentReader = void 0;
-            attempt++;
-            if (attempt >= maxRetries) {
-              controller.error(error51);
-              return;
-            }
-            await delay(retryDelayMs * attempt, {
-              abortSignal: effectiveSignal
-            });
-          }
-        }
-        controller.close();
-      } catch (error51) {
-        controller.error(error51);
-      } finally {
-        if (abortSignal != null) {
-          abortSignal.removeEventListener("abort", upstreamAbortHandler);
-        }
-        currentReader == null ? void 0 : currentReader.cancel().catch(() => {
-        });
-        currentReader = void 0;
-        if (effectiveSignal.aborted && !complete) {
-          await cancelGoogleInteraction({
-            baseURL,
-            interactionId,
-            headers,
-            fetch: fetch2
-          });
-        }
-      }
-    },
-    cancel() {
-      internalAbort.abort();
-      currentReader == null ? void 0 : currentReader.cancel().catch(() => {
-      });
-      currentReader = void 0;
-    }
-  });
-}
-function synthesizeGoogleInteractionsAgentStream({
-  response,
-  warnings,
-  generateId: generateId3,
-  includeRawChunks,
-  headerServiceTier
-}) {
-  return new ReadableStream({
-    start(controller) {
-      var _a25, _b18, _c;
-      controller.enqueue({ type: "stream-start", warnings });
-      const interactionId = typeof response.id === "string" && response.id.length > 0 ? response.id : void 0;
-      let timestamp;
-      const created = response.created;
-      if (typeof created === "string") {
-        const parsed = new Date(created);
-        if (!Number.isNaN(parsed.getTime())) {
-          timestamp = parsed;
-        }
-      }
-      controller.enqueue({
-        type: "response-metadata",
-        ...interactionId != null ? { id: interactionId } : {},
-        modelId: (_a25 = response.model) != null ? _a25 : void 0,
-        ...timestamp ? { timestamp } : {}
-      });
-      if (includeRawChunks) {
-        controller.enqueue({ type: "raw", rawValue: response });
-      }
-      const { content, hasFunctionCall } = parseGoogleInteractionsOutputs({
-        steps: (_b18 = response.steps) != null ? _b18 : null,
-        generateId: generateId3,
-        interactionId
-      });
-      let blockCounter = 0;
-      const nextBlockId = () => `${interactionId != null ? interactionId : "agent"}:${blockCounter++}`;
-      for (const part of content) {
-        switch (part.type) {
-          case "text": {
-            const id = nextBlockId();
-            const providerMetadata2 = part.providerMetadata;
-            controller.enqueue({ type: "text-start", id });
-            if (part.text.length > 0) {
-              controller.enqueue({ type: "text-delta", id, delta: part.text });
-            }
-            controller.enqueue({
-              type: "text-end",
-              id,
-              ...providerMetadata2 ? { providerMetadata: providerMetadata2 } : {}
-            });
-            break;
-          }
-          case "reasoning": {
-            const id = nextBlockId();
-            const providerMetadata2 = part.providerMetadata;
-            controller.enqueue({ type: "reasoning-start", id });
-            if (part.text.length > 0) {
-              controller.enqueue({
-                type: "reasoning-delta",
-                id,
-                delta: part.text
-              });
-            }
-            controller.enqueue({
-              type: "reasoning-end",
-              id,
-              ...providerMetadata2 ? { providerMetadata: providerMetadata2 } : {}
-            });
-            break;
-          }
-          case "tool-call": {
-            const providerMetadata2 = part.providerMetadata;
-            controller.enqueue({
-              type: "tool-input-start",
-              id: part.toolCallId,
-              toolName: part.toolName,
-              ...part.providerExecuted ? { providerExecuted: part.providerExecuted } : {}
-            });
-            controller.enqueue({
-              type: "tool-input-delta",
-              id: part.toolCallId,
-              delta: part.input
-            });
-            controller.enqueue({
-              type: "tool-input-end",
-              id: part.toolCallId
-            });
-            controller.enqueue({
-              type: "tool-call",
-              toolCallId: part.toolCallId,
-              toolName: part.toolName,
-              input: part.input,
-              ...part.providerExecuted ? { providerExecuted: part.providerExecuted } : {},
-              ...providerMetadata2 ? { providerMetadata: providerMetadata2 } : {}
-            });
-            break;
-          }
-          case "tool-result": {
-            controller.enqueue({
-              type: "tool-result",
-              toolCallId: part.toolCallId,
-              toolName: part.toolName,
-              result: part.result
-            });
-            break;
-          }
-          case "source":
-          case "file": {
-            controller.enqueue(part);
-            break;
-          }
-          default:
-            break;
-        }
-      }
-      const serviceTier = (_c = response.service_tier) != null ? _c : headerServiceTier;
-      const finishReason = {
-        unified: mapGoogleInteractionsFinishReason({
-          status: response.status,
-          hasFunctionCall
-        }),
-        raw: response.status
-      };
-      const providerMetadata = {
-        google: {
-          ...interactionId != null ? { interactionId } : {},
-          ...serviceTier != null ? { serviceTier } : {}
-        }
-      };
-      controller.enqueue({
-        type: "finish",
-        finishReason,
-        usage: convertGoogleInteractionsUsage(response.usage),
-        providerMetadata
-      });
-      controller.close();
-    }
-  });
-}
-var GoogleInteractionsLanguageModel = class _GoogleInteractionsLanguageModel {
-  constructor(modelOrAgent, config2) {
-    this.specificationVersion = "v4";
-    if (typeof modelOrAgent === "string") {
-      this.modelId = modelOrAgent;
-      this.agent = void 0;
-    } else if ("managedAgent" in modelOrAgent) {
-      this.modelId = modelOrAgent.managedAgent;
-      this.agent = modelOrAgent.managedAgent;
-    } else {
-      this.modelId = modelOrAgent.agent;
-      this.agent = modelOrAgent.agent;
-    }
-    this.config = config2;
-  }
-  static [WORKFLOW_SERIALIZE](model) {
-    return {
-      ...serializeModelOptions({
-        modelId: model.modelId,
-        config: model.config
-      }),
-      agent: model.agent
-    };
-  }
-  static [WORKFLOW_DESERIALIZE](options) {
-    return new _GoogleInteractionsLanguageModel(
-      options.agent != null ? { agent: options.agent } : options.modelId,
-      options.config
-    );
-  }
-  get provider() {
-    return this.config.provider;
-  }
-  get supportedUrls() {
-    if (this.config.supportedUrls) {
-      return this.config.supportedUrls();
-    }
-    return {
-      "image/*": [/^https?:\/\/.+/],
-      "application/pdf": [/^https?:\/\/.+/],
-      "audio/*": [/^https?:\/\/.+/],
-      "video/*": [
-        /^https?:\/\/(www\.)?youtube\.com\/watch\?v=.+/,
-        /^https?:\/\/youtu\.be\/.+/,
-        /^gs:\/\/.+/
-      ]
-    };
-  }
-  async getArgs(options) {
-    var _a25, _b18, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A;
-    const warnings = [];
-    const googleOptions = await parseProviderOptions({
-      provider: "google",
-      providerOptions: options.providerOptions,
-      schema: googleInteractionsLanguageModelOptions
-    });
-    const isAgent = this.agent != null;
-    if (!isAgent) {
-      if (options.frequencyPenalty != null) {
-        warnings.push({
-          type: "unsupported",
-          feature: "frequencyPenalty"
-        });
-      }
-      if (options.presencePenalty != null) {
-        warnings.push({
-          type: "unsupported",
-          feature: "presencePenalty"
-        });
-      }
-    }
-    const hasTools = options.tools != null && options.tools.length > 0;
-    let toolsForBody;
-    let toolChoiceForBody;
-    if (hasTools) {
-      const prepared = prepareGoogleInteractionsTools({
-        tools: options.tools,
-        toolChoice: options.toolChoice
-      });
-      toolsForBody = prepared.tools;
-      toolChoiceForBody = prepared.toolChoice;
-      warnings.push(...prepared.toolWarnings);
-    }
-    const responseFormatEntries = [];
-    if (((_a25 = options.responseFormat) == null ? void 0 : _a25.type) === "json") {
-      if (isAgent) {
-        warnings.push({
-          type: "other",
-          message: "google.interactions: structured output (responseFormat) is not supported when an agent is set; responseFormat will be ignored."
-        });
-      } else {
-        const entry = {
-          type: "text",
-          mime_type: "application/json",
-          ...options.responseFormat.schema != null ? { schema: options.responseFormat.schema } : {}
-        };
-        responseFormatEntries.push(entry);
-      }
-    }
-    if ((googleOptions == null ? void 0 : googleOptions.responseFormat) != null) {
-      for (const entry of googleOptions.responseFormat) {
-        if (entry.type === "text") {
-          responseFormatEntries.push(
-            pruneUndefined({
-              type: "text",
-              mime_type: (_b18 = entry.mimeType) != null ? _b18 : void 0,
-              schema: (_c = entry.schema) != null ? _c : void 0
-            })
-          );
-        } else if (entry.type === "image") {
-          responseFormatEntries.push(
-            pruneUndefined({
-              type: "image",
-              mime_type: (_d = entry.mimeType) != null ? _d : void 0,
-              aspect_ratio: (_e = entry.aspectRatio) != null ? _e : void 0,
-              image_size: (_f = entry.imageSize) != null ? _f : void 0
-            })
-          );
-        } else if (entry.type === "audio") {
-          responseFormatEntries.push(
-            pruneUndefined({
-              type: "audio",
-              mime_type: (_g = entry.mimeType) != null ? _g : void 0
-            })
-          );
-        }
-      }
-    }
-    const {
-      input,
-      systemInstruction: convertedSystemInstruction,
-      warnings: convWarnings
-    } = convertToGoogleInteractionsInput({
-      prompt: options.prompt,
-      previousInteractionId: (_h = googleOptions == null ? void 0 : googleOptions.previousInteractionId) != null ? _h : void 0,
-      store: (_i = googleOptions == null ? void 0 : googleOptions.store) != null ? _i : void 0,
-      mediaResolution: (_j = googleOptions == null ? void 0 : googleOptions.mediaResolution) != null ? _j : void 0
-    });
-    warnings.push(...convWarnings);
-    let systemInstruction = convertedSystemInstruction;
-    const optionSystemInstruction = (_k = googleOptions == null ? void 0 : googleOptions.systemInstruction) != null ? _k : void 0;
-    if (systemInstruction != null && optionSystemInstruction != null) {
-      warnings.push({
-        type: "other",
-        message: "google.interactions: both AI SDK system message and providerOptions.google.systemInstruction were set; using the AI SDK system message."
-      });
-    } else if (systemInstruction == null && optionSystemInstruction != null) {
-      systemInstruction = optionSystemInstruction;
-    }
-    let generationConfig;
-    if (isAgent) {
-      const droppedFields = [];
-      if (options.temperature != null) droppedFields.push("temperature");
-      if (options.topP != null) droppedFields.push("topP");
-      if (options.topK != null) droppedFields.push("topK");
-      if (options.frequencyPenalty != null)
-        droppedFields.push("frequencyPenalty");
-      if (options.presencePenalty != null)
-        droppedFields.push("presencePenalty");
-      if (options.seed != null) droppedFields.push("seed");
-      if (options.stopSequences != null && options.stopSequences.length > 0) {
-        droppedFields.push("stopSequences");
-      }
-      if (options.maxOutputTokens != null)
-        droppedFields.push("maxOutputTokens");
-      if ((googleOptions == null ? void 0 : googleOptions.thinkingLevel) != null)
-        droppedFields.push("thinkingLevel");
-      if ((googleOptions == null ? void 0 : googleOptions.thinkingSummaries) != null) {
-        droppedFields.push("thinkingSummaries");
-      }
-      if ((googleOptions == null ? void 0 : googleOptions.imageConfig) != null) droppedFields.push("imageConfig");
-      if (droppedFields.length > 0) {
-        warnings.push({
-          type: "other",
-          message: `google.interactions: ${droppedFields.join(", ")} ${droppedFields.length === 1 ? "is" : "are"} not supported when an agent is set; use providerOptions.google.agentConfig instead. Dropped from the request body.`
-        });
-      }
-      generationConfig = void 0;
-    } else {
-      generationConfig = pruneUndefined({
-        temperature: (_l = options.temperature) != null ? _l : void 0,
-        top_p: (_m = options.topP) != null ? _m : void 0,
-        top_k: (_n = options.topK) != null ? _n : void 0,
-        seed: (_o = options.seed) != null ? _o : void 0,
-        stop_sequences: options.stopSequences != null && options.stopSequences.length > 0 ? options.stopSequences : void 0,
-        max_output_tokens: (_p = options.maxOutputTokens) != null ? _p : void 0,
-        thinking_level: (_q = googleOptions == null ? void 0 : googleOptions.thinkingLevel) != null ? _q : void 0,
-        thinking_summaries: (_r = googleOptions == null ? void 0 : googleOptions.thinkingSummaries) != null ? _r : void 0,
-        tool_choice: toolChoiceForBody
-      });
-      if ((googleOptions == null ? void 0 : googleOptions.imageConfig) != null) {
-        const alreadyHasImageEntry = responseFormatEntries.some(
-          (entry) => entry.type === "image"
-        );
-        warnings.push({
-          type: "other",
-          message: alreadyHasImageEntry ? "google.interactions: providerOptions.google.imageConfig is deprecated and was ignored because providerOptions.google.responseFormat already supplies an image entry. Use responseFormat exclusively." : 'google.interactions: providerOptions.google.imageConfig is deprecated. Use providerOptions.google.responseFormat with a { type: "image", ... } entry instead.'
-        });
-        if (!alreadyHasImageEntry) {
-          responseFormatEntries.push({
-            type: "image",
-            mime_type: "image/png",
-            ...googleOptions.imageConfig.aspectRatio != null ? { aspect_ratio: googleOptions.imageConfig.aspectRatio } : {},
-            ...googleOptions.imageConfig.imageSize != null ? { image_size: googleOptions.imageConfig.imageSize } : {}
-          });
-        }
-      }
-    }
-    let agentConfig;
-    if (isAgent && (googleOptions == null ? void 0 : googleOptions.agentConfig) != null) {
-      const agentConfigOptions = googleOptions.agentConfig;
-      if (agentConfigOptions.type === "deep-research") {
-        agentConfig = pruneUndefined({
-          type: "deep-research",
-          thinking_summaries: (_s = agentConfigOptions.thinkingSummaries) != null ? _s : void 0,
-          visualization: (_t = agentConfigOptions.visualization) != null ? _t : void 0,
-          collaborative_planning: (_u = agentConfigOptions.collaborativePlanning) != null ? _u : void 0
-        });
-      } else if (agentConfigOptions.type === "dynamic") {
-        agentConfig = { type: "dynamic" };
-      }
-    }
-    let environment;
-    if ((googleOptions == null ? void 0 : googleOptions.environment) != null) {
-      if (!isAgent) {
-        warnings.push({
-          type: "other",
-          message: "google.interactions: environment is only supported when an agent is set; environment will be omitted from the request body."
-        });
-      } else if (typeof googleOptions.environment === "string") {
-        environment = googleOptions.environment;
-      } else {
-        const environmentOptions = googleOptions.environment;
-        const sources = (_v = environmentOptions.sources) == null ? void 0 : _v.map((source) => {
-          var _a26;
-          if (source.type === "inline") {
-            return {
-              type: "inline",
-              content: source.content,
-              target: source.target
-            };
-          }
-          return pruneUndefined({
-            type: source.type,
-            source: source.source,
-            target: (_a26 = source.target) != null ? _a26 : void 0
-          });
-        });
-        let network;
-        if (environmentOptions.network === "disabled") {
-          network = "disabled";
-        } else if (environmentOptions.network != null) {
-          network = {
-            allowlist: environmentOptions.network.allowlist.map(
-              (entry) => {
-                var _a26;
-                return pruneUndefined({
-                  domain: entry.domain,
-                  transform: (_a26 = entry.transform) != null ? _a26 : void 0
-                });
-              }
-            )
-          };
-        }
-        environment = pruneUndefined({
-          type: "remote",
-          sources: sources != null && sources.length > 0 ? sources : void 0,
-          network
-        });
-      }
-    }
-    const args = pruneUndefined({
-      ...isAgent ? { agent: this.agent } : { model: this.modelId },
-      input,
-      system_instruction: systemInstruction,
-      tools: toolsForBody,
-      response_format: responseFormatEntries.length > 0 ? responseFormatEntries : void 0,
-      response_modalities: (googleOptions == null ? void 0 : googleOptions.responseModalities) != null ? googleOptions.responseModalities : void 0,
-      previous_interaction_id: (_w = googleOptions == null ? void 0 : googleOptions.previousInteractionId) != null ? _w : void 0,
-      service_tier: (_x = googleOptions == null ? void 0 : googleOptions.serviceTier) != null ? _x : void 0,
-      store: (_y = googleOptions == null ? void 0 : googleOptions.store) != null ? _y : void 0,
-      generation_config: generationConfig != null && Object.keys(generationConfig).length > 0 ? generationConfig : void 0,
-      agent_config: agentConfig,
-      environment,
-      background: (_z = googleOptions == null ? void 0 : googleOptions.background) != null ? _z : void 0
-    });
-    return {
-      args,
-      warnings,
-      isAgent,
-      isBackground: (googleOptions == null ? void 0 : googleOptions.background) === true,
-      pollingTimeoutMs: (_A = googleOptions == null ? void 0 : googleOptions.pollingTimeoutMs) != null ? _A : void 0
-    };
-  }
-  async doGenerate(options) {
-    var _a25, _b18, _c, _d, _e, _f;
-    const { args, warnings, isAgent, pollingTimeoutMs } = await this.getArgs(options);
-    const url2 = `${this.config.baseURL}/interactions`;
-    const mergedHeaders = combineHeaders(
-      this.config.headers ? await resolve(this.config.headers) : void 0,
-      options.headers
-    );
-    const postResult = await postJsonToApi({
-      url: url2,
-      headers: mergedHeaders,
-      body: args,
-      failedResponseHandler: googleFailedResponseHandler,
-      successfulResponseHandler: createJsonResponseHandler(
-        googleInteractionsResponseSchema
-      ),
-      abortSignal: options.abortSignal,
-      fetch: this.config.fetch
-    });
-    let {
-      responseHeaders,
-      value: response,
-      rawValue: rawResponse
-    } = postResult;
-    if (isAgent && !isTerminalStatus(response.status)) {
-      const polled = await pollGoogleInteractionUntilTerminal({
-        baseURL: this.config.baseURL,
-        interactionId: response.id,
-        headers: mergedHeaders,
-        fetch: this.config.fetch,
-        abortSignal: options.abortSignal,
-        timeoutMs: pollingTimeoutMs
-      });
-      response = polled.response;
-      rawResponse = polled.rawResponse;
-      responseHeaders = (_a25 = polled.responseHeaders) != null ? _a25 : responseHeaders;
-    }
-    const interactionId = typeof response.id === "string" && response.id.length > 0 ? response.id : void 0;
-    const { content, hasFunctionCall } = parseGoogleInteractionsOutputs({
-      steps: (_b18 = response.steps) != null ? _b18 : null,
-      generateId: (_c = this.config.generateId) != null ? _c : generateId,
-      interactionId
-    });
-    const finishReason = {
-      unified: mapGoogleInteractionsFinishReason({
-        status: response.status,
-        hasFunctionCall
-      }),
-      raw: response.status
-    };
-    const serviceTier = (_e = (_d = response.service_tier) != null ? _d : responseHeaders == null ? void 0 : responseHeaders["x-gemini-service-tier"]) != null ? _e : void 0;
-    const outputTokensByModality = getGoogleInteractionsOutputTokensByModality(
-      response.usage
-    );
-    const providerMetadata = {
-      google: {
-        ...interactionId != null ? { interactionId } : {},
-        ...serviceTier != null ? { serviceTier } : {},
-        ...outputTokensByModality != null ? { outputTokensByModality } : {}
-      }
-    };
-    let timestamp;
-    if (typeof response.created === "string") {
-      const parsed = new Date(response.created);
-      if (!Number.isNaN(parsed.getTime())) {
-        timestamp = parsed;
-      }
-    }
-    return {
-      content,
-      finishReason,
-      usage: convertGoogleInteractionsUsage(response.usage),
-      warnings,
-      providerMetadata,
-      request: { body: args },
-      response: {
-        headers: responseHeaders,
-        body: rawResponse,
-        ...interactionId != null ? { id: interactionId } : {},
-        ...timestamp ? { timestamp } : {},
-        modelId: (_f = response.model) != null ? _f : void 0
-      }
-    };
-  }
-  async doStream(options) {
-    var _a25;
-    const { args, warnings, isBackground, pollingTimeoutMs } = await this.getArgs(options);
-    const url2 = `${this.config.baseURL}/interactions`;
-    const mergedHeaders = combineHeaders(
-      this.config.headers ? await resolve(this.config.headers) : void 0,
-      options.headers
-    );
-    if (isBackground) {
-      return this.doStreamBackground({
-        args,
-        warnings,
-        url: url2,
-        mergedHeaders,
-        options,
-        pollingTimeoutMs
-      });
-    }
-    const body = { ...args, stream: true };
-    const { responseHeaders, value: response } = await postJsonToApi({
-      url: url2,
-      headers: mergedHeaders,
-      body,
-      failedResponseHandler: googleFailedResponseHandler,
-      successfulResponseHandler: createEventSourceResponseHandler(
-        googleInteractionsEventSchema
-      ),
-      abortSignal: options.abortSignal,
-      fetch: this.config.fetch
-    });
-    const headerServiceTier = responseHeaders == null ? void 0 : responseHeaders["x-gemini-service-tier"];
-    const transform2 = buildGoogleInteractionsStreamTransform({
-      warnings,
-      generateId: (_a25 = this.config.generateId) != null ? _a25 : generateId,
-      includeRawChunks: options.includeRawChunks,
-      serviceTier: headerServiceTier
-    });
-    return {
-      stream: response.pipeThrough(transform2),
-      request: { body },
-      response: { headers: responseHeaders }
-    };
-  }
-  /*
-   * Drive the streaming surface for agent calls. Agents require
-   * `background: true`, which is incompatible with `stream: true` on POST.
-   *
-   * Approach:
-   *   1. POST `/interactions` with `background: true`. The response includes
-   *      the interaction id and an initial (usually non-terminal) status.
-   *   2. If the POST status is already terminal (rare), synthesize a stream
-   *      from the polled outputs and we're done.
-   *   3. Otherwise open `GET /interactions/{id}?stream=true` and pipe the
-   *      SSE events through `buildGoogleInteractionsStreamTransform` so the
-   *      consumer receives text deltas / thinking summaries / tool events as
-   *      they happen instead of all at once at the end.
-   *
-   * The SSE connection can drop while the agent idles between events
-   * (`UND_ERR_BODY_TIMEOUT`); `streamGoogleInteractionEvents` handles the
-   * reconnect-with-`last_event_id` loop transparently.
-   */
-  async doStreamBackground({
-    args,
-    warnings,
-    url: url2,
-    mergedHeaders,
-    options,
-    pollingTimeoutMs
-  }) {
-    var _a25, _b18;
-    const postResult = await postJsonToApi({
-      url: url2,
-      headers: mergedHeaders,
-      body: args,
-      failedResponseHandler: googleFailedResponseHandler,
-      successfulResponseHandler: createJsonResponseHandler(
-        googleInteractionsResponseSchema
-      ),
-      abortSignal: options.abortSignal,
-      fetch: this.config.fetch
-    });
-    const { responseHeaders: postHeaders, value: postResponse } = postResult;
-    const interactionId = postResponse.id;
-    if (interactionId == null || interactionId.length === 0) {
-      throw new Error(
-        "google.interactions: background POST response did not include an interaction id; cannot stream the result."
-      );
-    }
-    const headerServiceTier = postHeaders == null ? void 0 : postHeaders["x-gemini-service-tier"];
-    if (isTerminalStatus(postResponse.status)) {
-      const synthesized = synthesizeGoogleInteractionsAgentStream({
-        response: postResponse,
-        warnings,
-        generateId: (_a25 = this.config.generateId) != null ? _a25 : generateId,
-        includeRawChunks: options.includeRawChunks,
-        headerServiceTier
-      });
-      return {
-        stream: synthesized,
-        request: { body: args },
-        response: { headers: postHeaders }
-      };
-    }
-    void pollingTimeoutMs;
-    const events = streamGoogleInteractionEvents({
-      baseURL: this.config.baseURL,
-      interactionId,
-      headers: mergedHeaders,
-      fetch: this.config.fetch,
-      abortSignal: options.abortSignal
-    });
-    const transform2 = buildGoogleInteractionsStreamTransform({
-      warnings,
-      generateId: (_b18 = this.config.generateId) != null ? _b18 : generateId,
-      includeRawChunks: options.includeRawChunks,
-      serviceTier: headerServiceTier
-    });
-    return {
-      stream: events.pipeThrough(transform2),
-      request: { body: args },
-      response: { headers: postHeaders }
-    };
-  }
-};
-function pruneUndefined(obj) {
-  const result = {};
-  for (const [key, value] of Object.entries(obj)) {
-    if (value === void 0) continue;
-    result[key] = value;
-  }
-  return result;
-}
-function getRealtimeBaseURL(baseURL) {
-  const url2 = new URL(baseURL);
-  const pathSegments = url2.pathname.split("/");
-  const version2 = pathSegments.at(-1);
-  if (version2 === "v1beta" || version2 === "v1alpha") {
-    pathSegments.pop();
-    url2.pathname = pathSegments.join("/") || "/";
-  }
-  return url2;
-}
-function getRealtimeWebSocketURL(baseURL, webSocketPath) {
-  const url2 = getRealtimeBaseURL(baseURL);
-  url2.protocol = url2.protocol === "https:" ? "wss:" : "ws:";
-  url2.pathname = `${url2.pathname.replace(/\/$/, "")}/ws/${webSocketPath}`;
-  return url2;
-}
-var GoogleRealtimeEventMapper = class {
-  constructor() {
-    this.turnCounter = 0;
-    this.hasAudio = false;
-    this.hasText = false;
-    this.hasTranscript = false;
-    this.turnClosed = false;
-    this.inputAudioRate = 16e3;
-  }
-  get responseId() {
-    return `google-resp-${this.turnCounter}`;
-  }
-  get itemId() {
-    return `google-item-${this.turnCounter}`;
-  }
-  /**
-   * Rolls over to the next turn lazily, only once new model content actually
-   * arrives. `turnComplete` merely marks the current turn closed; the counter
-   * is not advanced until the next response begins. This keeps a transcript
-   * that arrives shortly after `turnComplete` attached to the turn it belongs
-   * to, since Google delivers transcription independently with no guaranteed
-   * ordering relative to `turnComplete`.
-   */
-  beginTurnIfClosed() {
-    if (!this.turnClosed) return;
-    this.turnCounter++;
-    this.hasAudio = false;
-    this.hasText = false;
-    this.hasTranscript = false;
-    this.turnClosed = false;
-  }
-  parseServerEvent(raw2) {
-    var _a25, _b18;
-    const data = raw2;
-    if (data.setupComplete != null) {
-      return { type: "session-created", raw: raw2 };
-    }
-    if (data.toolCall != null) {
-      this.beginTurnIfClosed();
-      const functionCalls = (_a25 = data.toolCall.functionCalls) != null ? _a25 : [];
-      return functionCalls.flatMap((functionCall) => {
-        var _a26;
-        const args = JSON.stringify((_a26 = functionCall.args) != null ? _a26 : {});
-        return [
-          {
-            type: "function-call-arguments-delta",
-            responseId: this.responseId,
-            itemId: this.itemId,
-            callId: functionCall.id,
-            delta: args,
-            raw: raw2
-          },
-          {
-            type: "function-call-arguments-done",
-            responseId: this.responseId,
-            itemId: this.itemId,
-            callId: functionCall.id,
-            name: functionCall.name,
-            arguments: args,
-            raw: raw2
-          }
-        ];
-      });
-    }
-    if (data.toolCallCancellation != null) {
-      return {
-        type: "custom",
-        rawType: "toolCallCancellation",
-        raw: raw2
-      };
-    }
-    if (data.goAway != null) {
-      return {
-        type: "custom",
-        rawType: "goAway",
-        raw: raw2
-      };
-    }
-    if (data.sessionResumptionUpdate != null) {
-      return {
-        type: "custom",
-        rawType: "sessionResumptionUpdate",
-        raw: raw2
-      };
-    }
-    if (data.serverContent != null) {
-      return this.parseServerContent(data.serverContent, raw2);
-    }
-    if (((_b18 = data.inputTranscription) == null ? void 0 : _b18.text) != null) {
-      return {
-        type: "input-transcription-completed",
-        itemId: `google-input-${this.turnCounter}`,
-        transcript: data.inputTranscription.text,
-        raw: raw2
-      };
-    }
-    return { type: "custom", rawType: String(Object.keys(data)[0]), raw: raw2 };
-  }
-  parseServerContent(serverContent, raw2) {
-    var _a25, _b18, _c, _d;
-    const events = [];
-    if (serverContent.interrupted) {
-      events.push({
-        type: "speech-started",
-        raw: raw2
-      });
-    }
-    if ((_a25 = serverContent.modelTurn) == null ? void 0 : _a25.parts) {
-      this.beginTurnIfClosed();
-      for (const part of serverContent.modelTurn.parts) {
-        if ((_b18 = part.inlineData) == null ? void 0 : _b18.data) {
-          this.hasAudio = true;
-          events.push({
-            type: "audio-delta",
-            responseId: this.responseId,
-            itemId: this.itemId,
-            delta: part.inlineData.data,
-            raw: raw2
-          });
-        }
-        if (part.text) {
-          this.hasText = true;
-          events.push({
-            type: "text-delta",
-            responseId: this.responseId,
-            itemId: this.itemId,
-            delta: part.text,
-            raw: raw2
-          });
-        }
-      }
-    }
-    if ((_c = serverContent.outputTranscription) == null ? void 0 : _c.text) {
-      this.hasTranscript = true;
-      events.push({
-        type: "audio-transcript-delta",
-        responseId: this.responseId,
-        itemId: this.itemId,
-        delta: serverContent.outputTranscription.text,
-        raw: raw2
-      });
-    }
-    if ((_d = serverContent.inputTranscription) == null ? void 0 : _d.text) {
-      events.push({
-        type: "input-transcription-completed",
-        itemId: `google-input-${this.turnCounter}`,
-        transcript: serverContent.inputTranscription.text,
-        raw: raw2
-      });
-    }
-    if (serverContent.generationComplete) {
-      events.push({
-        type: "custom",
-        rawType: "generationComplete",
-        raw: raw2
-      });
-    }
-    if (serverContent.turnComplete) {
-      if (this.hasAudio) {
-        events.push({
-          type: "audio-done",
-          responseId: this.responseId,
-          itemId: this.itemId,
-          raw: raw2
-        });
-      }
-      if (this.hasText) {
-        events.push({
-          type: "text-done",
-          responseId: this.responseId,
-          itemId: this.itemId,
-          raw: raw2
-        });
-      }
-      if (this.hasTranscript) {
-        events.push({
-          type: "audio-transcript-done",
-          responseId: this.responseId,
-          itemId: this.itemId,
-          raw: raw2
-        });
-      }
-      events.push({
-        type: "response-done",
-        responseId: this.responseId,
-        status: "completed",
-        raw: raw2
-      });
-      this.turnClosed = true;
-    }
-    if (events.length === 0) {
-      return { type: "custom", rawType: "serverContent", raw: raw2 };
-    }
-    return events.length === 1 ? events[0] : events;
-  }
-  serializeClientEvent(event, modelId) {
-    var _a25;
-    switch (event.type) {
-      case "session-update":
-        if (((_a25 = event.config.inputAudioFormat) == null ? void 0 : _a25.rate) != null) {
-          this.inputAudioRate = event.config.inputAudioFormat.rate;
-        }
-        return {
-          setup: buildGoogleSessionConfig(event.config, modelId)
-        };
-      case "input-audio-append":
-        return {
-          realtimeInput: {
-            audio: {
-              data: event.audio,
-              mimeType: `audio/pcm;rate=${this.inputAudioRate}`
-            }
-          }
-        };
-      case "input-audio-commit":
-        return {
-          realtimeInput: {
-            audioStreamEnd: true
-          }
-        };
-      case "input-audio-clear":
-      case "response-create":
-      case "response-cancel":
-      case "conversation-item-truncate":
-        return null;
-      case "conversation-item-create": {
-        const item = event.item;
-        switch (item.type) {
-          case "text-message":
-            return {
-              realtimeInput: {
-                text: item.text
-              }
-            };
-          case "function-call-output":
-            return serializeFunctionCallOutput(item);
-          case "audio-message":
-            return null;
-        }
-        break;
-      }
-    }
-    return null;
-  }
-};
-async function serializeFunctionCallOutput(item) {
-  const parseResult = await safeParseJSON({ text: item.output });
-  const response = parseResult.success ? parseResult.value : {};
-  return {
-    toolResponse: {
-      functionResponses: [
-        {
-          id: item.callId,
-          name: item.name,
-          response
-        }
-      ]
-    }
-  };
-}
-function buildGoogleSessionConfig(config2, modelId) {
-  const setup = {
-    model: getModelPath(modelId)
-  };
-  const generationConfig = {};
-  if ((config2 == null ? void 0 : config2.outputModalities) != null) {
-    generationConfig.responseModalities = config2.outputModalities.map(
-      (m) => m.toUpperCase()
-    );
-  } else {
-    generationConfig.responseModalities = ["AUDIO"];
-  }
-  if ((config2 == null ? void 0 : config2.voice) != null) {
-    generationConfig.speechConfig = {
-      voiceConfig: {
-        prebuiltVoiceConfig: {
-          voiceName: config2.voice
-        }
-      }
-    };
-  }
-  setup.generationConfig = generationConfig;
-  if ((config2 == null ? void 0 : config2.instructions) != null) {
-    setup.systemInstruction = {
-      parts: [{ text: config2.instructions }]
-    };
-  }
-  if ((config2 == null ? void 0 : config2.tools) != null && config2.tools.length > 0) {
-    setup.tools = [
-      {
-        functionDeclarations: config2.tools.map((tool2) => ({
-          name: tool2.name,
-          description: tool2.description,
-          parameters: convertJSONSchemaToOpenAPISchema(tool2.parameters)
-        }))
-      }
-    ];
-  }
-  if ((config2 == null ? void 0 : config2.inputAudioTranscription) != null) {
-    setup.inputAudioTranscription = {};
-  }
-  if ((config2 == null ? void 0 : config2.outputAudioTranscription) != null) {
-    setup.outputAudioTranscription = {};
-  }
-  if ((config2 == null ? void 0 : config2.providerOptions) == null) {
-    return setup;
-  }
-  const { google: google2, ...providerOptions } = config2.providerOptions;
-  Object.assign(setup, providerOptions);
-  const googleOptions = isRecord(google2) ? google2 : void 0;
-  if ((googleOptions == null ? void 0 : googleOptions.translationConfig) != null) {
-    const target = isRecord(setup.generationConfig) ? setup.generationConfig : generationConfig;
-    setup.generationConfig = {
-      ...target,
-      translationConfig: googleOptions.translationConfig
-    };
-  }
-  return setup;
-}
-var realtimeWebSocketPath = "google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContentConstrained";
-function getAuthTokensURL(baseURL) {
-  const url2 = getRealtimeBaseURL(baseURL);
-  url2.pathname = `${url2.pathname.replace(/\/$/, "")}/v1alpha/auth_tokens`;
-  return url2.toString();
-}
-function getWebSocketURL(baseURL) {
-  return getRealtimeWebSocketURL(baseURL, realtimeWebSocketPath).toString();
-}
-var GoogleRealtimeModel = class {
-  constructor(modelId, config2) {
-    this.specificationVersion = "v4";
-    this.mapper = new GoogleRealtimeEventMapper();
-    this.modelId = modelId;
-    this.provider = config2.provider;
-    this.config = config2;
-  }
-  async doCreateClientSecret(options) {
-    var _a25, _b18;
-    const fetchFn = (_a25 = this.config.fetch) != null ? _a25 : fetch;
-    const headers = this.config.headers();
-    const apiKey = headers["x-goog-api-key"];
-    if (!apiKey) {
-      throw new Error(
-        "Google Generative AI API key is required for realtime token creation."
-      );
-    }
-    const now2 = Date.now();
-    const openWindowMs = ((_b18 = options.expiresAfterSeconds) != null ? _b18 : 60) * 1e3;
-    const newSessionExpireTime = new Date(now2 + openWindowMs).toISOString();
-    const expireTime = new Date(
-      now2 + openWindowMs + 30 * 60 * 1e3
-    ).toISOString();
-    const setupPayload = buildGoogleSessionConfig(
-      options.sessionConfig,
-      this.modelId
-    );
-    const response = await fetchFn(
-      `${getAuthTokensURL(this.config.baseURL)}?key=${encodeURIComponent(apiKey)}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          // `uses: 0` means no limit is applied to how many times the token can
-          // start a session (per the AuthToken spec). An unset value would
-          // default to 1, which breaks WebSocket reconnects within the session.
-          uses: 0,
-          expireTime,
-          newSessionExpireTime,
-          bidiGenerateContentSetup: setupPayload
-        })
-      }
-    );
-    if (!response.ok) {
-      const text2 = await response.text();
-      throw new Error(
-        `Google realtime auth token request failed: ${response.status} ${text2}`
-      );
-    }
-    const data = await response.json();
-    return {
-      token: data.name,
-      url: getWebSocketURL(this.config.baseURL),
-      expiresAt: data.expireTime ? Math.floor(new Date(data.expireTime).getTime() / 1e3) : void 0
-    };
-  }
-  getWebSocketConfig(options) {
-    return {
-      url: `${options.url}?access_token=${encodeURIComponent(options.token)}`
-    };
-  }
-  parseServerEvent(raw2) {
-    return this.mapper.parseServerEvent(raw2);
-  }
-  serializeClientEvent(event) {
-    return this.mapper.serializeClientEvent(event, this.modelId);
-  }
-  buildSessionConfig(config2) {
-    return buildGoogleSessionConfig(config2, this.modelId);
-  }
-};
-var googleSpeechTranslationModelOptions = lazySchema(
-  () => zodSchema(
-    external_exports.object({
-      /**
-       * Whether input audio already in the target language should be echoed
-       * instead of producing silence.
-       */
-      echoTargetLanguage: external_exports.boolean().optional()
-    })
-  )
-);
-var liveWebSocketPath = "google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
-var defaultFinishGraceMs = 1e3;
-var googleLiveOutputAudioRate = 24e3;
-var pcm16SilenceAmplitudeThreshold = 128;
-function getLiveWebSocketURL(baseURL, apiKey) {
-  const url2 = getRealtimeWebSocketURL(baseURL, liveWebSocketPath);
-  url2.searchParams.set("key", apiKey);
-  return url2;
-}
-var GoogleSpeechTranslationModel = class _GoogleSpeechTranslationModel {
-  constructor(modelId, config2) {
-    this.specificationVersion = "v4";
-    this.modelId = modelId;
-    this.config = config2;
-  }
-  static [WORKFLOW_SERIALIZE](model) {
-    return serializeModelOptions({
-      modelId: model.modelId,
-      config: model.config
-    });
-  }
-  static [WORKFLOW_DESERIALIZE](options) {
-    return new _GoogleSpeechTranslationModel(options.modelId, options.config);
-  }
-  get provider() {
-    return this.config.provider;
-  }
-  async doStream(options) {
-    var _a25, _b18, _c, _d, _e, _f;
-    if (options.targetLanguage == null) {
-      throw new InvalidArgumentError({
-        argument: "targetLanguage",
-        message: `targetLanguage is required for translation model '${this.modelId}'.`
-      });
-    }
-    const currentDate = (_c = (_b18 = (_a25 = this.config._internal) == null ? void 0 : _a25.currentDate) == null ? void 0 : _b18.call(_a25)) != null ? _c : /* @__PURE__ */ new Date();
-    const googleOptions = await parseProviderOptions({
-      provider: "google",
-      providerOptions: options.providerOptions,
-      schema: googleSpeechTranslationModelOptions
-    });
-    const warnings = [];
-    validateGoogleSpeechTranslationInputAudioFormat(options.inputAudioFormat);
-    if (options.sourceLanguage != null) {
-      warnings.push({
-        type: "unsupported",
-        feature: "sourceLanguage",
-        details: "The Gemini Live translation API auto-detects the source language and does not accept a source language."
-      });
-    }
-    if (options.outputAudioFormat != null) {
-      warnings.push({
-        type: "unsupported",
-        feature: "outputAudioFormat",
-        details: "The Gemini Live API always outputs 24kHz 16-bit PCM audio and does not accept an output audio format."
-      });
-    }
-    const headers = combineHeaders(this.config.headers(), options.headers);
-    let apiKey;
-    for (const [key, value] of Object.entries(headers)) {
-      if (key.toLowerCase() === "x-goog-api-key" && value != null) {
-        apiKey = value;
-      }
-    }
-    if (apiKey == null) {
-      throw new Error(
-        "Google Generative AI API key is required for streaming translation."
-      );
-    }
-    const webSocketHeaders = Object.fromEntries(
-      Object.entries(headers).filter(
-        ([key]) => key.toLowerCase() !== "x-goog-api-key"
-      )
-    );
-    const setup = buildGoogleLiveSpeechTranslationSetup({
-      modelId: this.modelId,
-      targetLanguage: options.targetLanguage,
-      providerOptions: googleOptions
-    });
-    return {
-      request: { body: setup },
-      response: {
-        timestamp: currentDate,
-        modelId: this.modelId
-      },
-      stream: createGoogleLiveSpeechTranslationStream({
-        webSocket: this.config.webSocket,
-        url: getLiveWebSocketURL(this.config.baseURL, apiKey),
-        headers: webSocketHeaders,
-        setup,
-        inputAudioRate: (_d = options.inputAudioFormat.rate) != null ? _d : 16e3,
-        finishGraceMs: (_f = (_e = this.config._internal) == null ? void 0 : _e.finishGraceMs) != null ? _f : defaultFinishGraceMs,
-        warnings,
-        audio: options.audio,
-        abortSignal: options.abortSignal,
-        includeRawChunks: options.includeRawChunks
-      })
-    };
-  }
-};
-function createGoogleLiveSpeechTranslationStream({
-  webSocket,
-  url: url2,
-  headers,
-  setup,
-  inputAudioRate,
-  finishGraceMs,
-  warnings,
-  audio,
-  abortSignal,
-  includeRawChunks
-}) {
-  let finished = false;
-  let cleanup = () => {
-  };
-  return new ReadableStream({
-    start: (controller) => {
-      let audioReader;
-      let connection;
-      let resolveSetupComplete;
-      const setupComplete = new Promise((resolve7) => {
-        resolveSetupComplete = resolve7;
-      });
-      let turnCounter = 0;
-      let sourceText = "";
-      let sourceTurnBuffer = "";
-      let translationText = "";
-      let translationTurnBuffer = "";
-      let audioEnded = false;
-      let usage;
-      let openTurn = false;
-      let sawTurnComplete = false;
-      let trailingSilenceMs = 0;
-      let finishTimer;
-      const itemId = () => `google-item-${turnCounter}`;
-      const cancelPendingFinish = () => {
-        if (finishTimer != null) {
-          clearTimeout(finishTimer);
-          finishTimer = void 0;
-        }
-      };
-      const schedulePendingFinish = () => {
-        if (finished || finishTimer != null) return;
-        finishTimer = setTimeout(() => {
-          finishTimer = void 0;
-          finish();
-        }, finishGraceMs);
-      };
-      const onTurnActivity = () => {
-        openTurn = true;
-        trailingSilenceMs = 0;
-        cancelPendingFinish();
-      };
-      cleanup = (closeCode) => {
-        cancelPendingFinish();
-        if (audioReader != null) {
-          void audioReader.cancel().catch(() => {
-          });
-        } else {
-          void audio.cancel().catch(() => {
-          });
-        }
-        connection == null ? void 0 : connection.close(closeCode);
-      };
-      const finishWithError = (error51) => {
-        if (finished) return;
-        finished = true;
-        cleanup();
-        controller.error(error51);
-      };
-      const finish = () => {
-        if (finished) return;
-        if (sourceTurnBuffer !== "" || translationTurnBuffer !== "") {
-          completeTurn();
-        }
-        finished = true;
-        controller.enqueue({
-          type: "finish",
-          sourceText,
-          outputText: translationText,
-          usage
-        });
-        controller.close();
-        cleanup(1e3);
-      };
-      const completeTurn = () => {
-        if (sourceTurnBuffer !== "") {
-          controller.enqueue({
-            type: "source-transcript-final",
-            id: itemId(),
-            text: sourceTurnBuffer
-          });
-          sourceText += sourceTurnBuffer;
-          sourceTurnBuffer = "";
-        }
-        if (translationTurnBuffer !== "") {
-          controller.enqueue({
-            type: "output-text-final",
-            id: itemId(),
-            text: translationTurnBuffer
-          });
-          translationText += translationTurnBuffer;
-          translationTurnBuffer = "";
-        }
-        turnCounter++;
-      };
-      const sendAudio = async (socket) => {
-        audioReader = audio.getReader();
-        try {
-          while (true) {
-            const { done, value } = await audioReader.read();
-            if (done || finished) break;
-            socket.send(
-              JSON.stringify({
-                realtimeInput: {
-                  audio: {
-                    data: convertToBase64(value),
-                    mimeType: `audio/pcm;rate=${inputAudioRate}`
-                  }
-                }
-              })
-            );
-            await waitForWebSocketBufferDrain(socket);
-          }
-        } finally {
-          audioReader.releaseLock();
-          audioReader = void 0;
-        }
-        if (!finished) {
-          socket.send(
-            JSON.stringify({ realtimeInput: { audioStreamEnd: true } })
-          );
-          audioEnded = true;
-          if (sawTurnComplete && !openTurn) {
-            schedulePendingFinish();
-          }
-        }
-      };
-      connection = connectToWebSocket({
-        url: url2,
-        headers,
-        webSocket,
-        abortSignal,
-        onAbort: finishWithError,
-        onProcessingError: finishWithError,
-        onOpen: (socket) => {
-          controller.enqueue({ type: "stream-start", warnings });
-          socket.send(JSON.stringify({ setup }));
-          void setupComplete.then(() => finished ? void 0 : sendAudio(socket)).catch(finishWithError);
-        },
-        onMessageText: async (text2) => {
-          var _a25, _b18, _c, _d, _e, _f, _g, _h, _i;
-          if (finished) return;
-          const parsed = await safeParseJSON({ text: text2 });
-          if (!parsed.success) return;
-          const message = parsed.value;
-          if (includeRawChunks) {
-            controller.enqueue({ type: "raw", rawValue: message });
-          }
-          if (message.setupComplete != null) {
-            resolveSetupComplete();
-          }
-          if (message.usageMetadata != null) {
-            usage = accumulateGoogleLiveUsage(usage, message.usageMetadata);
-          }
-          if (message.error != null) {
-            finishWithError(
-              new Error((_a25 = message.error.message) != null ? _a25 : "Google Live API error")
-            );
-            return;
-          }
-          const inputTranscriptionText = (_e = (_c = (_b18 = message.serverContent) == null ? void 0 : _b18.inputTranscription) == null ? void 0 : _c.text) != null ? _e : (_d = message.inputTranscription) == null ? void 0 : _d.text;
-          if (inputTranscriptionText) {
-            onTurnActivity();
-            sourceTurnBuffer += inputTranscriptionText;
-            controller.enqueue({
-              type: "source-transcript-delta",
-              id: itemId(),
-              delta: inputTranscriptionText
-            });
-          }
-          const serverContent = message.serverContent;
-          if (serverContent == null) {
-            return;
-          }
-          for (const part of (_g = (_f = serverContent.modelTurn) == null ? void 0 : _f.parts) != null ? _g : []) {
-            if ((_h = part.inlineData) == null ? void 0 : _h.data) {
-              controller.enqueue({
-                type: "audio",
-                id: itemId(),
-                audio: part.inlineData.data
-              });
-              const silenceDurationMs = getPcm16SilenceDurationMs(
-                part.inlineData.data
-              );
-              if (audioEnded && silenceDurationMs != null) {
-                trailingSilenceMs += silenceDurationMs;
-                if (trailingSilenceMs >= finishGraceMs) {
-                  finish();
-                  return;
-                }
-              } else {
-                onTurnActivity();
-              }
-            }
-          }
-          if ((_i = serverContent.outputTranscription) == null ? void 0 : _i.text) {
-            onTurnActivity();
-            translationTurnBuffer += serverContent.outputTranscription.text;
-            controller.enqueue({
-              type: "output-text-delta",
-              id: itemId(),
-              delta: serverContent.outputTranscription.text
-            });
-          }
-          if (serverContent.turnComplete) {
-            completeTurn();
-            openTurn = false;
-            sawTurnComplete = true;
-            if (audioEnded) {
-              schedulePendingFinish();
-            }
-          }
-        },
-        onSocketError: () => {
-          finishWithError(new Error("Google Live translation error"));
-        },
-        onClose: ({ code, reason }) => {
-          if (finished) return;
-          if (finishTimer != null) {
-            finish();
-            return;
-          }
-          finishWithError(
-            new Error(
-              `Google Live translation WebSocket closed unexpectedly before finishing (code ${code != null ? code : "unknown"}${reason ? `, reason: ${reason}` : ""}).`
-            )
-          );
-        }
-      });
-    },
-    cancel: () => {
-      if (finished) return;
-      finished = true;
-      cleanup();
-    }
-  });
-}
-function accumulateGoogleLiveUsage(usage, usageMetadata) {
-  var _a25, _b18;
-  let inputAudioTokens = usage == null ? void 0 : usage.inputAudioTokens;
-  let outputAudioTokens = usage == null ? void 0 : usage.outputAudioTokens;
-  for (const detail of (_a25 = usageMetadata.promptTokensDetails) != null ? _a25 : []) {
-    if (detail.modality === "AUDIO" && detail.tokenCount != null) {
-      inputAudioTokens = (inputAudioTokens != null ? inputAudioTokens : 0) + detail.tokenCount;
-    }
-  }
-  for (const detail of (_b18 = usageMetadata.responseTokensDetails) != null ? _b18 : []) {
-    if (detail.modality === "AUDIO" && detail.tokenCount != null) {
-      outputAudioTokens = (outputAudioTokens != null ? outputAudioTokens : 0) + detail.tokenCount;
-    }
-  }
-  if (inputAudioTokens == null && outputAudioTokens == null) {
-    return usage;
-  }
-  return {
-    ...usage,
-    ...inputAudioTokens != null ? { inputAudioTokens } : {},
-    ...outputAudioTokens != null ? { outputAudioTokens } : {}
-  };
-}
-function getPcm16SilenceDurationMs(audio) {
-  let bytes;
-  try {
-    bytes = convertBase64ToUint8Array(audio);
-  } catch (e) {
-    return void 0;
-  }
-  if (bytes.byteLength < 2) {
-    return void 0;
-  }
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  const sampleCount = Math.floor(bytes.byteLength / 2);
-  for (let i = 0; i < sampleCount; i++) {
-    if (Math.abs(view.getInt16(i * 2, true)) > pcm16SilenceAmplitudeThreshold) {
-      return void 0;
-    }
-  }
-  return sampleCount / googleLiveOutputAudioRate * 1e3;
-}
-function buildGoogleLiveSpeechTranslationSetup({
-  modelId,
-  targetLanguage,
-  providerOptions
-}) {
-  return {
-    model: getModelPath(modelId),
-    generationConfig: {
-      responseModalities: ["AUDIO"],
-      translationConfig: {
-        targetLanguageCode: targetLanguage,
-        ...(providerOptions == null ? void 0 : providerOptions.echoTargetLanguage) != null ? { echoTargetLanguage: providerOptions.echoTargetLanguage } : {}
-      }
-    },
-    inputAudioTranscription: {},
-    outputAudioTranscription: {}
-  };
-}
-function validateGoogleSpeechTranslationInputAudioFormat(inputAudioFormat) {
-  if (inputAudioFormat.type !== "audio/pcm" || inputAudioFormat.rate != null && inputAudioFormat.rate !== 16e3) {
-    throw new InvalidArgumentError({
-      argument: "inputAudioFormat",
-      message: "The Gemini Live translation API only supports 16kHz 16-bit PCM input audio."
-    });
-  }
-}
-var supportedExternalUrlMediaTypes = [
-  "text/html",
-  "text/css",
-  "text/plain",
-  "text/xml",
-  "text/csv",
-  "text/rtf",
-  "text/javascript",
-  "application/json",
-  "application/pdf",
-  "image/bmp",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "video/mp4",
-  "video/mpeg",
-  "video/quicktime",
-  "video/avi",
-  "video/x-flv",
-  "video/mpg",
-  "video/webm",
-  "video/wmv",
-  "video/3gpp"
-];
-var externalHttpsUrlPattern = /^https:\/\/.*$/;
-function supportsExternalFileUrls(modelId) {
-  return /(^|\/)gemini-/.test(modelId) && !/(^|\/)gemini-2\.0/.test(modelId);
-}
-function createGoogle(options = {}) {
-  var _a25, _b18;
-  const baseURL = (_a25 = withoutTrailingSlash(options.baseURL)) != null ? _a25 : "https://generativelanguage.googleapis.com/v1beta";
-  const providerName = (_b18 = options.name) != null ? _b18 : "google.generative-ai";
-  const getHeaders = () => withUserAgentSuffix(
-    {
-      "x-goog-api-key": loadApiKey({
-        apiKey: options.apiKey,
-        environmentVariableName: "GOOGLE_GENERATIVE_AI_API_KEY",
-        description: "Google Generative AI"
-      }),
-      ...options.headers
-    },
-    `ai-sdk/google/${VERSION2}`
-  );
-  const createChatModel = (modelId) => {
-    var _a26;
-    return new GoogleLanguageModel(modelId, {
-      provider: providerName,
-      baseURL,
-      headers: getHeaders,
-      generateId: (_a26 = options.generateId) != null ? _a26 : generateId,
-      supportedUrls: () => ({
-        "*": [
-          // Google Generative Language "files" endpoint
-          // e.g. https://generativelanguage.googleapis.com/v1beta/files/...
-          new RegExp(`^${baseURL}/files/.*$`),
-          // YouTube URLs (public or unlisted videos)
-          new RegExp(
-            `^https://(?:www\\.)?youtube\\.com/watch\\?v=[\\w-]+(?:&[\\w=&.-]*)?$`
-          ),
-          new RegExp(`^https://youtu\\.be/[\\w-]+(?:\\?[\\w=&.-]*)?$`)
-        ],
-        ...supportsExternalFileUrls(modelId) ? Object.fromEntries(
-          supportedExternalUrlMediaTypes.map((mediaType) => [
-            mediaType,
-            [externalHttpsUrlPattern]
-          ])
-        ) : {}
-      }),
-      fetch: options.fetch
-    });
-  };
-  const createEmbeddingModel = (modelId) => new GoogleEmbeddingModel(modelId, {
-    provider: providerName,
-    baseURL,
-    headers: getHeaders,
-    fetch: options.fetch
-  });
-  const createImageModel = (modelId, settings = {}) => new GoogleImageModel(modelId, settings, {
-    provider: providerName,
-    baseURL,
-    headers: getHeaders,
-    fetch: options.fetch
-  });
-  const createFiles = () => new GoogleFiles({
-    provider: providerName,
-    baseURL,
-    headers: getHeaders,
-    fetch: options.fetch
-  });
-  const createVideoModel = (modelId) => {
-    var _a26;
-    return new GoogleVideoModel(modelId, {
-      provider: providerName,
-      baseURL,
-      headers: getHeaders,
-      fetch: options.fetch,
-      generateId: (_a26 = options.generateId) != null ? _a26 : generateId
-    });
-  };
-  const createRealtimeModel = (modelId) => new GoogleRealtimeModel(modelId, {
-    provider: `${providerName}.realtime`,
-    baseURL,
-    headers: getHeaders,
-    fetch: options.fetch
-  });
-  const createSpeechTranslationModel = (modelId) => new GoogleSpeechTranslationModel(modelId, {
-    provider: `${providerName}.speech-translation`,
-    baseURL,
-    headers: getHeaders,
-    webSocket: options.webSocket
-  });
-  const createSpeechModel = (modelId) => new GoogleSpeechModel(modelId, {
-    provider: `${providerName}.speech`,
-    baseURL,
-    headers: getHeaders,
-    fetch: options.fetch
-  });
-  const experimentalRealtimeFactory = Object.assign(
-    (modelId) => createRealtimeModel(modelId),
-    {
-      getToken: async (tokenOptions) => {
-        const model = createRealtimeModel(tokenOptions.model);
-        const secret = await model.doCreateClientSecret({
-          sessionConfig: tokenOptions.sessionConfig,
-          expiresAfterSeconds: tokenOptions.expiresAfterSeconds
-        });
-        return {
-          token: secret.token,
-          url: secret.url,
-          expiresAt: secret.expiresAt
-        };
-      }
-    }
-  );
-  const createInteractionsModel = (modelIdOrAgent) => {
-    var _a26;
-    return new GoogleInteractionsLanguageModel(
-      modelIdOrAgent,
-      {
-        provider: `${providerName}.interactions`,
-        baseURL,
-        headers: getHeaders,
-        generateId: (_a26 = options.generateId) != null ? _a26 : generateId,
-        fetch: options.fetch
-      }
-    );
-  };
-  const provider = function(modelId) {
-    if (new.target) {
-      throw new Error(
-        "The Google Generative AI model function cannot be called with the new keyword."
-      );
-    }
-    return createChatModel(modelId);
-  };
-  provider.specificationVersion = "v4";
-  provider.languageModel = createChatModel;
-  provider.chat = createChatModel;
-  provider.generativeAI = createChatModel;
-  provider.embedding = createEmbeddingModel;
-  provider.embeddingModel = createEmbeddingModel;
-  provider.textEmbedding = createEmbeddingModel;
-  provider.textEmbeddingModel = createEmbeddingModel;
-  provider.image = createImageModel;
-  provider.imageModel = createImageModel;
-  provider.video = createVideoModel;
-  provider.videoModel = createVideoModel;
-  provider.experimental_realtime = experimentalRealtimeFactory;
-  provider.files = createFiles;
-  provider.speech = createSpeechModel;
-  provider.speechModel = createSpeechModel;
-  provider.translation = createSpeechTranslationModel;
-  provider.speechTranslationModel = createSpeechTranslationModel;
-  provider.interactions = createInteractionsModel;
-  provider.tools = googleTools;
-  return provider;
-}
-var google = createGoogle();
-
 // node_modules/@ai-sdk/deepseek/dist/index.js
 function convertToDeepSeekChatMessages({
   prompt,
@@ -59714,7 +51964,7 @@ var deepseekLanguageModelChatOptions = external_exports.object({
    */
   strictJsonSchema: external_exports.boolean().optional()
 });
-function prepareTools2({
+function prepareTools({
   tools,
   toolChoice
 }) {
@@ -59857,7 +52107,7 @@ var DeepSeekChatLanguageModel = class _DeepSeekChatLanguageModel {
       tools: deepseekTools,
       toolChoice: deepseekToolChoices,
       toolWarnings
-    } = prepareTools2({
+    } = prepareTools({
       tools,
       toolChoice
     });
@@ -60119,7 +52369,7 @@ var DeepSeekChatLanguageModel = class _DeepSeekChatLanguageModel {
     };
   }
 };
-var VERSION3 = true ? "3.0.28" : "0.0.0-test";
+var VERSION2 = true ? "3.0.28" : "0.0.0-test";
 function createDeepSeek(options = {}) {
   var _a25;
   const baseURL = withoutTrailingSlash(
@@ -60134,7 +52384,7 @@ function createDeepSeek(options = {}) {
       })}`,
       ...options.headers
     },
-    `ai-sdk/deepseek/${VERSION3}`
+    `ai-sdk/deepseek/${VERSION2}`
   );
   const createLanguageModel = (modelId) => {
     return new DeepSeekChatLanguageModel(modelId, {
@@ -60479,7 +52729,7 @@ var openaiCompatibleLanguageModelChatOptions = external_exports.object({
    */
   strictJsonSchema: external_exports.boolean().optional()
 });
-function prepareTools3({
+function prepareTools2({
   tools,
   toolChoice
 }) {
@@ -60645,7 +52895,7 @@ var OpenAICompatibleChatLanguageModel = class _OpenAICompatibleChatLanguageModel
       tools: openaiTools,
       toolChoice: openaiToolChoice,
       toolWarnings
-    } = prepareTools3({
+    } = prepareTools2({
       tools,
       toolChoice
     });
@@ -61473,7 +53723,7 @@ var OpenAICompatibleCompletionLanguageModel = class _OpenAICompatibleCompletionL
     };
   }
 };
-var usageSchema3 = external_exports.looseObject({
+var usageSchema = external_exports.looseObject({
   prompt_tokens: external_exports.number(),
   completion_tokens: external_exports.number(),
   total_tokens: external_exports.number()
@@ -61488,7 +53738,7 @@ var openaiCompatibleCompletionResponseSchema = external_exports.object({
       finish_reason: external_exports.string()
     })
   ),
-  usage: usageSchema3.nullish()
+  usage: usageSchema.nullish()
 });
 var createOpenAICompatibleCompletionChunkSchema = (errorSchema) => external_exports.union([
   external_exports.object({
@@ -61502,7 +53752,7 @@ var createOpenAICompatibleCompletionChunkSchema = (errorSchema) => external_expo
         index: external_exports.number()
       })
     ),
-    usage: usageSchema3.nullish()
+    usage: usageSchema.nullish()
   }),
   errorSchema
 ]);
@@ -61773,7 +54023,7 @@ async function fileToBlob(file2) {
   const data = file2.data instanceof Uint8Array ? file2.data : convertBase64ToUint8Array(file2.data);
   return new Blob([data], { type: file2.mediaType });
 }
-var VERSION4 = true ? "3.0.31" : "0.0.0-test";
+var VERSION3 = true ? "3.0.31" : "0.0.0-test";
 function createOpenAICompatible(options) {
   const baseURL = withoutTrailingSlash(options.baseURL);
   const providerName = options.name;
@@ -61781,7 +54031,7 @@ function createOpenAICompatible(options) {
     ...options.apiKey && { Authorization: `Bearer ${options.apiKey}` },
     ...options.headers
   };
-  const getHeaders = () => withUserAgentSuffix(headers, `ai-sdk/openai-compatible/${VERSION4}`);
+  const getHeaders = () => withUserAgentSuffix(headers, `ai-sdk/openai-compatible/${VERSION3}`);
   const getCommonModelConfig = (modelType) => ({
     provider: `${providerName}.${modelType}`,
     url: ({ path }) => {
@@ -61979,10 +54229,8 @@ function resolveModel(id) {
   const env = process.env;
   switch (id) {
     case "gemini": {
-      const google2 = createGoogle({
-        apiKey: env.GOOGLE_GENERATIVE_AI_API_KEY
-      });
-      return google2(env.GEMINI_MODEL || "gemini-flash-latest");
+      console.warn('[registry] modelId "gemini" is retired \u2014 using vour-lite instead.');
+      return resolveModel("vour-lite");
     }
     case "deepseek": {
       const deepseek = createDeepSeek({
@@ -64723,7 +56971,7 @@ async function getVercelRequestId() {
   var _a113;
   return (_a113 = (0, import_oidc.getContext)().headers) == null ? void 0 : _a113["x-vercel-id"];
 }
-var VERSION5 = true ? "4.0.54" : "0.0.0-test";
+var VERSION4 = true ? "4.0.54" : "0.0.0-test";
 var AI_GATEWAY_PROTOCOL_VERSION = "0.0.1";
 var gatewayClientSecretResponseSchema = z2.object({
   token: z2.string(),
@@ -64744,7 +56992,7 @@ function createGateway(options = {}) {
       ...options.teamIdOrSlug != null ? { [VERCEL_AI_GATEWAY_TEAM_HEADER]: options.teamIdOrSlug } : {},
       ...options.headers
     },
-    `ai-sdk/gateway/${VERSION5}`
+    `ai-sdk/gateway/${VERSION4}`
   );
   const getHeaders = async () => {
     try {
@@ -65760,7 +58008,7 @@ function cloneValue(value) {
   }
   return value;
 }
-var VERSION6 = true ? "7.0.68" : "0.0.0-test";
+var VERSION5 = true ? "7.0.68" : "0.0.0-test";
 var download = async ({
   url: url2,
   maxBytes,
@@ -65771,7 +58019,7 @@ var download = async ({
   try {
     const headers = withUserAgentSuffix(
       {},
-      `ai-sdk/${VERSION6}`,
+      `ai-sdk/${VERSION5}`,
       getRuntimeEnvironmentUserAgent()
     );
     const response = await fetchWithValidatedRedirects({
@@ -66689,7 +58937,7 @@ function prepareToolChoice({
 function isNonEmptyObject(object3) {
   return object3 != null && Object.keys(object3).length > 0;
 }
-async function prepareTools4({
+async function prepareTools3({
   tools,
   toolOrder,
   toolsContext = {},
@@ -69704,7 +61952,7 @@ async function generateText({
   const callSettings = prepareLanguageModelCallOptions(settings);
   const headersWithUserAgent = withUserAgentSuffix(
     headers != null ? headers : {},
-    `ai/${VERSION6}`
+    `ai/${VERSION5}`
   );
   const initialPrompt = await standardizePrompt({
     instructions,
@@ -69927,7 +62175,7 @@ async function generateText({
                 toolCallers: resolvedToolCallers
               });
               const stepToolOrder = (_i = prepareStepResult == null ? void 0 : prepareStepResult.toolOrder) != null ? _i : toolOrder;
-              const stepTools = await prepareTools4({
+              const stepTools = await prepareTools3({
                 tools: stepModelTools,
                 toolOrder: stepToolOrder,
                 // active tools context is a subset of the tools context, so we can cast to the unknown type
@@ -71846,7 +64094,7 @@ async function generateObject(options) {
   const callSettings = prepareLanguageModelCallOptions(settings);
   const headersWithUserAgent = withUserAgentSuffix(
     headers != null ? headers : {},
-    `ai/${VERSION6}`
+    `ai/${VERSION5}`
   );
   const telemetryDispatcher = createTelemetryDispatcher({
     telemetry
@@ -73184,8 +65432,8 @@ async function warmUpIllustrations() {
   if (!warmUpPromise) {
     warmUpPromise = (async () => {
       try {
-        const db6 = getDbClient();
-        const res = await db6.execute("SELECT slug, variant, svg FROM illustrations");
+        const db7 = getDbClient();
+        const res = await db7.execute("SELECT slug, variant, svg FROM illustrations");
         for (const row of res.rows) {
           const slug = String(row.slug);
           const variant = String(row.variant);
@@ -76738,6 +68986,790 @@ async function getRecentLayoutStats(userId3, limit = 25) {
 
 // src/routes/user/plan.ts
 init_retry();
+
+// src/lib/evidence/resolve-url.ts
+var NEVER_OFFICIAL = /* @__PURE__ */ new Set([
+  "google.com",
+  "www.google.com",
+  "bing.com",
+  "duckduckgo.com",
+  "reddit.com",
+  "x.com",
+  "twitter.com",
+  "facebook.com",
+  "instagram.com",
+  "linkedin.com",
+  "youtube.com",
+  "youtu.be",
+  "tiktok.com",
+  "wikipedia.org",
+  "en.wikipedia.org",
+  "id.wikipedia.org",
+  "medium.com",
+  "dev.to",
+  "substack.com",
+  "news.ycombinator.com",
+  "stackoverflow.com",
+  "quora.com",
+  "producthunt.com",
+  "g2.com",
+  "capterra.com",
+  "slashdot.org"
+]);
+function apex(host) {
+  return host.replace(/^www\./i, "").toLowerCase();
+}
+function hostOf(value) {
+  try {
+    const withScheme = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+    return new URL(withScheme).hostname.toLowerCase();
+  } catch {
+    return null;
+  }
+}
+function parseAnswer(text2) {
+  let cleaned = text2.trim();
+  if (cleaned.startsWith("```")) {
+    cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+  }
+  const open = cleaned.indexOf("{");
+  const close = cleaned.lastIndexOf("}");
+  if (open === -1 || close <= open) return null;
+  try {
+    return JSON.parse(cleaned.slice(open, close + 1));
+  } catch {
+    return null;
+  }
+}
+var PROMPT = (entity) => `Which website is the OFFICIAL home of this: "${entity}"?
+
+You have no web access, so this is a memory question.
+
+Rules:
+- Official means the project's or company's own site \u2014 never Wikipedia, Reddit, a package
+  registry, a news article or a directory listing.
+- Give up to 3 candidates, best first.
+- Mark "high" only for a domain you have actually seen. Mark "low" for a best guess.
+- A guess IS useful: every candidate is opened and checked against the page's own title
+  before anything is used, so a wrong one is discarded safely. An empty list means no
+  screenshot at all, so only answer with an empty list when you have no idea whatsoever.
+
+Reply with ONLY this JSON:
+{"candidates": [{"url": "https://example.com", "confidence": "high" | "low"}]}`;
+function defaultProposer() {
+  if (!availableModels().includes("vour-high")) return null;
+  return resolveModel("vour-high");
+}
+async function proposeOfficialUrls(entity, model) {
+  const llm = model === void 0 ? defaultProposer() : model;
+  if (!llm) return { ok: false, reason: "no-model" };
+  let text2;
+  try {
+    const res = await generateText({ model: llm, prompt: PROMPT(entity), ...aiCallDefaults() });
+    text2 = res.text.trim();
+  } catch (err) {
+    console.warn(`[web-evidence] candidate lookup failed for "${entity}":`, err);
+    return { ok: false, reason: "no-answer" };
+  }
+  if (!text2) return { ok: false, reason: "no-answer" };
+  const answer = parseAnswer(text2);
+  const raw2 = Array.isArray(answer?.candidates) ? answer.candidates : (
+    // A model that ignored the array shape and answered the older single-object form.
+    answer?.url ? [answer] : []
+  );
+  if (!answer) return { ok: false, reason: "unparseable" };
+  if (!raw2.length) return { ok: false, reason: "no-candidates" };
+  const high = [];
+  const low = [];
+  let lastRejection = null;
+  for (const item of raw2) {
+    const url2 = String(item?.url ?? "").trim();
+    if (!url2) continue;
+    if (!/^https:\/\//i.test(url2)) {
+      lastRejection = { reason: "not-https", candidate: url2 };
+      continue;
+    }
+    const host = hostOf(url2);
+    if (!host) {
+      lastRejection = { reason: "unparseable", candidate: url2 };
+      continue;
+    }
+    if (NEVER_OFFICIAL.has(apex(host))) {
+      lastRejection = { reason: "aggregator", candidate: url2 };
+      continue;
+    }
+    if ([...high, ...low].some((c) => c.host === apex(host))) continue;
+    const confidence = String(item?.confidence ?? "").toLowerCase() === "high" ? "high" : "low";
+    (confidence === "high" ? high : low).push({ url: url2, host: apex(host), rank: 0, confidence });
+  }
+  const candidates = [...high, ...low].slice(0, 3).map((c, rank) => ({ ...c, rank }));
+  if (!candidates.length) {
+    return lastRejection ? { ok: false, reason: lastRejection.reason, candidate: lastRejection.candidate } : { ok: false, reason: "no-candidates" };
+  }
+  return { ok: true, candidates };
+}
+
+// src/lib/evidence/verify-identity.ts
+var GENERIC = /* @__PURE__ */ new Set([
+  "homepage",
+  "home",
+  "page",
+  "pages",
+  "website",
+  "site",
+  "web",
+  "official",
+  "the",
+  "a",
+  "an",
+  "screenshot",
+  "screen",
+  "shot",
+  "dashboard",
+  "docs",
+  "doc",
+  "documentation",
+  "landing",
+  "halaman",
+  "situs",
+  "resmi",
+  "utama",
+  "beranda",
+  "tangkapan",
+  "layar",
+  "dari",
+  "untuk",
+  "app",
+  "application",
+  "tool",
+  "platform",
+  "service",
+  "product",
+  "of",
+  "for",
+  "and",
+  "or"
+]);
+function entityTokens(entity) {
+  const seen = /* @__PURE__ */ new Set();
+  return entity.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length >= 3 && !GENERIC.has(t)).filter((t) => seen.has(t) ? false : (seen.add(t), true)).sort((a, b) => b.length - a.length);
+}
+function scoreIdentity(entity, signals) {
+  const tokens = entityTokens(entity);
+  if (!tokens.length) return { score: 0, matched: [], primaryMatched: false, tokens };
+  const haystack = [
+    apex(signals.host).replace(/[.\-_]/g, ""),
+    apex(signals.host),
+    signals.title,
+    signals.description,
+    signals.siteName,
+    signals.heading
+  ].join(" ").toLowerCase();
+  const matched = tokens.filter((t) => haystack.includes(t));
+  return {
+    score: matched.length / tokens.length,
+    matched,
+    // tokens[0] is the longest, i.e. the one least likely to appear by chance.
+    primaryMatched: matched.includes(tokens[0]),
+    tokens
+  };
+}
+var READ_SIGNALS = `(() => {
+  const meta = (sel) => {
+    const el = document.querySelector(sel);
+    return el ? (el.getAttribute("content") || "").trim() : "";
+  };
+  const h1 = document.querySelector("h1");
+  return {
+    title: (document.title || "").trim(),
+    description: meta('meta[name="description"]') || meta('meta[property="og:description"]'),
+    siteName: meta('meta[property="og:site_name"]') || meta('meta[name="application-name"]'),
+    heading: h1 ? (h1.textContent || "").trim().slice(0, 200) : "",
+  };
+})()`;
+async function readIdentitySignals(browser, url2) {
+  const context = await browser.newContext({
+    viewport: { width: 1024, height: 768 },
+    userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+  });
+  try {
+    const page = await context.newPage();
+    const response = await page.goto(url2, { waitUntil: "domcontentloaded", timeout: 15e3 });
+    const status = response?.status() ?? 0;
+    if (!response) throw new Error(`no response from ${url2}`);
+    if (status >= 400) throw new Error(`HTTP ${status} from ${url2}`);
+    const read2 = await page.evaluate(READ_SIGNALS);
+    const finalUrl = page.url();
+    return {
+      finalUrl,
+      // The host AFTER redirects: a parked domain that bounces to a registrar is a
+      // different site from the one the model named, and this is where that shows up.
+      host: new URL(finalUrl).hostname.toLowerCase(),
+      ...read2
+    };
+  } finally {
+    await context.close().catch(() => {
+    });
+  }
+}
+var JUDGE_PROMPT = (entity, s) => `Is this web page the official home of "${entity}"?
+
+Page host: ${s.host}
+Page title: ${s.title || "(none)"}
+Site name: ${s.siteName || "(none)"}
+Description: ${s.description || "(none)"}
+Main heading: ${s.heading || "(none)"}
+
+Answer "yes" only if the page is clearly about that exact thing \u2014 same product, same
+project, same company. A page about something else with a similar name is "no". A generic
+placeholder, parked domain, login wall or error page is "no".
+
+Reply with ONLY this JSON: {"match": true | false}`;
+function defaultJudge() {
+  if (!availableModels().includes("vour-lite")) return null;
+  return resolveModel("vour-lite");
+}
+var TOKEN_ACCEPT = 0.5;
+async function verifyPageIdentity(browser, url2, entity, opts = {}) {
+  let signals;
+  try {
+    signals = opts.signals ?? await readIdentitySignals(browser, url2);
+  } catch (err) {
+    return {
+      ok: false,
+      method: "unreachable",
+      score: 0,
+      matched: [],
+      reason: err instanceof Error ? err.message : String(err)
+    };
+  }
+  const { score, matched, primaryMatched } = scoreIdentity(entity, signals);
+  if (score >= TOKEN_ACCEPT && primaryMatched) {
+    return { ok: true, method: "tokens", score, matched, signals };
+  }
+  if (score === 0) {
+    return {
+      ok: false,
+      method: "no-overlap",
+      score,
+      matched,
+      signals,
+      reason: `page "${signals.title || signals.host}" says nothing about "${entity}"`
+    };
+  }
+  const judge = opts.judge === void 0 ? defaultJudge() : opts.judge;
+  if (!judge) {
+    return {
+      ok: false,
+      method: "tokens",
+      score,
+      matched,
+      signals,
+      reason: "partial match and no model available to confirm it"
+    };
+  }
+  try {
+    const res = await generateText({
+      model: judge,
+      prompt: JUDGE_PROMPT(entity, signals),
+      ...aiCallDefaults()
+    });
+    const match2 = /"match"\s*:\s*true/i.test(res.text) || /^\s*yes\b/i.test(res.text.trim());
+    return {
+      ok: match2,
+      method: "llm",
+      score,
+      matched,
+      signals,
+      reason: match2 ? void 0 : `model says this page is not "${entity}"`
+    };
+  } catch (err) {
+    console.warn(`[web-evidence] identity judge failed for ${url2}:`, err);
+    return {
+      ok: false,
+      method: "llm",
+      score,
+      matched,
+      signals,
+      reason: "identity judge unavailable"
+    };
+  }
+}
+
+// src/lib/evidence/capture-web.ts
+var BASE_WIDTH = 1024;
+var NAV_TIMEOUT_MS = 2e4;
+var SETTLE_MS = 900;
+function parseCropRatio(ratio) {
+  const m = /^\s*(\d+(?:\.\d+)?)\s*:\s*(\d+(?:\.\d+)?)\s*$/.exec(ratio ?? "");
+  if (!m) return 4 / 5;
+  const w = parseFloat(m[1]);
+  const h = parseFloat(m[2]);
+  if (!(w > 0) || !(h > 0)) return 4 / 5;
+  return w / h;
+}
+var ACCEPT_TEXT = /^(accept|accept all|accept cookies|allow all|agree|i agree|got it|ok|okay|understood|setuju|saya setuju|izinkan|terima)\b/i;
+var CONSENT_CONTAINERS = [
+  "#onetrust-consent-sdk",
+  "#onetrust-banner-sdk",
+  "#CybotCookiebotDialog",
+  "#cookiebot",
+  ".cc-window",
+  ".cookie-banner",
+  "#cookie-banner",
+  "#cookie-consent",
+  ".cookie-consent",
+  "#gdpr-cookie-message",
+  "[id*='cookie-consent']",
+  "[class*='cookie-consent']",
+  "[aria-label*='cookie' i][role='dialog']"
+];
+var BLOCKERS = (selectors) => `(() => {
+  const SELECTORS = ${JSON.stringify(selectors)};
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const found = [];
+  const covers = (el) => {
+    const r = el.getBoundingClientRect();
+    if (r.width < 80 || r.height < 40) return 0;
+    const w = Math.min(r.right, vw) - Math.max(r.left, 0);
+    const h = Math.min(r.bottom, vh) - Math.max(r.top, 0);
+    if (w <= 0 || h <= 0) return 0;
+    return (w * h) / (vw * vh);
+  };
+  for (const sel of SELECTORS) {
+    document.querySelectorAll(sel).forEach((el) => {
+      if (covers(el) > 0.02) found.push(el);
+    });
+  }
+  const CONSENT_WORDS = /cookie|consent|gdpr|privacy|setuju|persetujuan/i;
+  document.querySelectorAll("body *").forEach((el) => {
+    const cs = getComputedStyle(el);
+    if (cs.position !== "fixed" && cs.position !== "sticky") return;
+    if (cs.display === "none" || cs.visibility === "hidden") return;
+    if (covers(el) < 0.35) return;
+    if (!CONSENT_WORDS.test(el.textContent || "")) return;
+    found.push(el);
+  });
+  return { count: found.length, hide: ${"${HIDE}"} ? found.map((el) => {
+    el.style.setProperty("display", "none", "important");
+    return true;
+  }).length : 0 };
+})()`;
+var findBlockers = (selectors) => BLOCKERS(selectors).replace("${HIDE}", "false");
+var hideBlockers = (selectors) => BLOCKERS(selectors).replace("${HIDE}", "true");
+async function countBlockers(page) {
+  const res = await page.evaluate(findBlockers(CONSENT_CONTAINERS)).catch(() => ({ count: 0, hide: 0 }));
+  return res.count;
+}
+async function dismissCookieBanner(page) {
+  const before = await countBlockers(page);
+  let clicked = false;
+  for (const role of ["button", "link"]) {
+    if (clicked) break;
+    const candidates = page.getByRole(role, { name: ACCEPT_TEXT });
+    const count = await candidates.count().catch(() => 0);
+    for (let i = 0; i < Math.min(count, 4); i++) {
+      const el = candidates.nth(i);
+      try {
+        if (!await el.isVisible({ timeout: 500 })) continue;
+        await el.click({ timeout: 2e3, noWaitAfter: true });
+        await page.waitForTimeout(500);
+        clicked = true;
+        break;
+      } catch {
+      }
+    }
+  }
+  const after = await countBlockers(page);
+  if (after === 0) return clicked && before > 0 ? "clicked" : "none";
+  const hidden = await page.evaluate(hideBlockers(CONSENT_CONTAINERS)).catch(() => ({ count: 0, hide: 0 }));
+  if (hidden.hide > 0) {
+    await page.evaluate(() => {
+      document.documentElement.style.removeProperty("overflow");
+      document.body.style.removeProperty("overflow");
+    }).catch(() => {
+    });
+    await page.waitForTimeout(200);
+    return "hidden";
+  }
+  return clicked ? "clicked" : "none";
+}
+var TARGET_HINTS = [
+  { test: /\b(hero|headline|banner|landing|beranda|halaman utama)\b/i, selectors: ["main section:first-of-type", "header + section", "main > :first-child", "header"] },
+  { test: /\b(pricing|harga|paket|plan)\b/i, selectors: ["#pricing", "[id*='pricing' i]", "[class*='pricing' i]"] },
+  { test: /\b(docs?|documentation|dokumentasi|guide|readme)\b/i, selectors: ["main article", "article", "main"] },
+  { test: /\b(feature|fitur)\b/i, selectors: ["#features", "[id*='feature' i]", "[class*='feature' i]"] },
+  { test: /\b(dashboard|console|panel)\b/i, selectors: ["main", "[role='main']"] }
+];
+async function resolveTarget(page, instruction) {
+  const hint = TARGET_HINTS.find((h) => h.test.test(instruction ?? ""));
+  if (!hint) return { y: 0, label: "above-the-fold" };
+  for (const selector of hint.selectors) {
+    const box = await page.locator(selector).first().boundingBox({ timeout: 1500 }).catch(() => null);
+    if (box && box.height >= 200) {
+      return { y: Math.max(0, Math.round(box.y)), label: selector };
+    }
+  }
+  return { y: 0, label: "above-the-fold" };
+}
+async function launchEvidenceBrowser() {
+  const { chromium } = await import("playwright");
+  return chromium.launch({
+    headless: true,
+    args: ["--disable-dev-shm-usage", "--no-sandbox"]
+  });
+}
+async function captureWebEvidence(browser, url2, instruction, opts = {}) {
+  const ratio = parseCropRatio(opts.cropRatio);
+  const width = BASE_WIDTH;
+  const height = Math.round(width / ratio);
+  const context = await browser.newContext({
+    viewport: { width, height },
+    deviceScaleFactor: 2,
+    locale: "en-US",
+    // Default headless UA advertises HeadlessChrome, which a fair number of sites answer
+    // with a consent wall or a 403 — the capture then "succeeds" onto a blocking page.
+    userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+  });
+  try {
+    const page = await context.newPage();
+    page.setDefaultTimeout(NAV_TIMEOUT_MS);
+    const response = await page.goto(url2, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
+    const status = response?.status() ?? 0;
+    if (!response) throw new Error(`no response from ${url2}`);
+    if (status >= 400) throw new Error(`HTTP ${status} from ${url2}`);
+    await page.waitForLoadState("networkidle", { timeout: 8e3 }).catch(() => {
+    });
+    await page.evaluate(() => document.fonts?.ready).catch(() => {
+    });
+    const cookieBanner = await dismissCookieBanner(page);
+    const target = await resolveTarget(page, instruction);
+    if (target.y > 0) {
+      await page.evaluate((y) => window.scrollTo(0, y), target.y).catch(() => {
+      });
+    }
+    await page.waitForTimeout(SETTLE_MS);
+    const pageHeight = await page.evaluate(() => Math.max(document.body.scrollHeight, document.documentElement.scrollHeight)).catch(() => height);
+    const clipY = Math.min(target.y, Math.max(0, pageHeight - height));
+    const buffer = await page.screenshot({
+      type: "jpeg",
+      quality: 90,
+      clip: { x: 0, y: clipY, width, height }
+    });
+    return {
+      buffer,
+      meta: {
+        url: url2,
+        finalUrl: page.url(),
+        status,
+        cookieBanner,
+        target: target.label,
+        width,
+        height
+      }
+    };
+  } finally {
+    await context.close().catch(() => {
+    });
+  }
+}
+
+// src/lib/evidence/validate.ts
+var THRESHOLDS = {
+  /** A 1280×1600 JPEG of a real page is >100 KB; a blank one lands near 20 KB. */
+  minBytes: 25e3,
+  maxNearWhite: 0.85,
+  maxDominant: 0.92,
+  /**
+   * Low on purpose. A real capture of opencode.ai — black, white and one grey — comes
+   * back with 9 buckets, and dev-tool sites are exactly the population this feature
+   * photographs, so a stricter floor rejects the good monochrome ones. Blank and flat
+   * pages are already caught above; this only has to catch a 1-3 bucket gradient that
+   * happens to be neither white nor uniform enough for the other two rules.
+   */
+  minDistinctBuckets: 4
+};
+function judgeShot(m) {
+  if (m.bytes < THRESHOLDS.minBytes) return { ok: false, reason: "too-small", metrics: m };
+  if (m.nearWhitePct > THRESHOLDS.maxNearWhite) return { ok: false, reason: "mostly-blank", metrics: m };
+  if (m.dominantPct > THRESHOLDS.maxDominant) return { ok: false, reason: "flat-overlay", metrics: m };
+  if (m.distinctBuckets < THRESHOLDS.minDistinctBuckets) return { ok: false, reason: "no-detail", metrics: m };
+  return { ok: true, metrics: m };
+}
+var SAMPLE = `(async () => {
+  const img = document.getElementById("shot");
+  await img.decode();
+  const W = 160, H = 200;
+  const c = document.createElement("canvas");
+  c.width = W; c.height = H;
+  const ctx = c.getContext("2d");
+  ctx.drawImage(img, 0, 0, W, H);
+  const d = ctx.getImageData(0, 0, W, H).data;
+  const total = W * H;
+  let white = 0;
+  const buckets = new Map();
+  for (let i = 0; i < d.length; i += 4) {
+    const r = d[i], g = d[i + 1], b = d[i + 2];
+    if (r > 244 && g > 244 && b > 244) white++;
+    const key = (r >> 3) + "," + (g >> 3) + "," + (b >> 3);
+    buckets.set(key, (buckets.get(key) || 0) + 1);
+  }
+  let top = 0, distinct = 0;
+  buckets.forEach((n) => {
+    if (n > top) top = n;
+    if (n / total >= 0.005) distinct++;
+  });
+  return { nearWhitePct: white / total, dominantPct: top / total, distinctBuckets: distinct };
+})()`;
+async function analyzeShot(browser, buffer) {
+  const context = await browser.newContext();
+  try {
+    const page = await context.newPage();
+    const dataUrl = `data:image/jpeg;base64,${buffer.toString("base64")}`;
+    await page.setContent(`<body style="margin:0"><img id="shot" src="${dataUrl}"></body>`);
+    const sampled = await page.evaluate(SAMPLE);
+    return { bytes: buffer.byteLength, ...sampled };
+  } finally {
+    await context.close().catch(() => {
+    });
+  }
+}
+async function validateEvidenceShot(browser, buffer) {
+  if (buffer.byteLength < THRESHOLDS.minBytes) {
+    return {
+      ok: false,
+      reason: "too-small",
+      metrics: { bytes: buffer.byteLength, nearWhitePct: 1, dominantPct: 1, distinctBuckets: 0 }
+    };
+  }
+  const metrics = await analyzeShot(browser, buffer);
+  return judgeShot(metrics);
+}
+
+// src/lib/evidence/log.ts
+import { createClient as createClient3 } from "@libsql/client";
+var clientInstance = null;
+function db3() {
+  if (!clientInstance) {
+    clientInstance = createClient3({
+      url: process.env.DATABASE_URL ?? "file:local-auth.db",
+      authToken: process.env.DATABASE_AUTH_TOKEN
+    });
+  }
+  return clientInstance;
+}
+var SCHEMA = `CREATE TABLE IF NOT EXISTS web_evidence_log (
+  id TEXT PRIMARY KEY,
+  created_at INTEGER NOT NULL,
+  path TEXT NOT NULL,
+  slide_index INTEGER,
+  entity TEXT NOT NULL,
+  host TEXT,
+  url TEXT,
+  outcome TEXT NOT NULL,
+  reason TEXT,
+  metrics TEXT,
+  duration_ms INTEGER
+)`;
+var schemaEnsured = false;
+var MIGRATION_COLUMNS = ["slide_index INTEGER"];
+async function ensureSchema3() {
+  if (schemaEnsured) return;
+  await db3().execute(SCHEMA);
+  for (const col of MIGRATION_COLUMNS) {
+    try {
+      await db3().execute(`ALTER TABLE web_evidence_log ADD COLUMN ${col}`);
+    } catch {
+    }
+  }
+  schemaEnsured = true;
+}
+async function logEvidenceAttempt(attempt) {
+  const line = `[web-evidence] ${attempt.outcome} entity="${attempt.entity}" host=${attempt.host ?? "-"} reason=${attempt.reason ?? "-"}`;
+  if (attempt.outcome === "captured") console.log(line);
+  else console.warn(line);
+  try {
+    await ensureSchema3();
+    await db3().execute({
+      sql: `INSERT INTO web_evidence_log
+        (id, created_at, path, slide_index, entity, host, url, outcome, reason, metrics, duration_ms)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        crypto.randomUUID(),
+        Date.now(),
+        attempt.path,
+        attempt.slideIndex ?? null,
+        attempt.entity,
+        attempt.host ?? null,
+        attempt.url ?? null,
+        attempt.outcome,
+        attempt.reason ?? null,
+        attempt.metrics ? JSON.stringify(attempt.metrics) : null,
+        attempt.durationMs ?? null
+      ]
+    });
+  } catch (err) {
+    console.warn("[web-evidence] could not record the attempt (continuing):", err);
+  }
+}
+
+// src/lib/evidence/fulfill.ts
+var DEFAULT_MAX_SLIDES = 2;
+function isPendingScreenshot(slide) {
+  return slide?.role === "point" && slide?.mockup?.type === "screenshot" && !(slide.mockup.evidenceStatus === "captured" && slide.mockup.screenshotImage?.dataUrl);
+}
+async function tryCandidates(args) {
+  let last = {
+    outcome: "skipped",
+    reason: "no-candidates"
+  };
+  for (const candidate of args.candidates) {
+    const identity = await args.verify(args.browser, candidate.url, args.entity);
+    if (!identity.ok) {
+      last = {
+        outcome: "skipped",
+        reason: identity.method === "unreachable" ? "unreachable" : "identity-mismatch",
+        host: candidate.host,
+        url: candidate.url,
+        metrics: {
+          identityMethod: identity.method,
+          identityScore: identity.score,
+          matched: identity.matched,
+          title: identity.signals?.title,
+          detail: identity.reason
+        }
+      };
+      continue;
+    }
+    const shot = await args.capture(args.browser, candidate.url, args.instruction, {
+      cropRatio: args.cropRatio
+    }).catch((err) => {
+      last = {
+        outcome: "error",
+        reason: err instanceof Error ? err.message : String(err),
+        host: candidate.host,
+        url: candidate.url
+      };
+      return null;
+    });
+    if (!shot) continue;
+    const verdict = await args.validate(args.browser, shot.buffer);
+    if (!verdict.ok) {
+      last = {
+        outcome: "rejected",
+        reason: verdict.reason,
+        host: candidate.host,
+        url: candidate.url,
+        metrics: { ...verdict.metrics }
+      };
+      continue;
+    }
+    return {
+      shot,
+      outcome: "rejected",
+      // unused on the success path; `shot` is what the caller reads
+      host: candidate.host,
+      url: candidate.url,
+      metrics: { ...verdict.metrics },
+      identity: { method: identity.method, score: identity.score, title: identity.signals?.title }
+    };
+  }
+  return last;
+}
+async function fulfillWebEvidence(plan, opts) {
+  const targets = plan.slides.map((slide, index) => ({ slide, index })).filter(({ slide }) => isPendingScreenshot(slide));
+  if (!targets.length) return { plan, attempts: [] };
+  const propose = opts.propose ?? ((entity) => proposeOfficialUrls(entity, opts.proposer));
+  const verify = opts.verify ?? ((browser2, url2, entity) => verifyPageIdentity(browser2, url2, entity, { judge: opts.judge }));
+  const capture = opts.capture ?? captureWebEvidence;
+  const validate = opts.validate ?? validateEvidenceShot;
+  const maxSlides = opts.maxSlides ?? DEFAULT_MAX_SLIDES;
+  const slides = [...plan.slides];
+  const attempts = [];
+  let browser = null;
+  try {
+    for (const { slide, index } of targets.slice(0, maxSlides)) {
+      const started = Date.now();
+      const mockup = slide.mockup;
+      const brief = mockup.screenshotBrief;
+      const entity = entityOf(slide);
+      const record2 = (partial2) => {
+        const attempt = {
+          path: opts.path,
+          entity,
+          slideIndex: index,
+          durationMs: Date.now() - started,
+          ...partial2
+        };
+        attempts.push(attempt);
+        return logEvidenceAttempt(attempt);
+      };
+      const proposal = await propose(entity);
+      if (!proposal.ok) {
+        await record2({ outcome: "skipped", reason: proposal.reason, url: proposal.candidate });
+        continue;
+      }
+      try {
+        if (!browser) browser = await (opts.browserFactory ?? launchEvidenceBrowser)();
+        const outcome = await tryCandidates({
+          browser,
+          candidates: proposal.candidates,
+          entity,
+          instruction: brief?.mustShow,
+          cropRatio: brief?.cropRatio,
+          verify,
+          capture,
+          validate
+        });
+        if (!outcome.shot) {
+          await record2({
+            outcome: outcome.outcome,
+            reason: outcome.reason,
+            host: outcome.host,
+            url: outcome.url,
+            metrics: outcome.metrics
+          });
+          continue;
+        }
+        slides[index] = {
+          ...slide,
+          mockup: {
+            ...mockup,
+            evidenceStatus: "captured",
+            screenshotImage: {
+              dataUrl: `data:image/jpeg;base64,${outcome.shot.buffer.toString("base64")}`,
+              uploadedAt: (/* @__PURE__ */ new Date()).toISOString()
+            }
+          }
+        };
+        await record2({
+          outcome: "captured",
+          host: outcome.host,
+          url: outcome.shot.meta.finalUrl,
+          metrics: { ...outcome.metrics, ...outcome.shot.meta, identity: outcome.identity }
+        });
+      } catch (err) {
+        await record2({
+          outcome: "error",
+          reason: err instanceof Error ? err.message : String(err),
+          host: proposal.candidates[0]?.host,
+          url: proposal.candidates[0]?.url
+        });
+      }
+    }
+  } finally {
+    if (browser) await browser.close().catch(() => {
+    });
+  }
+  return { plan: { ...plan, slides }, attempts };
+}
+function entityOf(slide) {
+  const source = slide?.mockup?.screenshotBrief?.source;
+  if (typeof source === "string" && source.trim()) return source.trim();
+  return String(slide?.headline ?? "").trim() || "unknown";
+}
+
+// src/routes/user/plan.ts
 var app3 = new Hono2();
 var DIVERSITY_DEADLINE_MS = 4e3;
 app3.get("/mockup-stats", async (c) => {
@@ -76763,8 +69795,9 @@ app3.post("/", async (c) => {
     userId3 ? withDeadline(getRecentMockupStatsWithPercentages(userId3), DIVERSITY_DEADLINE_MS, []) : Promise.resolve([])
   ]);
   const diversity = { underusedTypes: underused, stats };
-  const plan = await generateSlidePlan(brief, model, diversity);
-  return c.json({ plan });
+  const drafted = await generateSlidePlan(brief, model, diversity);
+  const { plan, attempts } = await fulfillWebEvidence(drafted, { path: "user" });
+  return c.json({ plan, evidence: attempts });
 });
 app3.post("/revise", async (c) => {
   const session = c.get("session");
@@ -78880,6 +71913,118 @@ app5.get("/:jobId", (c) => {
 });
 var capture_default = app5;
 
+// src/lib/evidence/normalize.ts
+var MAX_WIDTH = 2048;
+var MAX_UPLOAD_BYTES = 12 * 1024 * 1024;
+var ACCEPTED = /^data:image\/(png|jpe?g|webp|avif);base64,/i;
+var SHAPE = (ratio, maxWidth) => `(async () => {
+  const img = document.getElementById("upload");
+  await img.decode();
+  const sw = img.naturalWidth, sh = img.naturalHeight;
+  if (!sw || !sh) throw new Error("image has no dimensions");
+
+  const RATIO = ${ratio};
+  let cw = sw, ch = Math.round(sw / RATIO);
+  if (ch > sh) { ch = sh; cw = Math.round(sh * RATIO); }
+  const sx = Math.round((sw - cw) / 2);
+  const sy = 0;
+
+  const outW = Math.min(cw, ${maxWidth});
+  const outH = Math.round(outW / RATIO);
+
+  const c = document.createElement("canvas");
+  c.width = outW; c.height = outH;
+  const ctx = c.getContext("2d");
+  ctx.imageSmoothingQuality = "high";
+  // A screenshot is mostly flat colour and text; white behind it keeps any alpha from
+  // rendering as black once it is flattened into a JPEG.
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, outW, outH);
+  ctx.drawImage(img, sx, sy, cw, ch, 0, 0, outW, outH);
+  return { dataUrl: c.toDataURL("image/jpeg", 0.9), width: outW, height: outH };
+})()`;
+var EvidenceUploadError = class extends Error {
+  constructor(message, code) {
+    super(message);
+    this.code = code;
+    this.name = "EvidenceUploadError";
+  }
+  code;
+};
+async function normalizeUploadedEvidence(dataUrl, cropRatio) {
+  if (typeof dataUrl !== "string" || !ACCEPTED.test(dataUrl)) {
+    throw new EvidenceUploadError(
+      "Format tidak didukung. Kirim PNG, JPEG, WebP atau AVIF sebagai data URL.",
+      "unsupported"
+    );
+  }
+  if (dataUrl.length > MAX_UPLOAD_BYTES) {
+    throw new EvidenceUploadError("Gambar terlalu besar (maksimal 12 MB).", "too-large");
+  }
+  const ratio = parseCropRatio(cropRatio);
+  return captureQueue.capture(async (browser) => {
+    const context = await browser.newContext();
+    try {
+      const page = await context.newPage();
+      await page.setContent(`<body style="margin:0"><img id="upload" src="${dataUrl}"></body>`);
+      let shaped;
+      try {
+        shaped = await page.evaluate(
+          SHAPE(ratio, MAX_WIDTH)
+        );
+      } catch (err) {
+        throw new EvidenceUploadError(
+          "Gambar tidak bisa dibaca \u2014 file-nya mungkin rusak.",
+          "undecodable"
+        );
+      }
+      const bytes = Math.floor((shaped.dataUrl.length - shaped.dataUrl.indexOf(",") - 1) * 0.75);
+      const metrics = await analyzeShot(browser, Buffer.from(shaped.dataUrl.split(",")[1], "base64"));
+      let warning;
+      if (metrics.nearWhitePct > 0.85) warning = "mostly-blank";
+      else if (metrics.dominantPct > 0.92) warning = "flat-overlay";
+      return { dataUrl: shaped.dataUrl, width: shaped.width, height: shaped.height, bytes, metrics, warning };
+    } finally {
+      await context.close().catch(() => {
+      });
+    }
+  });
+}
+
+// src/routes/user/evidence.ts
+var app6 = new Hono2();
+app6.post("/upload", async (c) => {
+  const declared = Number(c.req.header("content-length") ?? 0);
+  if (declared > MAX_UPLOAD_BYTES * 1.4) {
+    return c.json({ error: "Gambar terlalu besar (maksimal 12 MB)." }, 413);
+  }
+  const { dataUrl, cropRatio, slideIndex, source } = await c.req.json();
+  if (!dataUrl) return c.json({ error: "Missing dataUrl" }, 400);
+  let normalized;
+  try {
+    normalized = await normalizeUploadedEvidence(dataUrl, cropRatio);
+  } catch (err) {
+    if (err instanceof EvidenceUploadError) return c.json({ error: err.message, code: err.code }, 400);
+    throw err;
+  }
+  await logEvidenceAttempt({
+    path: "user-upload",
+    entity: source?.trim() || "manual upload",
+    outcome: "captured",
+    reason: normalized.warning,
+    metrics: { ...normalized.metrics, width: normalized.width, height: normalized.height },
+    slideIndex
+  });
+  return c.json({
+    dataUrl: normalized.dataUrl,
+    width: normalized.width,
+    height: normalized.height,
+    bytes: normalized.bytes,
+    warning: normalized.warning
+  });
+});
+var evidence_default = app6;
+
 // src/lib/history/cleanup.ts
 function cleanupBlockedReason(c) {
   if (c.status === "scheduled") {
@@ -78924,30 +72069,30 @@ async function cleanupPostedCarousels(userId3, limit = 200) {
 }
 
 // src/routes/user/carousels.ts
-var app6 = new Hono2();
+var app7 = new Hono2();
 function userId(c) {
   return c.get("session").user.id;
 }
-app6.get("/", async (c) => {
+app7.get("/", async (c) => {
   const limit = Number(c.req.query("limit") ?? 50);
   return c.json({ carousels: await listCarousels(userId(c), limit) });
 });
-app6.get("/:id", async (c) => {
+app7.get("/:id", async (c) => {
   const carousel = await getCarousel(c.req.param("id"), userId(c));
   if (!carousel) return c.json({ error: "Carousel not found" }, 404);
   return c.json({ carousel });
 });
-app6.post("/cleanup-images", async (c) => {
+app7.post("/cleanup-images", async (c) => {
   return c.json(await cleanupPostedCarousels(userId(c)));
 });
-app6.post("/:id/cleanup-images", async (c) => {
+app7.post("/:id/cleanup-images", async (c) => {
   const result = await cleanupCarouselImages(c.req.param("id"), userId(c));
   if ("error" in result) {
     return c.json({ error: result.error }, result.error === "Carousel not found" ? 404 : 409);
   }
   return c.json(result);
 });
-var carousels_default = app6;
+var carousels_default = app7;
 
 // src/lib/publish/buffer.ts
 async function scheduleBufferPost(params) {
@@ -79041,7 +72186,7 @@ ${tags}`;
 }
 
 // src/routes/user/publish.ts
-var app7 = new Hono2();
+var app8 = new Hono2();
 async function scheduleToChannels(params) {
   const igChannelId = process.env.BUFFER_IG_CHANNEL_ID;
   const ttChannelId = process.env.BUFFER_TIKTOK_CHANNEL_ID;
@@ -79069,7 +72214,7 @@ async function scheduleToChannels(params) {
 function hasChannels() {
   return Boolean(process.env.BUFFER_IG_CHANNEL_ID || process.env.BUFFER_TIKTOK_CHANNEL_ID);
 }
-app7.post("/upload", async (c) => {
+app8.post("/upload", async (c) => {
   const { image } = await c.req.json();
   if (!image) {
     return c.json({ error: "Missing image base64" }, 400);
@@ -79077,7 +72222,7 @@ app7.post("/upload", async (c) => {
   const secureUrl = await uploadImage(image);
   return c.json({ url: secureUrl });
 });
-app7.post("/schedule", async (c) => {
+app8.post("/schedule", async (c) => {
   const { urls, plan, dueAt } = await c.req.json();
   if (!urls || !plan || !dueAt) {
     return c.json({ error: "Missing urls, plan or dueAt" }, 400);
@@ -79096,7 +72241,7 @@ app7.post("/schedule", async (c) => {
   });
   return c.json(results);
 });
-app7.post("/carousel", async (c) => {
+app8.post("/carousel", async (c) => {
   const session = c.get("session");
   const { carouselId, dueAt } = await c.req.json();
   if (!carouselId || !dueAt) {
@@ -79129,19 +72274,19 @@ app7.post("/carousel", async (c) => {
   });
   return c.json(results);
 });
-var publish_default = app7;
+var publish_default = app8;
 
 // src/lib/topics/bank.ts
-import { createClient as createClient3 } from "@libsql/client";
-var clientInstance = null;
-function db3() {
-  if (!clientInstance) {
-    clientInstance = createClient3({
+import { createClient as createClient4 } from "@libsql/client";
+var clientInstance2 = null;
+function db4() {
+  if (!clientInstance2) {
+    clientInstance2 = createClient4({
       url: process.env.DATABASE_URL ?? "file:local-auth.db",
       authToken: process.env.DATABASE_AUTH_TOKEN
     });
   }
-  return clientInstance;
+  return clientInstance2;
 }
 var TOPICS_SCHEMA = `
 CREATE TABLE IF NOT EXISTS topics (
@@ -79160,23 +72305,23 @@ CREATE TABLE IF NOT EXISTS topics (
   updated_at INTEGER NOT NULL,
   FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
 )`;
-var schemaEnsured = false;
-var MIGRATION_COLUMNS = [
+var schemaEnsured2 = false;
+var MIGRATION_COLUMNS2 = [
   "source TEXT",
   "related_product_id TEXT",
   "target_audience_fit TEXT",
   "suggested_angle TEXT"
 ];
-async function ensureSchema3() {
-  if (schemaEnsured) return;
-  await db3().execute(TOPICS_SCHEMA);
-  for (const col of MIGRATION_COLUMNS) {
+async function ensureSchema4() {
+  if (schemaEnsured2) return;
+  await db4().execute(TOPICS_SCHEMA);
+  for (const col of MIGRATION_COLUMNS2) {
     try {
-      await db3().execute(`ALTER TABLE topics ADD COLUMN ${col}`);
+      await db4().execute(`ALTER TABLE topics ADD COLUMN ${col}`);
     } catch {
     }
   }
-  schemaEnsured = true;
+  schemaEnsured2 = true;
 }
 function rowToTopic(row) {
   const str = (v) => v == null ? void 0 : v;
@@ -79202,13 +72347,13 @@ function rowToTopic(row) {
   };
 }
 async function createTopic(data) {
-  await ensureSchema3();
+  await ensureSchema4();
   const now2 = Date.now();
   const id = `topic_${now2}_${Math.random().toString(36).substring(2, 9)}`;
   const relProdId = data.relatedProductId ?? data.related_product_id ?? null;
   const audFit = data.targetAudienceFit ?? data.target_audience_fit ?? null;
   const sugAngle = data.suggestedAngle ?? data.suggested_angle ?? null;
-  await db3().execute({
+  await db4().execute({
     sql: `INSERT INTO topics (id, user_id, title, category, description, keywords, angle, status, priority, scheduled_date, source, related_product_id, target_audience_fit, suggested_angle, created_at, updated_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
@@ -79230,7 +72375,7 @@ async function createTopic(data) {
       now2
     ]
   });
-  const res = await db3().execute({
+  const res = await db4().execute({
     sql: `SELECT * FROM topics WHERE id = ?`,
     args: [id]
   });
@@ -79238,7 +72383,7 @@ async function createTopic(data) {
   return rowToTopic(res.rows[0]);
 }
 async function updateTopic(id, userId3, data) {
-  await ensureSchema3();
+  await ensureSchema4();
   const updates = [];
   const args = [];
   if (data.title !== void 0) {
@@ -79296,13 +72441,13 @@ async function updateTopic(id, userId3, data) {
   updates.push("updated_at = ?");
   args.push(Date.now());
   args.push(id, userId3);
-  await db3().execute({
+  await db4().execute({
     sql: `UPDATE topics SET ${updates.join(", ")} WHERE id = ? AND user_id = ?`,
     args
   });
 }
 async function getTopics(userId3, filters) {
-  await ensureSchema3();
+  await ensureSchema4();
   let sql2 = `SELECT * FROM topics WHERE user_id = ?`;
   const args = [userId3];
   if (filters?.status) {
@@ -79318,20 +72463,20 @@ async function getTopics(userId3, filters) {
     sql2 += ` LIMIT ?`;
     args.push(filters.limit);
   }
-  const res = await db3().execute({ sql: sql2, args });
+  const res = await db4().execute({ sql: sql2, args });
   return res.rows.map(rowToTopic);
 }
 async function getTopic(id, userId3) {
-  await ensureSchema3();
-  const res = await db3().execute({
+  await ensureSchema4();
+  const res = await db4().execute({
     sql: `SELECT * FROM topics WHERE id = ? AND user_id = ?`,
     args: [id, userId3]
   });
   return res.rows[0] ? rowToTopic(res.rows[0]) : null;
 }
 async function deleteTopic(id, userId3) {
-  await ensureSchema3();
-  await db3().execute({
+  await ensureSchema4();
+  await db4().execute({
     sql: `DELETE FROM topics WHERE id = ? AND user_id = ?`,
     args: [id, userId3]
   });
@@ -79373,12 +72518,12 @@ var generatedTopicListSchema = external_exports.object({
 
 // src/lib/products/repo.ts
 init_libsql();
-var clientInstance2 = null;
-function db4() {
-  if (!clientInstance2) {
-    clientInstance2 = createRetryingClient(dbConfig());
+var clientInstance3 = null;
+function db5() {
+  if (!clientInstance3) {
+    clientInstance3 = createRetryingClient(dbConfig());
   }
-  return clientInstance2;
+  return clientInstance3;
 }
 var PRODUCTS_SCHEMA = `
 CREATE TABLE IF NOT EXISTS products (
@@ -79397,14 +72542,14 @@ var SEED_PRODUCT = {
   keyBenefit: "Template portfolio 3D interaktif untuk developer",
   ctaText: "Beli sekarang"
 };
-var schemaEnsured2 = false;
-async function ensureSchema4() {
-  if (schemaEnsured2) return;
-  await db4().execute(PRODUCTS_SCHEMA);
-  const count = await db4().execute("SELECT COUNT(*) as cnt FROM products");
+var schemaEnsured3 = false;
+async function ensureSchema5() {
+  if (schemaEnsured3) return;
+  await db5().execute(PRODUCTS_SCHEMA);
+  const count = await db5().execute("SELECT COUNT(*) as cnt FROM products");
   if (count.rows[0]?.cnt === 0) {
     const now2 = Date.now();
-    await db4().execute({
+    await db5().execute({
       sql: `INSERT INTO products (id, name, price, key_benefit, cta_text, active, created_at)
             VALUES (?, ?, ?, ?, ?, 1, ?)`,
       args: [
@@ -79418,7 +72563,7 @@ async function ensureSchema4() {
     });
     console.log(`[products] seeded default product: ${SEED_PRODUCT.name}`);
   }
-  schemaEnsured2 = true;
+  schemaEnsured3 = true;
 }
 function rowToProduct(row) {
   return {
@@ -79432,13 +72577,13 @@ function rowToProduct(row) {
   };
 }
 async function getActiveProducts() {
-  await ensureSchema4();
-  const res = await db4().execute("SELECT * FROM products WHERE active = 1");
+  await ensureSchema5();
+  const res = await db5().execute("SELECT * FROM products WHERE active = 1");
   return res.rows.map(rowToProduct);
 }
 async function getProduct(id) {
-  await ensureSchema4();
-  const res = await db4().execute({
+  await ensureSchema5();
+  const res = await db5().execute({
     sql: "SELECT * FROM products WHERE id = ?",
     args: [id]
   });
@@ -79631,27 +72776,16 @@ function extractAndParseJson2(rawText) {
   }
   return JSON.parse(cleaned);
 }
-async function researchCurrentTrends(focusArea) {
-  const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-  if (!apiKey) return null;
-  try {
-    const google2 = createGoogle({ apiKey });
-    const { text: text2 } = await generateText({
-      model: google2("gemini-2.5-flash"),
-      tools: { google_search: google2.tools.googleSearch({}) },
-      prompt: `Search the web for what is happening RIGHT NOW (this week/month) in the developer world relevant to: ${focusArea}.
-Summarize in 8-12 concise bullets: new releases, breaking changes, trending tools/frameworks, viral dev discussions, and common pain points being talked about. Include names + versions where relevant. Plain text bullets only.`
-    });
-    return text2.trim() || null;
-  } catch (err) {
-    console.error("trend research failed (continuing without it):", err);
-    return null;
-  }
+function noteResearchUnavailable() {
+  console.warn(
+    "[topics] research:true was requested but no web-search backend is configured \u2014 generating from the model's own knowledge instead."
+  );
+  return null;
 }
 async function generateTopicBatch(model, options) {
   const { mode, count } = options;
   const focusArea = options.focusArea || "trending developer topics and common learning gaps for junior/mid developers";
-  const researchContext = options.research ? await researchCurrentTrends(focusArea) : null;
+  const researchContext = options.research ? noteResearchUnavailable() : null;
   const balanceContext = computeCategoryBalanceGuidance(
     options.existingTopics,
     options.categoryDistribution
@@ -79937,11 +73071,11 @@ async function extractAndSaveTopicsFromNotes(userId3, model, rawNotes, options) 
 }
 
 // src/routes/user/topics.ts
-var app8 = new Hono2();
+var app9 = new Hono2();
 function userId2(c) {
   return c.get("session").user.id;
 }
-app8.get("/", async (c) => {
+app9.get("/", async (c) => {
   const status = c.req.query("status");
   const category = c.req.query("category");
   const limitRaw = c.req.query("limit");
@@ -79953,7 +73087,7 @@ app8.get("/", async (c) => {
   });
   return c.json({ topics });
 });
-app8.post("/", async (c) => {
+app9.post("/", async (c) => {
   const body = await c.req.json();
   if (!body?.title?.trim()) {
     return c.json({ error: "Missing title" }, 400);
@@ -79961,16 +73095,16 @@ app8.post("/", async (c) => {
   const topic = await createTopic({ ...body, userId: userId2(c) });
   return c.json({ topic });
 });
-app8.patch("/:id", async (c) => {
+app9.patch("/:id", async (c) => {
   const patch = await c.req.json();
   const topic = await updateTopic(c.req.param("id"), userId2(c), patch);
   return c.json({ topic });
 });
-app8.delete("/:id", async (c) => {
+app9.delete("/:id", async (c) => {
   await deleteTopic(c.req.param("id"), userId2(c));
   return c.json({ success: true });
 });
-app8.post("/generate-from-notes", async (c) => {
+app9.post("/generate-from-notes", async (c) => {
   const body = await c.req.json().catch(() => ({}));
   if (!body?.rawNotes?.trim()) {
     return c.json({ error: "Missing or empty rawNotes in request body" }, 400);
@@ -79987,7 +73121,7 @@ app8.post("/generate-from-notes", async (c) => {
   );
   return c.json({ topics: saved, count: saved.length, skipped });
 });
-app8.post("/generate", async (c) => {
+app9.post("/generate", async (c) => {
   const input = await c.req.json();
   if (!["ideas", "weekly", "monthly"].includes(input?.mode)) {
     return c.json({ error: `Invalid mode "${input?.mode}" \u2014 use ideas | weekly | monthly` }, 400);
@@ -79999,7 +73133,7 @@ app8.post("/generate", async (c) => {
   const topics = await generateAndSaveTopics(userId2(c), resolveModel(modelId), input);
   return c.json({ topics, count: topics.length });
 });
-app8.post("/:id/brief", async (c) => {
+app9.post("/:id/brief", async (c) => {
   const { modelId } = await c.req.json().catch(() => ({}));
   const id = c.req.param("id");
   const topic = await getTopic(id, userId2(c));
@@ -80013,15 +73147,15 @@ app8.post("/:id/brief", async (c) => {
   const brief = await expandTopicToBrief(topic, resolveModel(resolved));
   return c.json({ brief });
 });
-var topics_default = app8;
+var topics_default = app9;
 
 // src/routes/user/products.ts
-var app9 = new Hono2();
-app9.get("/", async (c) => {
+var app10 = new Hono2();
+app10.get("/", async (c) => {
   const products = await getActiveProducts();
   return c.json({ products });
 });
-var products_default = app9;
+var products_default = app10;
 
 // src/lib/publish/schedule.ts
 var WIB_OFFSET_MS = 7 * 60 * 60 * 1e3;
@@ -80035,10 +73169,10 @@ function nextWibSlot(now2, hour = POST_HOUR_WIB, minute = 0) {
 // src/routes/automation/generate.ts
 init_db();
 init_esm();
-var app10 = new Hono2();
-var db5 = new Kysely({ dialect });
+var app11 = new Hono2();
+var db6 = new Kysely({ dialect });
 async function resolveUserId() {
-  const user = await db5.selectFrom("user").select("id").limit(1).executeTakeFirst();
+  const user = await db6.selectFrom("user").select("id").limit(1).executeTakeFirst();
   return user?.id ?? null;
 }
 async function createAndPublishCarousel({
@@ -80057,7 +73191,9 @@ async function createAndPublishCarousel({
     getRecentMockupStatsWithPercentages(userId3).catch(() => [])
   ]);
   const diversity = { underusedTypes: underused, stats };
-  const plan = stripUnfulfillableEvidence(await generateSlidePlan(brief, resolvedModel, diversity));
+  const drafted = await generateSlidePlan(brief, resolvedModel, diversity);
+  const { plan: withEvidence } = await fulfillWebEvidence(drafted, { path: "automation" });
+  const plan = stripUnfulfillableEvidence(withEvidence);
   await warmUpIllustrations();
   const html = assembleCarousel(plan);
   const imageBase64s = await captureQueue.capture(async (browser) => {
@@ -80150,7 +73286,7 @@ async function createAndPublishCarousel({
     ttPostId
   };
 }
-app10.post("/generate", async (c) => {
+app11.post("/generate", async (c) => {
   let body;
   try {
     body = await c.req.json();
@@ -80163,7 +73299,7 @@ app10.post("/generate", async (c) => {
   }
   let userId3 = null;
   try {
-    const user = await db5.selectFrom("user").select("id").limit(1).executeTakeFirst();
+    const user = await db6.selectFrom("user").select("id").limit(1).executeTakeFirst();
     userId3 = user?.id;
   } catch (err) {
     return c.json({ error: `Database user lookup failed: ${err.message}` }, 500);
@@ -80229,7 +73365,7 @@ app10.post("/generate", async (c) => {
     carousels: scheduled
   });
 });
-app10.get("/topic/next", async (c) => {
+app11.get("/topic/next", async (c) => {
   const userId3 = await resolveUserId().catch(() => null);
   if (!userId3) {
     return c.json({ error: "No user found in the database. Seed the database first." }, 500);
@@ -80248,7 +73384,7 @@ app10.get("/topic/next", async (c) => {
     angle: topic.angle
   });
 });
-app10.post("/topics/generate", async (c) => {
+app11.post("/topics/generate", async (c) => {
   const body = await c.req.json().catch(() => ({}));
   if (!["ideas", "weekly", "monthly"].includes(body?.mode)) {
     return c.json({ error: `Invalid mode "${body?.mode}" \u2014 use ideas | weekly | monthly` }, 400);
@@ -80264,7 +73400,7 @@ app10.post("/topics/generate", async (c) => {
   const topics = await generateAndSaveTopics(uid, resolveModel(modelId), body);
   return c.json({ success: true, topics, count: topics.length });
 });
-app10.post("/research-topics", async (c) => {
+app11.post("/research-topics", async (c) => {
   let body;
   try {
     body = await c.req.json();
@@ -80308,7 +73444,7 @@ var ALLOWED_STATUS_TRANSITIONS = {
   rejected: ["pending_review"],
   idea: ["approved", "rejected", "archived"]
 };
-app10.patch("/research-topics/:id/status", async (c) => {
+app11.patch("/research-topics/:id/status", async (c) => {
   let body;
   try {
     body = await c.req.json();
@@ -80347,7 +73483,7 @@ app10.patch("/research-topics/:id/status", async (c) => {
     return c.json({ error: `Failed to update topic: ${err.message}` }, 500);
   }
 });
-app10.get("/mockup-stats", async (c) => {
+app11.get("/mockup-stats", async (c) => {
   const userId3 = await resolveUserId().catch(() => null);
   if (!userId3) {
     return c.json({ error: "No user found in the database" }, 500);
@@ -80363,7 +73499,7 @@ app10.get("/mockup-stats", async (c) => {
     layouts: layoutStats
   });
 });
-var generate_default = app10;
+var generate_default = app11;
 
 // src/server.ts
 var userApp = new Hono2();
@@ -80398,6 +73534,7 @@ userApp.route("/api/plan", plan_default);
 userApp.route("/api/assemble", assemble_default);
 userApp.route("/api/capture", capture_default);
 userApp.route("/api/carousels", carousels_default);
+userApp.route("/api/evidence", evidence_default);
 userApp.route("/api/publish", publish_default);
 userApp.route("/api/topics", topics_default);
 userApp.route("/api/products", products_default);

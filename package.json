@@ -9,11 +9,11 @@
     "test:regression": "tsx --env-file-if-exists=.env scripts/verify-regression.ts",
     "test": "vitest run",
     "seed": "tsx --env-file-if-exists=.env scripts/seed-user.ts",
-    "check:layout": "tsx scripts/check-hook-position.ts"
+    "check:layout": "tsx scripts/check-hook-position.ts",
+    "check:evidence": "tsx --env-file-if-exists=.env scripts/check-web-evidence.ts"
   },
   "dependencies": {
     "@ai-sdk/deepseek": "^3.0.11",
-    "@ai-sdk/google": "^4.0.16",
     "@ai-sdk/openai-compatible": "^3.0.10",
     "@hono/node-server": "^1.13.7",
     "@libsql/client": "^0.17.4",

@@ -16,6 +16,7 @@ npm run dev      # tsx watch, both servers
 npm test         # vitest, ~300 tests
 npm run build    # esbuild bundle -> dist/server.js
 npm run seed     # create the one operator account (see below)
+npm run check:evidence   # live: real capture, consent wall, blank page, 404
 ```
 
 Copy `.env.example` to `.env` first. The service will not start without `DATABASE_URL` +
@@ -64,6 +65,7 @@ POST /api/capture                 HTML -> base64 images (Playwright)
 POST /api/publish/upload          base64 -> Cloudinary URL
 POST /api/publish/schedule        explicit plan + urls -> Buffer
 POST /api/publish/carousel        saved carousel id -> Buffer (builds text server-side)
+POST /api/evidence/upload         human upload for a screenshot auto-capture missed
 GET  /api/plan/mockup-stats       mockup-type usage for the signed-in user
 GET/POST/PATCH/DELETE /api/topics
 POST /api/topics/generate · /api/topics/:id/brief
@@ -229,6 +231,64 @@ retried, and the topic went out three times. It now closes the topic to `publish
 anything shipped, and returns it to `idea` if nothing did; leaving it `queued` made the row
 invisible to every query and drained the bank by one topic per failed run.
 
+**Only one browser in this service may reach the internet, and it is not the one that
+exports decks.** `captureCarousel` / `captureCarouselServer` / `captureQueue` render the
+finished carousel from an HTML string with every asset already inlined, and they stay
+offline — an export that depends on a third party being up is an export that fails at
+midnight in the cron. `lib/evidence/capture-web.ts` is the exception, launches its own
+Chromium, and is used for nothing but photographing external pages.
+`test/evidence/offline-isolation.test.ts` is the fence: it fails if an offline module
+grows a `.goto(`, or if the evidence path imports `capture-queue`.
+
+**A screenshot URL is never the model's to invent, and there is no search to ask.** There
+was: a Gemini grounded search, with the rule "the host the model names must also appear in
+the sources that came back with it". Gemini is gone from this service and the only
+search-capable model in the OmniRoute catalogue (`tllm/sonar-pro`) answers 403
+insufficient_quota, so `proposeOfficialUrls` returns UNVERIFIED CANDIDATES from a model's
+memory — measurably unreliable: asked about OpenCode, the combo offers `opencode.dev`
+(does not resolve) before `opencode.ai` (the real site).
+
+`verifyPageIdentity` is what makes that safe, and it is the gate the security of this
+feature now rests on. Every candidate is opened and its own `<title>`, meta description,
+og:site_name and `<h1>` are scored against the entity's distinctive words before ONE pixel
+is captured. Clear yes and clear no are decided on token overlap for free; only genuinely
+ambiguous pages spend a small model call, and a page with zero overlap is rejected without
+one. It fails closed everywhere: unreachable host, judge unavailable, partial match with
+no judge — all "no screenshot".
+
+That is also why confidence no longer vetoes a candidate, only orders the queue. A wrong
+guess costs one page load and is thrown away by the gate; dropping it costs the slide its
+screenshot, and the right domain is often the model's second guess.
+
+**Auto-captured evidence replaces human approval with `lib/evidence/validate.ts`.**
+Nothing looks at the picture before it is posted, so a shot is kept only if it is bigger
+than 25 KB, less than 85% near-white, less than 92% one flat colour, and holds at least 4
+colour buckets. Those catch what actually happens unattended: a 404, an unpainted page, a
+consent wall that would not dismiss, a login screen. Loosen them and the failure mode is a
+blank rectangle scheduled to Instagram as proof of something. Every attempt — kept or
+dropped — is written to `web_evidence_log`; `evidenceFailureStats()` answers "which sites
+keep failing".
+
+**`fulfillWebEvidence` fills evidence in; it never chooses the fallback.** A slide it
+cannot satisfy is returned exactly as it arrived, still `pending`, and each path applies
+the policy it already had: `stripUnfulfillableEvidence` swaps in an illustration on the
+cron, and the wizard keeps the "BUTUH SCREENSHOT ASLI" card, where a human being present
+is the whole point. Both call the one function — the split is in what happens after it,
+not in what it does.
+
+**A human-uploaded screenshot is shaped by `/api/evidence/upload`, never by the browser.**
+`/api/plan` returns `evidence: attempts[]`, each carrying the `slideIndex` it belongs to
+and why it failed — that is what tells the wizard which slides need the upload form.
+The file comes back here as a data URL and `normalizeUploadedEvidence` crops it to the
+brief's ratio (top-anchored: a screenshot's evidence is at the top), caps it at 2048px and
+re-encodes to JPEG, so an uploaded slide holds the same kind of value as an auto-captured
+one — a 12 MB monitor grab otherwise travels intact through capture, Cloudinary and Buffer
+to be drawn 480px tall. The wizard had its own copy of this and it had already drifted:
+centre-anchored, 1080px, quality 0.8, so which crop a slide got depended on which path
+filled it. Only the image crosses the wire; the plan stays in the wizard with every other
+edit. The blank/flat thresholds only WARN here — a person looked at this picture and chose
+it, which is the approval the automatic path does not have.
+
 **`dist/` is committed but never shipped.** It is in `.dockerignore`, so the image builds from
 source (`npm ci` → `npm run build`) and a stale committed bundle can never reach production.
 Do not "fix" the Dockerfile by adding `COPY dist` — that reintroduces the bug this avoids. The
@@ -255,6 +315,9 @@ src/
       schema.ts          zod contract for a slide plan — the source of truth
       repair.ts          salvages recoverable model slop (runs on every generation)
       assemble.ts        slide plan -> standalone HTML
+    evidence/            automatic screenshot evidence: resolve-url · verify-identity ·
+                         capture-web · validate · fulfill · log · normalize
+                         (the only networked browser in the service)
     publish/             cloudinary · buffer · caption · schedule
     topics/              the topic bank (bank/service/generator/schedule)
     history/repo.ts      saved carousels
@@ -262,7 +325,13 @@ src/
   services/capture-queue.ts   one shared Chromium, bounded concurrency
 ```
 
-**Models: OmniRoute only.** `availableModels()` deliberately returns nothing for Gemini,
+**Models: OmniRoute only, and Gemini is gone entirely.** The `@ai-sdk/google` dependency
+is removed, `resolveModel("gemini")` resolves to `vour-lite` and warns — the id survives
+only so a saved carousel that stores it still opens. The live trend-research pass in
+`lib/topics/generator.ts` went with it: it was the one real web search here, and
+reimplementing it on a plain OmniRoute model would return the model's memory while calling
+itself research, so `research: true` is now accepted, logged and ignored.
+`availableModels()` deliberately returns nothing for Gemini,
 DeepSeek, MiMo or OpenRouter even when their keys are set. OmniRoute combos already fall back
 across models internally; a second provider here is a fallback around a fallback, and in
 practice a stray `GOOGLE_GENERATIVE_AI_API_KEY` outranked OmniRoute and took the default with

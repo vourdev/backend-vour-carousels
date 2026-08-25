@@ -1,5 +1,4 @@
 import { generateObject, generateText, type LanguageModel } from "ai";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { generateBrief, isSdkRetryExhausted } from "../ai/generate";
 import { supportsStructuredOutput, aiCallDefaults } from "../ai/registry";
 import { generatedTopicListSchema, type GeneratedTopic } from "./schema";
@@ -66,7 +65,10 @@ export interface TopicBatchOptions {
   focusArea?: string;
   /** Free-text quality directives from the user (e.g. "cek berita dev terkini dulu"). */
   directives?: string;
-  /** Run a live web-research pass (Gemini google_search grounding) before generating. */
+  /**
+   * Formerly ran a live web-research pass before generating. No web-search backend exists
+   * any more, so this is accepted and ignored — see `noteResearchUnavailable`.
+   */
   research?: boolean;
   /** Existing topics in the bank to avoid duplicating. */
   existingTopics?: { title: string; category?: string }[];
@@ -137,27 +139,25 @@ function extractAndParseJson(rawText: string): any {
 }
 
 /**
- * Optional research pass: uses Gemini with Google Search grounding to pull
- * genuinely current dev trends/news, so "lihat news terkini dahulu" is real
- * data instead of the model's memory. Falls back to null (no research
- * context) when no Gemini key is configured or the call fails.
+ * The live trend-research pass is gone, and nothing replaced it.
+ *
+ * It ran on Gemini with Google Search grounding — the only real web search this service
+ * ever had — and its whole point was that "lihat news terkini dahulu" meant actual current
+ * data rather than the model's memory. Gemini is out, and the grounded quota it depended on
+ * is exhausted; the OmniRoute catalogue's one search-capable model (`tllm/sonar-pro`)
+ * answers 403 on this account.
+ *
+ * Reimplementing it on a plain OmniRoute model would return the model's memory while
+ * calling itself research, which is worse than not having it: the topics would look
+ * current and be a year stale, with nothing in the output saying so. So `research: true`
+ * is accepted and ignored, loudly, until a search backend exists again.
  */
-export async function researchCurrentTrends(focusArea: string): Promise<string | null> {
-  const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-  if (!apiKey) return null;
-  try {
-    const google = createGoogleGenerativeAI({ apiKey });
-    const { text } = await generateText({
-      model: google("gemini-2.5-flash"),
-      tools: { google_search: google.tools.googleSearch({}) },
-      prompt: `Search the web for what is happening RIGHT NOW (this week/month) in the developer world relevant to: ${focusArea}.
-Summarize in 8-12 concise bullets: new releases, breaking changes, trending tools/frameworks, viral dev discussions, and common pain points being talked about. Include names + versions where relevant. Plain text bullets only.`,
-    });
-    return text.trim() || null;
-  } catch (err) {
-    console.error("trend research failed (continuing without it):", err);
-    return null;
-  }
+function noteResearchUnavailable(): null {
+  console.warn(
+    "[topics] research:true was requested but no web-search backend is configured — " +
+      "generating from the model's own knowledge instead."
+  );
+  return null;
 }
 
 export async function generateTopicBatch(
@@ -169,7 +169,7 @@ export async function generateTopicBatch(
     options.focusArea ||
     "trending developer topics and common learning gaps for junior/mid developers";
 
-  const researchContext = options.research ? await researchCurrentTrends(focusArea) : null;
+  const researchContext = options.research ? noteResearchUnavailable() : null;
   const balanceContext = computeCategoryBalanceGuidance(
     options.existingTopics,
     options.categoryDistribution

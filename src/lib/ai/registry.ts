@@ -1,9 +1,9 @@
 import type { LanguageModel } from "ai";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createDeepSeek } from "@ai-sdk/deepseek";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { omnirouteGate } from "../../services/omniroute-gate";
 
+/** "gemini" is retired and kept only so stored records resolve — see resolveModel. */
 export type ModelId = "gemini" | "deepseek" | "mimo" | "openrouter" | "omniroute" | "vour-high" | "vour-lite";
 
 function has(env: NodeJS.ProcessEnv, ...keys: string[]): boolean {
@@ -120,11 +120,12 @@ export function resolveModel(id: ModelId): LanguageModel {
   const env = process.env;
   switch (id) {
     case "gemini": {
-      const google = createGoogleGenerativeAI({
-        apiKey: env.GOOGLE_GENERATIVE_AI_API_KEY,
-      });
-      // Use gemini-flash-latest alias as gemini-2.5-flash gets sunset for new accounts.
-      return google(env.GEMINI_MODEL || "gemini-flash-latest");
+      // Gemini is no longer reachable from this service: the provider SDK is gone and the
+      // key with it. The id survives only because saved carousels and drafts store it, and
+      // opening one must not throw — so it resolves to the default combo instead, which is
+      // what a stored record would be regenerated with today.
+      console.warn('[registry] modelId "gemini" is retired — using vour-lite instead.');
+      return resolveModel("vour-lite");
     }
     case "deepseek": {
       const deepseek = createDeepSeek({
