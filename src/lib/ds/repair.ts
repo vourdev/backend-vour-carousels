@@ -155,7 +155,7 @@ function repairPostFields(raw: any): void {
 
   if (typeof raw.caption !== "string" || !raw.caption.trim()) {
     const hook = cover?.lede || cover?.headline || raw.title;
-    raw.caption = `${hook}\n\nSimpan biar nggak keulang di project kamu.`;
+    raw.caption = `${hook}\n\nSimpan biar nggak keulang di project lu.`;
   }
 
   const tags: string[] = Array.isArray(raw.hashtags)

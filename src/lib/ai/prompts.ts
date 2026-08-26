@@ -983,6 +983,8 @@ export const reviseSystem = `ROLE
 You are an expert presentation editor for @vourdev carousels.
 Revise an existing slide plan (JSON) according to the user's specific revision request.
 
+${VOICE_RULE}
+
 ${HUMAN_VOICE_EDITOR}
 
 STRICT REVISION INSTRUCTIONS
@@ -1361,10 +1363,12 @@ Tandai dan revisi setiap kemunculan pola berikut:
    Ganti dengan: pertahankan sikap tegas dari brief, jangan dinetralkan
 
 ## STEP 2 — Sesuaikan dengan voice signature @vourdev
-Ciri suara yang harus dipertahankan/diperkuat (berdasarkan gaya existing):
-- Sapaan langsung "lu", diri sendiri "gw"
+Suaranya didefinisikan satu kali di bawah ini. Perkuat, jangan tawar:
+
+${VOICE_RULE}
+
+Tambahan khusus pass ini:
 - Kalimat pendek, tegas, kadang cuma 3-5 kata untuk penekanan
-- Analogi sehari-hari untuk konsep teknis ("kayak daftar isi di buku")
 - Opini eksplisit sebelum penjelasan ("padahal ini jebakan", "ini yang sering diremehkan")
 - Hindari istilah korporat/formal ("mengimplementasikan", "memfasilitasi", "dalam rangka") — ganti versi kasual ("pakai", "biar", "buat")
 

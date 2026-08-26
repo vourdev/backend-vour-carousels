@@ -10,7 +10,7 @@ export const samplePlan: SlidePlan = {
       eyebrow: "BACKEND 101",
       headline: "Idempotency itu wajib",
       accentWord: "Idempotency",
-      lede: "Biar retry nggak bikin data dobel, konsep yang wajib lo ngerti, bukan cuma hafal.",
+      lede: "Biar retry nggak bikin data dobel, konsep yang wajib lu ngerti, bukan cuma hafal.",
     },
     {
       role: "point",
@@ -100,7 +100,7 @@ export const samplePlan: SlidePlan = {
       role: "point",
       counter: "07 / 08",
       eyebrow: "RECAP",
-      headline: "Yang lo dapat",
+      headline: "Yang lu dapat",
       accentWord: "dapat",
       body: "Ringkasan biar gampang diinget.",
       mockup: {

@@ -65214,7 +65214,7 @@ function repairPostFields(raw2) {
     const hook = cover?.lede || cover?.headline || raw2.title;
     raw2.caption = `${hook}
 
-Simpan biar nggak keulang di project kamu.`;
+Simpan biar nggak keulang di project lu.`;
   }
   const tags = Array.isArray(raw2.hashtags) ? raw2.hashtags.filter((h) => typeof h === "string" && h.trim() !== "") : [];
   const seen = /* @__PURE__ */ new Set();
@@ -67786,6 +67786,8 @@ var reviseSystem = `ROLE
 You are an expert presentation editor for @vourdev carousels.
 Revise an existing slide plan (JSON) according to the user's specific revision request.
 
+${VOICE_RULE}
+
 ${HUMAN_VOICE_EDITOR}
 
 STRICT REVISION INSTRUCTIONS
@@ -68104,10 +68106,12 @@ Tandai dan revisi setiap kemunculan pola berikut:
    Ganti dengan: pertahankan sikap tegas dari brief, jangan dinetralkan
 
 ## STEP 2 \u2014 Sesuaikan dengan voice signature @vourdev
-Ciri suara yang harus dipertahankan/diperkuat (berdasarkan gaya existing):
-- Sapaan langsung "lu", diri sendiri "gw"
+Suaranya didefinisikan satu kali di bawah ini. Perkuat, jangan tawar:
+
+${VOICE_RULE}
+
+Tambahan khusus pass ini:
 - Kalimat pendek, tegas, kadang cuma 3-5 kata untuk penekanan
-- Analogi sehari-hari untuk konsep teknis ("kayak daftar isi di buku")
 - Opini eksplisit sebelum penjelasan ("padahal ini jebakan", "ini yang sering diremehkan")
 - Hindari istilah korporat/formal ("mengimplementasikan", "memfasilitasi", "dalam rangka") \u2014 ganti versi kasual ("pakai", "biar", "buat")
 
@@ -72916,7 +72920,8 @@ Target Audience: Junior/Mid developers (learning-focused)
 Content Focus: 80% coding/AI/automation/productivity, 20% setup/gadgets
 Tech Stack: Next.js, React, TypeScript, Prisma, PostgreSQL, AI workflows
 Content Style: Educational carousel content (Instagram & TikTok)
-Tone: Casual Indonesian, first-person "saya", senior-dev-to-junior, sedikit opinionated
+Tone: Casual Indonesian, sapaan "gw"/"lu", senior-dev-to-junior, tegas soal fakta
+      tapi tidak pernah menyerang tool atau orang (lihat lib/ai/voice-profile.ts)
 North Star: "Developer yang builds AI workflows, tools, dan automation yang save people time."
 `;
 var TOPIC_GENERATION_SYSTEM = `You are a content strategist for Vour, an educational tech content brand targeting junior/mid developers in Indonesia.
@@ -72925,7 +72930,9 @@ ${VOUR_CONTEXT}
 
 Your task: generate carousel content topics that are:
 1. Educational & practical (solve real problems)
-2. Engaging for TikTok/Instagram audience (clickable titles)
+2. Engaging for TikTok/Instagram audience \u2014 a title may withhold the answer,
+   but it must never promise more than an 8-slide deck can deliver. Clickbait is
+   the one thing this brand refuses.
 3. Aligned with Vour's positioning (AI workflows, developer tools, automation)
 4. Specific enough to fit an 8-slide carousel with clear learning outcomes
 5. Written in casual Indonesian tone

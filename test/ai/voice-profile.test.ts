@@ -4,6 +4,9 @@ import {
   planSystem,
   scopedSlideReviseSystem,
   scopedGlobalReviseSystem,
+  humanVoiceEditorSystem,
+  reviseSystem,
+  scopeClassifierSystem,
 } from "@/lib/ai/prompts";
 import {
   VOICE_RULE,
@@ -41,6 +44,20 @@ describe("VOICE_RULE reaches every prompt that writes copy", () => {
 
   it("is carried by the scoped global revision prompt", () => {
     expect(scopedGlobalReviseSystem).toContain(VOICE_RULE);
+  });
+
+  it("is carried by the human voice editor, the last pass over the copy", () => {
+    expect(humanVoiceEditorSystem).toContain(VOICE_RULE);
+  });
+
+  it("is carried by the full-plan revise prompt", () => {
+    expect(reviseSystem).toContain(VOICE_RULE);
+  });
+
+  it("is NOT carried by the scope classifier, which writes no copy", () => {
+    // It routes a request to the part of the deck it targets. Handing it the
+    // voice would be paying for tokens that cannot change its answer.
+    expect(scopeClassifierSystem).not.toContain(VOICE_RULE);
   });
 });
 
@@ -107,5 +124,38 @@ describe("the voice rule stays out of the publishing contract", () => {
 
   it("never restates the hashtag count", () => {
     expect(VOICE_RULE).not.toMatch(/hashtag/i);
+  });
+});
+
+describe("the voice reaches the paths that write copy without a model", () => {
+  it("repairs a missing caption in the brand's own address", async () => {
+    // repair.ts runs on EVERY generation — OmniRoute has no structured output, so
+    // the salvage path is the production path. A caption it invents is posted to
+    // Instagram verbatim.
+    const { repairSlidePlan } = await import("@/lib/ds/repair");
+    const repaired: any = repairSlidePlan({
+      slides: [{ role: "cover", eyebrow: "Auth", headline: "Token lu bocor", lede: "Bukan dari server." }],
+      title: "",
+      caption: "",
+      hashtags: [],
+    });
+    expect(repaired.caption).not.toMatch(/\bkamu\b/);
+    expect(repaired.caption).toMatch(/\blu\b/);
+  });
+});
+
+describe("the topic bank starts the pipeline in the right voice", () => {
+  it("describes the brand's address, not the old first-person saya", async () => {
+    const { VOUR_CONTEXT } = await import("@/lib/topics/generator");
+    expect(VOUR_CONTEXT).not.toMatch(/first-person "saya"/);
+    expect(VOUR_CONTEXT).toMatch(/\blu\b/);
+  });
+
+  it("never asks for clickable titles, which is the owner's one pet peeve", async () => {
+    const { TOPIC_GENERATION_SYSTEM } = await import("@/lib/topics/generator");
+    // The instruction is what matters, not the word: a rule that names clickbait
+    // in order to forbid it is the fix, not the bug.
+    expect(TOPIC_GENERATION_SYSTEM).not.toMatch(/clickable titles/i);
+    expect(TOPIC_GENERATION_SYSTEM).toMatch(/never promise more|clickbait is\s*\n?\s*the one thing this brand refuses/i);
   });
 });
