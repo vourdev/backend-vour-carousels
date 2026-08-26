@@ -66565,6 +66565,24 @@ var STRUCTURAL_FIELDS = /* @__PURE__ */ new Set([
   ...ASPECT_FIELDS.layout,
   ...ASPECT_FIELDS.surface
 ]);
+var MOCKUP_COPY_FIELDS = ["note", "caption", "text"];
+function mockupStructureOnly(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const rest = { ...value };
+  for (const key of MOCKUP_COPY_FIELDS) delete rest[key];
+  return rest;
+}
+function mergeMockupCopy(beforeMockup, nextMockup) {
+  if (!beforeMockup || typeof beforeMockup !== "object") return beforeMockup;
+  if (!nextMockup || typeof nextMockup !== "object") return beforeMockup;
+  const out = { ...beforeMockup };
+  const src = nextMockup;
+  if (src.type !== out.type) return beforeMockup;
+  for (const key of MOCKUP_COPY_FIELDS) {
+    if (key in src) out[key] = src[key];
+  }
+  return out;
+}
 var ALL_ASPECTS = ["copy", "layout", "mockup", "surface"];
 var UNSCOPED = { slides: [], globals: [], resolved: false, source: "unscoped" };
 var RE_SLIDE_NUMBER = /\b(?:slide|halaman|page)\s*(?:ke-?\s*|nomor\s*|no\.?\s*|#\s*)?(\d{1,2})\b/gi;
@@ -66657,6 +66675,7 @@ function mergeSlideAspects(before, next, aspects) {
       if (key in src) out[key] = src[key];
       else delete out[key];
     }
+    if (!active.has("mockup") && out.mockup) out.mockup = mergeMockupCopy(out.mockup, src.mockup);
   }
   for (const aspect of ["mockup", "layout", "surface"]) {
     if (!active.has(aspect)) continue;
@@ -66734,8 +66753,12 @@ function assertScopePreserved(before, after, scope) {
     for (const aspect of ["mockup", "layout", "surface"]) {
       if (aspects.has(aspect)) continue;
       for (const key of ASPECT_FIELDS[aspect]) {
-        const a = before.slides[i][key];
-        const b = after.slides[i][key];
+        let a = before.slides[i][key];
+        let b = after.slides[i][key];
+        if (key === "mockup" && aspects.has("copy")) {
+          a = mockupStructureOnly(a);
+          b = mockupStructureOnly(b);
+        }
         if (!semanticEq(a, b)) violations.push(`slide ${i + 1} ${key} changed (${aspect} not in scope)`);
       }
     }

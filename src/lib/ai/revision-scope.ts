@@ -48,6 +48,56 @@ const STRUCTURAL_FIELDS = new Set<string>([
   ...ASPECT_FIELDS.surface,
 ]);
 
+/**
+ * Prose that happens to live inside the mockup object.
+ *
+ * `note` (the .catatan line), `caption` (an illustration's caption) and `text` (a
+ * callout's body) are sentences a reader reads — copy by every measure except their
+ * position in the tree. Treating the whole mockup as structure made "ganti kalimat ini"
+ * silently impossible: the model rewrote the sentence, the merge restored the old mockup
+ * wholesale, scopedChangeSummary saw nothing, and the route answered 422 "tidak
+ * menghasilkan perubahan apa pun" — which a Server Action then redacted to a generic
+ * Next.js error, so the operator could not even see which check had refused.
+ *
+ * Everything else in a mockup stays structural: `type`, icons, slugs, and the arrays
+ * (items, steps, lines) whose length is composition, not wording.
+ */
+const MOCKUP_COPY_FIELDS = ["note", "caption", "text"] as const;
+
+/** The mockup minus its prose, which is the part the copy aspect may not touch. */
+function mockupStructureOnly(value: unknown): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const rest = { ...(value as Record<string, unknown>) };
+  for (const key of MOCKUP_COPY_FIELDS) delete rest[key];
+  return rest;
+}
+
+/**
+ * Carry the model's prose across without letting the rest of its mockup through.
+ *
+ * Two refusals, both learned from the failure this fixes:
+ *
+ * A model asked to reword one sentence routinely returns a different mockup type as
+ * well. Its prose then describes a visual that is not the one being kept, so nothing is
+ * taken — the sentence a checklist wanted is not the sentence the illustration needs.
+ *
+ * And a field absent from the model's mockup is never treated as a deletion. Models omit
+ * optional fields constantly; honouring that as "remove the caption" would lose a line
+ * nobody asked to lose, which is exactly the silent content loss this guard exists for.
+ * Removing a note is a mockup edit, and the mockup aspect already covers it.
+ */
+function mergeMockupCopy(beforeMockup: unknown, nextMockup: unknown): unknown {
+  if (!beforeMockup || typeof beforeMockup !== "object") return beforeMockup;
+  if (!nextMockup || typeof nextMockup !== "object") return beforeMockup;
+  const out = { ...(beforeMockup as Record<string, unknown>) };
+  const src = nextMockup as Record<string, unknown>;
+  if (src.type !== out.type) return beforeMockup;
+  for (const key of MOCKUP_COPY_FIELDS) {
+    if (key in src) out[key] = src[key];
+  }
+  return out;
+}
+
 export const ALL_ASPECTS: SlideAspect[] = ["copy", "layout", "mockup", "surface"];
 
 export interface RevisionScope {
@@ -270,6 +320,8 @@ function mergeSlideAspects(before: Slide, next: Slide, aspects: SlideAspect[]): 
       if (key in src) out[key] = src[key];
       else delete out[key];
     }
+    // The mockup itself is structure and stays put, but the prose inside it is copy.
+    if (!active.has("mockup") && out.mockup) out.mockup = mergeMockupCopy(out.mockup, src.mockup);
   }
 
   for (const aspect of ["mockup", "layout", "surface"] as const) {
@@ -377,8 +429,15 @@ export function assertScopePreserved(before: SlidePlan, after: SlidePlan, scope:
     for (const aspect of ["mockup", "layout", "surface"] as const) {
       if (aspects.has(aspect)) continue;
       for (const key of ASPECT_FIELDS[aspect]) {
-        const a = (before.slides[i] as unknown as Record<string, unknown>)[key];
-        const b = (after.slides[i] as unknown as Record<string, unknown>)[key];
+        let a = (before.slides[i] as unknown as Record<string, unknown>)[key];
+        let b = (after.slides[i] as unknown as Record<string, unknown>)[key];
+        // A copy revision is allowed to reword the prose inside a mockup, so compare the
+        // structure without it. Otherwise the guard blocks the very edit the merge just
+        // made, and the request dies at the last step with a violation nobody caused.
+        if (key === "mockup" && aspects.has("copy")) {
+          a = mockupStructureOnly(a);
+          b = mockupStructureOnly(b);
+        }
         if (!semanticEq(a, b)) violations.push(`slide ${i + 1} ${key} changed (${aspect} not in scope)`);
       }
     }

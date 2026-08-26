@@ -403,3 +403,66 @@ describe("naming a mockup type is naming the mockup", () => {
     expect(parseAspects(msg)).not.toContain("mockup");
   });
 });
+
+/**
+ * A note is prose. It just happens to live inside the mockup object, which the merge
+ * treats as structure — so "ganti kalimat X" on a note used to be silently impossible:
+ * the model rewrote it, the merge restored the old mockup wholesale, scopedChangeSummary
+ * saw nothing, and the route answered 422 "tidak menghasilkan perubahan apa pun".
+ * Every other kind of copy edit worked, which is why this went unnoticed.
+ */
+describe("a mockup's note is copy, not structure", () => {
+  const withAspects = (slides: number[], aspects: RevisionScope["aspects"]): RevisionScope => ({
+    slides,
+    globals: [],
+    aspects,
+    resolved: true,
+    source: "parsed",
+  });
+
+  /** The production shape this was reported on: an illustration with a caption. */
+  const withNote = (caption: string): Slide => ({
+    ...(slide(2) as Extract<Slide, { role: "point" }>),
+    mockup: { type: "illustration", illustrationSlugs: ["artificial-intelligence_44ux"], caption },
+  });
+
+  it("takes a reworded note when only copy is in scope", () => {
+    const before = { ...plan(), slides: plan().slides.map((s, i) => (i === 1 ? withNote("Kalimat lama.") : s)) };
+    const after = mergeScopedRevision(
+      before,
+      { slides: [{ index: 1, slide: withNote("Kalimat baru.") }] },
+      withAspects([1], ["copy"])
+    );
+    const mockup = (after.slides[1] as Extract<Slide, { role: "point" }>).mockup as { caption?: string };
+    expect(mockup.caption).toBe("Kalimat baru.");
+  });
+
+  it("takes nothing from a mockup of a different type, prose included", () => {
+    const before = { ...plan(), slides: plan().slides.map((s, i) => (i === 1 ? withNote("Kalimat lama.") : s)) };
+    const swapped: Slide = {
+      ...(slide(2) as Extract<Slide, { role: "point" }>),
+      mockup: { type: "checklist", items: ["a", "b"], note: "Kalimat baru." },
+    } as Slide;
+    const after = mergeScopedRevision(before, { slides: [{ index: 1, slide: swapped }] }, withAspects([1], ["copy"]));
+    const mockup = (after.slides[1] as Extract<Slide, { role: "point" }>).mockup as {
+      type: string; note?: string; caption?: string;
+    };
+    // The model swapped the visual as well. Its sentence describes the checklist it
+    // wanted, not the illustration being kept, so neither one is taken.
+    expect(mockup.type).toBe("illustration");
+    expect(mockup.note).toBeUndefined();
+    expect(mockup.caption).toBe("Kalimat lama.");
+  });
+
+  it("does not trip the guard when the note is the only thing that moved", () => {
+    const before = { ...plan(), slides: plan().slides.map((s, i) => (i === 1 ? withNote("Kalimat lama.") : s)) };
+    const after = { ...before, slides: before.slides.map((s, i) => (i === 1 ? withNote("Kalimat baru.") : s)) };
+    expect(() => assertScopePreserved(before, after, withAspects([1], ["copy"]))).not.toThrow();
+  });
+
+  it("reports the note edit, so the route does not answer 'nothing changed'", () => {
+    const before = { ...plan(), slides: plan().slides.map((s, i) => (i === 1 ? withNote("Kalimat lama.") : s)) };
+    const after = { ...before, slides: before.slides.map((s, i) => (i === 1 ? withNote("Kalimat baru.") : s)) };
+    expect(scopedChangeSummary(before, after, withAspects([1], ["copy"]))).toContain("slide 2");
+  });
+});
