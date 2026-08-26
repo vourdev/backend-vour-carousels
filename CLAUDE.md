@@ -129,6 +129,23 @@ empty defaults turn the salvage path into a second way to lose the deck.
 and scoped-revision prompts. Change the schema, change the rule, or the model gets rejected for
 a limit nobody told it about.
 
+**The brand's voice lives in `lib/ai/voice-profile.ts`, and a test proves it arrives.**
+There were three sources before and they disagreed on something as basic as the address:
+`VOICE_TRAINING` said "lo", `voice-samples.ts` said "saya", the internal docs said "gw". The
+answer is "gw"/"lu". Worse, `voice-samples.ts` was imported by `prompts.ts` and referenced
+nowhere in it — 300 lines of the most concrete voice evidence in the repo reached no model
+call at all, and nothing failed when it didn't. `VOICE_TRAINING` meanwhile reached only
+`briefSystem`, so a brief could land while the slides did not: slide headlines are written by
+`planSystem`. `VOICE_RULE` is now carried by brief, plan AND scoped revision, and
+`test/ai/voice-profile.test.ts` asserts each prompt CONTAINS it rather than merely imports it
+— that assertion is the whole point of the file, because an unused import is exactly how this
+broke silently the first time. The profile came from an interview with the brand owner
+(spec: `docs/superpowers/specs/2026-08-26-voice-profile-design.md`); its rules — criticism
+aimed at practice and never at a tool or person, self-deprecating humour, problem → analogy →
+code, stopping at "why it matters" — are his answers, not style guesses. `HUMAN_VOICE_EDITOR`
+keeps the anti-AI-tell pass and defers to the profile on address, tics, humour and analogy;
+do not restate those there.
+
 **Slides are served from this box, not Cloudinary.** Measured 25 Aug 2026, this VPS's uplink
 loses 12-60% of outbound packets: pushing a 1.8 MB deck to Cloudinary took **85.9s** and logged
 six `499 Request Timeout` retries, all of it blocking the generation response. `publish/

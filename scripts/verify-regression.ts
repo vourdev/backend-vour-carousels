@@ -5,7 +5,7 @@ import { renderSlide } from "../src/lib/ds/render-slide.js";
 import { carouselExtraCss } from "../src/lib/ds/carousel-css-extra.js";
 import { ILLUSTRATION_SLUGS } from "../src/lib/ds/illustrations.js";
 import { stripEmoji } from "../src/lib/ds/strip-emoji.js";
-import { VOICE_SAMPLES } from "../src/lib/ai/voice-samples.js";
+import { VOICE_RULE, VOICE_SAMPLES } from "../src/lib/ai/voice-profile.js";
 
 console.log("==================================================");
 console.log("🧪 RUNNING BACKEND REGRESSION CHECKLIST (TASK 5)");
@@ -109,11 +109,10 @@ it("Design token CSS validation: cm-base styling conforms to specification", () 
 });
 
 // 6. Voice and copywriting samples
-it("Voice samples: contains primary casual Indonesian cues", () => {
-  assert.ok(Object.keys(VOICE_SAMPLES).length >= 5, "Should have loaded 5 voice samples");
-  const samplesText = JSON.stringify(VOICE_SAMPLES);
-  assert.ok(samplesText.includes("nggak"), "Must contain Indonesian casual direct markers (nggak)");
-  assert.ok(samplesText.includes("kamu") || samplesText.includes("lo"), "Must address reader direct");
+it("Voice profile: contains primary casual Indonesian cues", () => {
+  assert.ok(VOICE_SAMPLES.includes("nggak"), "Must contain Indonesian casual direct markers (nggak)");
+  assert.ok(VOICE_RULE.includes('"lu"'), "Must address the reader as lu");
+  assert.ok(!VOICE_RULE.includes("Anda"), "Must never reach for the corporate address");
 });
 
 console.log("==================================================");

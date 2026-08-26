@@ -187,7 +187,7 @@ describe("variety budget is single-sourced", () => {
 
 describe("briefSystem intro examples", () => {
   it("includes a text-only cover example", () => {
-    expect(briefSystem).toContain("istilah AI yang wajib lo");
+    expect(briefSystem).toContain("istilah AI yang wajib lu");
   });
 });
 
