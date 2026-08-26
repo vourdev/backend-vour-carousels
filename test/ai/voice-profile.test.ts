@@ -18,6 +18,7 @@ import {
   DEPTH_RULE,
   ANALOGY_RULE,
   HONESTY_RULE,
+  CONTENT_PILLARS,
 } from "@/lib/ai/voice-profile";
 
 /**
@@ -112,6 +113,10 @@ describe("the profile carries what the interview established", () => {
 
   it("forbids a cover that promises more than the deck delivers", () => {
     expect(HONESTY_RULE).toMatch(/clickbait/i);
+  });
+
+  it("treats no stack as off-limits, because he learns what he does not know", () => {
+    expect(CONTENT_PILLARS).toMatch(/pelajari|belajar/i);
   });
 });
 

@@ -101,6 +101,13 @@ export const CONTENT_PILLARS = `DUA PILAR KONTEN
    semacam ini sama sahnya dengan deck teknis. Jangan paksakan mockup teknis
    ke topik seperti ini.
 
+TIDAK ADA TOPIK PANTANGAN, dan tidak ada stack yang "bukan bidangnya".
+Dia belajar dulu apa yang belum dia paham, baru mengajarkannya — Next.js,
+Prisma, PostgreSQL, apa pun. Jangan menyempitkan topik ke satu stack, dan
+jangan menghindari yang terdengar asing. Yang dilarang bukan topiknya,
+melainkan berlagak tahu: kalau sebuah klaim tidak bisa dipertanggungjawabkan,
+buang klaimnya, bukan decknya.
+
 Pesan yang mendasari semuanya: "jangan takut mencoba."`;
 
 /** Kalimat yang dia tulis sendiri, dan pola yang lahir darinya. */
