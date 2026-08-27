@@ -31581,14 +31581,14 @@ var Hono = class _Hono {
    * app.route("/api", app2) // GET /api/user
    * ```
    */
-  route(path, app12) {
+  route(path, app13) {
     const subApp = this.basePath(path);
-    app12.routes.map((r) => {
+    app13.routes.map((r) => {
       let handler;
-      if (app12.errorHandler === errorHandler) {
+      if (app13.errorHandler === errorHandler) {
         handler = r.handler;
       } else {
-        handler = async (c, next) => (await compose([], app12.errorHandler)(c, () => r.handler(c, next))).res;
+        handler = async (c, next) => (await compose([], app13.errorHandler)(c, () => r.handler(c, next))).res;
         handler[COMPOSED_HANDLER] = r.handler;
       }
       subApp.#addRoute(r.method, r.path, handler, r.basePath);
@@ -72561,6 +72561,7 @@ CREATE TABLE IF NOT EXISTS topics (
   keywords TEXT NOT NULL,
   angle TEXT,
   status TEXT NOT NULL DEFAULT 'idea',
+  blog_status TEXT NOT NULL DEFAULT 'not_used',
   priority INTEGER NOT NULL DEFAULT 0,
   scheduled_date TEXT,
   carousel_id TEXT,
@@ -72573,7 +72574,8 @@ var MIGRATION_COLUMNS2 = [
   "source TEXT",
   "related_product_id TEXT",
   "target_audience_fit TEXT",
-  "suggested_angle TEXT"
+  "suggested_angle TEXT",
+  "blog_status TEXT NOT NULL DEFAULT 'not_used'"
 ];
 async function ensureSchema4() {
   if (schemaEnsured2) return;
@@ -72597,6 +72599,7 @@ function rowToTopic(row) {
     keywords: JSON.parse(row.keywords || "[]"),
     angle: str(row.angle),
     status: row.status,
+    blogStatus: row.blog_status || "not_used",
     priority: row.priority,
     scheduledDate: str(row.scheduled_date),
     carouselId: str(row.carousel_id),
@@ -72616,9 +72619,10 @@ async function createTopic(data) {
   const relProdId = data.relatedProductId ?? data.related_product_id ?? null;
   const audFit = data.targetAudienceFit ?? data.target_audience_fit ?? null;
   const sugAngle = data.suggestedAngle ?? data.suggested_angle ?? null;
+  const blogSt = data.blogStatus ?? data.blog_status ?? "not_used";
   await db4().execute({
-    sql: `INSERT INTO topics (id, user_id, title, category, description, keywords, angle, status, priority, scheduled_date, source, related_product_id, target_audience_fit, suggested_angle, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO topics (id, user_id, title, category, description, keywords, angle, status, blog_status, priority, scheduled_date, source, related_product_id, target_audience_fit, suggested_angle, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       id,
       data.userId,
@@ -72628,6 +72632,7 @@ async function createTopic(data) {
       JSON.stringify(data.keywords || []),
       data.angle || null,
       data.status || "idea",
+      blogSt,
       data.priority || 0,
       data.scheduledDate || null,
       data.source || null,
@@ -72673,6 +72678,10 @@ async function updateTopic(id, userId3, data) {
     updates.push("status = ?");
     args.push(data.status);
   }
+  if (data.blogStatus !== void 0 || data.blog_status !== void 0) {
+    updates.push("blog_status = ?");
+    args.push(data.blogStatus ?? data.blog_status);
+  }
   if (data.priority !== void 0) {
     updates.push("priority = ?");
     args.push(data.priority);
@@ -72717,6 +72726,10 @@ async function getTopics(userId3, filters) {
     sql2 += ` AND status = ?`;
     args.push(filters.status);
   }
+  if (filters?.blogStatus) {
+    sql2 += ` AND blog_status = ?`;
+    args.push(filters.blogStatus);
+  }
   if (filters?.category) {
     sql2 += ` AND category = ?`;
     args.push(filters.category);
@@ -72728,6 +72741,26 @@ async function getTopics(userId3, filters) {
   }
   const res = await db4().execute({ sql: sql2, args });
   return res.rows.map(rowToTopic);
+}
+async function getNextTopicForBlog(userId3) {
+  await ensureSchema4();
+  const res = await db4().execute({
+    sql: `SELECT * FROM topics 
+          WHERE user_id = ? 
+          AND (blog_status = 'not_used' OR blog_status IS NULL)
+          ORDER BY priority DESC, created_at ASC 
+          LIMIT 1`,
+    args: [userId3]
+  });
+  return res.rows[0] ? rowToTopic(res.rows[0]) : null;
+}
+async function updateBlogStatus(id, userId3, blogStatus) {
+  await ensureSchema4();
+  const res = await db4().execute({
+    sql: `UPDATE topics SET blog_status = ?, updated_at = ? WHERE id = ? AND user_id = ?`,
+    args: [blogStatus, Date.now(), id, userId3]
+  });
+  return (res.rowsAffected ?? 0) > 0;
 }
 async function getTopic(id, userId3) {
   await ensureSchema4();
@@ -73423,6 +73456,131 @@ app10.get("/", async (c) => {
 });
 var products_default = app10;
 
+// src/middleware/service-auth.ts
+init_esm();
+init_db();
+var cachedDb = null;
+function getDb() {
+  if (!cachedDb) {
+    cachedDb = new Kysely({ dialect });
+  }
+  return cachedDb;
+}
+async function resolveOperatorUserId() {
+  try {
+    const user = await getDb().selectFrom("user").select("id").limit(1).executeTakeFirst();
+    return user?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+var serviceAuthMiddleware = () => {
+  return async (c, next) => {
+    const secret = process.env.VOURDEV_SERVICE_KEY;
+    if (!secret) {
+      console.error("VOURDEV_SERVICE_KEY is not configured in environment");
+      return c.json({ error: "Server Configuration Error: Missing VOURDEV_SERVICE_KEY" }, 500);
+    }
+    const authHeader = c.req.header("Authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return c.json({ error: "Unauthorized: Missing or invalid Authorization header (Bearer token required)" }, 401);
+    }
+    const token = authHeader.substring("Bearer ".length).trim();
+    if (token !== secret) {
+      return c.json({ error: "Unauthorized: Invalid service key" }, 401);
+    }
+    const userId3 = await resolveOperatorUserId();
+    if (!userId3) {
+      return c.json({ error: "No user found in database. Seed the database first." }, 500);
+    }
+    c.set("userId", userId3);
+    await next();
+  };
+};
+var rateLimitMiddleware = (options = {}) => {
+  const limit = options.limit ?? 60;
+  const windowMs = options.windowMs ?? 6e4;
+  const requests = /* @__PURE__ */ new Map();
+  return async (c, next) => {
+    const now2 = Date.now();
+    const clientKey = c.req.header("x-forwarded-for") || c.req.header("cf-connecting-ip") || "default-service-client";
+    let record2 = requests.get(clientKey);
+    if (!record2) {
+      record2 = { timestamps: [] };
+      requests.set(clientKey, record2);
+    }
+    record2.timestamps = record2.timestamps.filter((ts) => now2 - ts < windowMs);
+    if (record2.timestamps.length >= limit) {
+      const oldest = record2.timestamps[0];
+      const retryAfterSeconds = Math.ceil((oldest + windowMs - now2) / 1e3);
+      c.header("Retry-After", String(Math.max(1, retryAfterSeconds)));
+      c.header("X-RateLimit-Limit", String(limit));
+      c.header("X-RateLimit-Remaining", "0");
+      c.header("X-RateLimit-Reset", String(Math.ceil((oldest + windowMs) / 1e3)));
+      return c.json({ error: "Too many requests, please try again later" }, 429);
+    }
+    record2.timestamps.push(now2);
+    c.header("X-RateLimit-Limit", String(limit));
+    c.header("X-RateLimit-Remaining", String(limit - record2.timestamps.length));
+    c.header("X-RateLimit-Reset", String(Math.ceil((now2 + windowMs) / 1e3)));
+    await next();
+  };
+};
+
+// src/routes/service/topics.ts
+var app11 = new Hono2();
+app11.use("*", rateLimitMiddleware(), serviceAuthMiddleware());
+var ALLOWED_BLOG_STATUSES = /* @__PURE__ */ new Set([
+  "not_used",
+  "generating",
+  "published",
+  "failed"
+]);
+app11.get("/next-for-blog", async (c) => {
+  const userId3 = c.get("userId");
+  if (!userId3) {
+    return c.json({ error: "Unauthorized: Missing user context" }, 401);
+  }
+  const topic = await getNextTopicForBlog(userId3);
+  if (!topic) {
+    return c.json({ error: "No unused blog topics available in the bank" }, 404);
+  }
+  return c.json({
+    id: topic.id,
+    title: topic.title,
+    description: topic.description,
+    category: topic.category,
+    tags: topic.keywords
+  });
+});
+app11.patch("/:id/blog-status", async (c) => {
+  const userId3 = c.get("userId");
+  if (!userId3) {
+    return c.json({ error: "Unauthorized: Missing user context" }, 401);
+  }
+  const id = c.req.param("id");
+  const body = await c.req.json().catch(() => ({}));
+  const status = body.status ?? body.blog_status;
+  if (!status || !ALLOWED_BLOG_STATUSES.has(status)) {
+    return c.json(
+      {
+        error: `Invalid status "${status}". Allowed values: not_used | generating | published | failed`
+      },
+      400
+    );
+  }
+  const updated = await updateBlogStatus(id, userId3, status);
+  if (!updated) {
+    return c.json({ error: "Topic not found" }, 404);
+  }
+  return c.json({
+    success: true,
+    id,
+    blog_status: status
+  });
+});
+var topics_default2 = app11;
+
 // src/lib/publish/schedule.ts
 var WIB_OFFSET_MS = 7 * 60 * 60 * 1e3;
 var POST_HOUR_WIB = 12;
@@ -73435,7 +73593,7 @@ function nextWibSlot(now2, hour = POST_HOUR_WIB, minute = 0) {
 // src/routes/automation/generate.ts
 init_db();
 init_esm();
-var app11 = new Hono2();
+var app12 = new Hono2();
 var db6 = new Kysely({ dialect });
 async function resolveUserId() {
   const user = await db6.selectFrom("user").select("id").limit(1).executeTakeFirst();
@@ -73549,7 +73707,7 @@ async function createAndPublishCarousel({
     ttPostId
   };
 }
-app11.post("/generate", async (c) => {
+app12.post("/generate", async (c) => {
   let body;
   try {
     body = await c.req.json();
@@ -73628,7 +73786,7 @@ app11.post("/generate", async (c) => {
     carousels: scheduled
   });
 });
-app11.get("/topic/next", async (c) => {
+app12.get("/topic/next", async (c) => {
   const userId3 = await resolveUserId().catch(() => null);
   if (!userId3) {
     return c.json({ error: "No user found in the database. Seed the database first." }, 500);
@@ -73647,7 +73805,7 @@ app11.get("/topic/next", async (c) => {
     angle: topic.angle
   });
 });
-app11.post("/topics/generate", async (c) => {
+app12.post("/topics/generate", async (c) => {
   const body = await c.req.json().catch(() => ({}));
   if (!["ideas", "weekly", "monthly"].includes(body?.mode)) {
     return c.json({ error: `Invalid mode "${body?.mode}" \u2014 use ideas | weekly | monthly` }, 400);
@@ -73663,7 +73821,7 @@ app11.post("/topics/generate", async (c) => {
   const topics = await generateAndSaveTopics(uid, resolveModel(modelId), body);
   return c.json({ success: true, topics, count: topics.length });
 });
-app11.post("/research-topics", async (c) => {
+app12.post("/research-topics", async (c) => {
   let body;
   try {
     body = await c.req.json();
@@ -73707,7 +73865,7 @@ var ALLOWED_STATUS_TRANSITIONS = {
   rejected: ["pending_review"],
   idea: ["approved", "rejected", "archived"]
 };
-app11.patch("/research-topics/:id/status", async (c) => {
+app12.patch("/research-topics/:id/status", async (c) => {
   let body;
   try {
     body = await c.req.json();
@@ -73746,7 +73904,7 @@ app11.patch("/research-topics/:id/status", async (c) => {
     return c.json({ error: `Failed to update topic: ${err.message}` }, 500);
   }
 });
-app11.get("/mockup-stats", async (c) => {
+app12.get("/mockup-stats", async (c) => {
   const userId3 = await resolveUserId().catch(() => null);
   if (!userId3) {
     return c.json({ error: "No user found in the database" }, 500);
@@ -73762,7 +73920,7 @@ app11.get("/mockup-stats", async (c) => {
     layouts: layoutStats
   });
 });
-var generate_default = app11;
+var generate_default = app12;
 
 // src/server.ts
 var userApp = new Hono2();
@@ -73784,6 +73942,7 @@ userApp.use(
   })
 );
 userApp.route("/", health_default);
+userApp.route("/api/topics", topics_default2);
 userApp.use("/api/*", authMiddleware());
 userApp.get("/api/models", (c) => c.json({ models: availableModels() }));
 userApp.get("/api/publish/config", (c) => {

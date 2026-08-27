@@ -16,6 +16,7 @@ import carouselsRoute from "./routes/user/carousels";
 import publishRoute from "./routes/user/publish";
 import topicsRoute from "./routes/user/topics";
 import productsRoute from "./routes/user/products";
+import serviceTopicsRoute from "./routes/service/topics";
 import automationRoute from "./routes/automation/generate";
 
 // ==========================================
@@ -46,7 +47,10 @@ userApp.use(
 // Health check endpoint (Public)
 userApp.route("/", healthRoute);
 
-// JWT Protected User Routes
+// Service-to-Service External Routes (vour.dev blog integration with Bearer VOURDEV_SERVICE_KEY)
+userApp.route("/api/topics", serviceTopicsRoute);
+
+// JWT / Session Protected User Routes
 userApp.use("/api/*", authMiddleware());
 userApp.get("/api/models", (c) => c.json({ models: availableModels() }));
 userApp.get("/api/publish/config", (c) => {

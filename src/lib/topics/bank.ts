@@ -33,6 +33,8 @@ export type TopicStatus = "idea" | "queued" | "generated" | "published" | "archi
   // Research agent statuses
   | "pending_review" | "approved" | "rejected";
 
+export type BlogStatus = "not_used" | "generating" | "published" | "failed";
+
 export interface Topic {
   id: string;
   title: string;
@@ -41,6 +43,7 @@ export interface Topic {
   keywords: string[];
   angle?: string;
   status: TopicStatus;
+  blogStatus: BlogStatus;
   priority: number;
   scheduledDate?: string;
   carouselId?: string;
@@ -64,6 +67,7 @@ CREATE TABLE IF NOT EXISTS topics (
   keywords TEXT NOT NULL,
   angle TEXT,
   status TEXT NOT NULL DEFAULT 'idea',
+  blog_status TEXT NOT NULL DEFAULT 'not_used',
   priority INTEGER NOT NULL DEFAULT 0,
   scheduled_date TEXT,
   carousel_id TEXT,
@@ -74,19 +78,20 @@ CREATE TABLE IF NOT EXISTS topics (
 
 let schemaEnsured = false;
 
-/** Columns added by the research agent. ALTER TABLE ADD COLUMN is a no-op if the column already exists in SQLite. */
+/** Columns added by migrations. ALTER TABLE ADD COLUMN is a no-op if the column already exists in SQLite. */
 const MIGRATION_COLUMNS = [
   "source TEXT",
   "related_product_id TEXT",
   "target_audience_fit TEXT",
   "suggested_angle TEXT",
+  "blog_status TEXT NOT NULL DEFAULT 'not_used'",
 ];
 
 async function ensureSchema() {
   if (schemaEnsured) return;
   await db().execute(TOPICS_SCHEMA);
 
-  // Add research-agent columns to existing tables (idempotent — errors on
+  // Add migration columns to existing tables (idempotent — errors on
   // "duplicate column" are swallowed so this runs safely every boot).
   for (const col of MIGRATION_COLUMNS) {
     try {
@@ -119,6 +124,7 @@ function rowToTopic(row: any): Topic {
     keywords: JSON.parse((row.keywords as string) || "[]"),
     angle: str(row.angle),
     status: row.status as TopicStatus,
+    blogStatus: (row.blog_status as BlogStatus) || "not_used",
     priority: row.priority as number,
     scheduledDate: str(row.scheduled_date),
     carouselId: str(row.carousel_id),
@@ -143,6 +149,8 @@ export async function createTopic(data: {
   scheduledDate?: string;
   /** Override the default "idea" status (e.g. "pending_review" for research agent topics). */
   status?: TopicStatus;
+  blogStatus?: BlogStatus;
+  blog_status?: BlogStatus;
   source?: string;
   relatedProductId?: string;
   related_product_id?: string;
@@ -157,10 +165,11 @@ export async function createTopic(data: {
   const relProdId = data.relatedProductId ?? data.related_product_id ?? null;
   const audFit = data.targetAudienceFit ?? data.target_audience_fit ?? null;
   const sugAngle = data.suggestedAngle ?? data.suggested_angle ?? null;
+  const blogSt = data.blogStatus ?? data.blog_status ?? "not_used";
   
   await db().execute({
-    sql: `INSERT INTO topics (id, user_id, title, category, description, keywords, angle, status, priority, scheduled_date, source, related_product_id, target_audience_fit, suggested_angle, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO topics (id, user_id, title, category, description, keywords, angle, status, blog_status, priority, scheduled_date, source, related_product_id, target_audience_fit, suggested_angle, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       id,
       data.userId,
@@ -170,6 +179,7 @@ export async function createTopic(data: {
       JSON.stringify(data.keywords || []),
       data.angle || null,
       data.status || "idea",
+      blogSt,
       data.priority || 0,
       data.scheduledDate || null,
       data.source || null,
@@ -200,6 +210,8 @@ export async function updateTopic(
     keywords?: string[];
     angle?: string;
     status?: TopicStatus;
+    blogStatus?: BlogStatus;
+    blog_status?: BlogStatus;
     priority?: number;
     scheduledDate?: string;
     carouselId?: string;
@@ -239,6 +251,10 @@ export async function updateTopic(
   if (data.status !== undefined) {
     updates.push("status = ?");
     args.push(data.status);
+  }
+  if (data.blogStatus !== undefined || data.blog_status !== undefined) {
+    updates.push("blog_status = ?");
+    args.push(data.blogStatus ?? data.blog_status);
   }
   if (data.priority !== undefined) {
     updates.push("priority = ?");
@@ -285,6 +301,7 @@ export async function getTopics(
   userId: string,
   filters?: {
     status?: TopicStatus;
+    blogStatus?: BlogStatus;
     category?: TopicCategory;
     limit?: number;
   }
@@ -297,6 +314,11 @@ export async function getTopics(
   if (filters?.status) {
     sql += ` AND status = ?`;
     args.push(filters.status);
+  }
+
+  if (filters?.blogStatus) {
+    sql += ` AND blog_status = ?`;
+    args.push(filters.blogStatus);
   }
 
   if (filters?.category) {
@@ -313,6 +335,32 @@ export async function getTopics(
 
   const res = await db().execute({ sql, args });
   return res.rows.map(rowToTopic);
+}
+
+export async function getNextTopicForBlog(userId: string): Promise<Topic | null> {
+  await ensureSchema();
+  const res = await db().execute({
+    sql: `SELECT * FROM topics 
+          WHERE user_id = ? 
+          AND (blog_status = 'not_used' OR blog_status IS NULL)
+          ORDER BY priority DESC, created_at ASC 
+          LIMIT 1`,
+    args: [userId],
+  });
+  return res.rows[0] ? rowToTopic(res.rows[0]) : null;
+}
+
+export async function updateBlogStatus(
+  id: string,
+  userId: string,
+  blogStatus: BlogStatus
+): Promise<boolean> {
+  await ensureSchema();
+  const res = await db().execute({
+    sql: `UPDATE topics SET blog_status = ?, updated_at = ? WHERE id = ? AND user_id = ?`,
+    args: [blogStatus, Date.now(), id, userId],
+  });
+  return (res.rowsAffected ?? 0) > 0;
 }
 
 export async function getTopic(id: string, userId: string): Promise<Topic | null> {

@@ -72,6 +72,10 @@ POST /api/topics/generate · /api/topics/:id/brief
 POST /api/topics/generate-from-notes   raw notes -> topic candidates ("idea")
 GET  /api/products                active products, for the topic UI
 
+# port 3000 — Bearer VOURDEV_SERVICE_KEY (service-to-service for vour.dev blog generator)
+GET  /api/topics/next-for-blog        1 topic with blog_status="not_used"
+PATCH /api/topics/:id/blog-status     update blog_status ("generating" | "published" | "failed")
+
 # port 3001 — X-API-Key
 GET  /automation/topic/next       claim one "idea" topic, flip to "queued"
 POST /automation/generate         full pipeline: 2 decks, captured, scheduled
