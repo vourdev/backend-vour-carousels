@@ -121,6 +121,27 @@ async function omnirouteRequest(input: RequestInfo | URL, init?: RequestInit): P
   return response;
 }
 
+/**
+ * An arbitrary OmniRoute model by its catalogue id.
+ *
+ * `resolveModel` only knows the fixed combos this app routes normal work through. News
+ * discovery needs one specific model outside that set — a browser-transport one that can
+ * actually search the web (`gemini-web/*`) — and pinning it to a `ModelId` would imply it is
+ * interchangeable with the combos, which it is not: it is slow, cookie-authenticated, and
+ * used for one job. Same gate and same key as everything else.
+ */
+export function resolveOmnirouteModelById(modelId: string): LanguageModel | null {
+  const env = process.env;
+  if (!has(env, "OMNIROUTE_API_KEY", "OMNIROUTE_BASE_URL")) return null;
+  const client = createOpenAICompatible({
+    name: "omniroute-direct",
+    apiKey: env.OMNIROUTE_API_KEY,
+    baseURL: cleanBaseUrl(env.OMNIROUTE_BASE_URL),
+    fetch: omnirouteFetch,
+  });
+  return client(modelId);
+}
+
 export function resolveModel(id: ModelId): LanguageModel {
   const env = process.env;
   switch (id) {

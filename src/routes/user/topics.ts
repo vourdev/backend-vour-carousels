@@ -12,6 +12,7 @@ import {
 import { expandTopicToBrief } from "../../lib/topics/generator";
 import { generateAndSaveTopics, type GenerateTopicsInput } from "../../lib/topics/service";
 import { extractAndSaveTopicsFromNotes } from "../../lib/research/agent";
+import { discoverTrendingTopics } from "../../lib/news/discover";
 
 const app = new Hono<{ Variables: { session: any } }>();
 
@@ -97,6 +98,47 @@ app.post("/generate", async (c) => {
   return c.json({ topics, count: topics.length });
 });
 
+
+/**
+ * Sweep the tech press for trending topics and bank the ones that survive every gate.
+ *
+ * The three gates live in lib/news: two independent publishers, then a significance filter,
+ * then the same dedup the other entry points use. What comes back lists both what was saved
+ * and what was dropped with the reason, because "nothing was saved" has several very
+ * different causes and a silent empty list hides all of them.
+ */
+app.post("/generate-trending", async (c) => {
+  const body = (await c.req.json().catch(() => ({}))) as {
+    withinHours?: number;
+    minSources?: number;
+    maxTopics?: number;
+    useSearch?: boolean;
+    dryRun?: boolean;
+  };
+
+  const modelId = defaultModel();
+  if (!modelId) {
+    return c.json({ error: "No AI model API keys configured in .env" }, 500);
+  }
+
+  const result = await discoverTrendingTopics(resolveModel(modelId), {
+    userId: userId(c),
+    withinHours: body.withinHours,
+    minSources: body.minSources,
+    maxTopics: body.maxTopics,
+    useSearch: body.useSearch,
+    dryRun: body.dryRun === true,
+  });
+
+  return c.json({
+    topics: result.saved,
+    count: result.saved.length,
+    skipped: result.skipped,
+    stats: result.stats,
+    feeds: result.feeds,
+    search: result.search,
+  });
+});
 
 /** Expand one banked topic into a full Markdown brief, ready for the plan stage. */
 app.post("/:id/brief", async (c) => {

@@ -20,6 +20,7 @@ import { createCarousel, updateCarousel, getUnderusedMockupTypes, getRecentMocku
 import { getTopic, getTopics, updateTopic, createTopic, type TopicStatus } from "../../lib/topics/bank";
 import { generateAndSaveTopics, type GenerateTopicsInput } from "../../lib/topics/service";
 import { extractAndSaveTopicsFromNotes } from "../../lib/research/agent";
+import { discoverTrendingTopics } from "../../lib/news/discover";
 import { dialect } from "../../lib/db";
 import { Kysely } from "kysely";
 
@@ -225,6 +226,30 @@ app.post("/generate", async (c) => {
     return c.json({ error: "No user found in the database. Seed the database first." }, 500);
   }
 
+  // A topic discovered from the tech press carries two things the bare title cannot: the
+  // summary the outlets actually published, and a decision about which picture may be drawn.
+  // Both are read from the bank row here rather than accepted from the request, so the n8n
+  // workflow keeps sending `{ topic, topicId }` exactly as it does today.
+  let enrichment = "";
+  if (body.topicId) {
+    const banked = await getTopic(body.topicId, userId).catch(() => null);
+    if (banked?.source === "news-discovery") {
+      const visual =
+        banked.visualHint === "changelog"
+          ? "Visual: ini rilis/update — rinci perubahannya sebagai daftar (timeline / checklist / datatable)."
+          : "Visual: ini berita naratif — tetap editorial (illustration / concept), bukan daftar perubahan.";
+      enrichment = [
+        banked.description ? `\nKonteks dari berita: ${banked.description}` : "",
+        `\n${visual}`,
+        "\nDILARANG memakai gambar apa pun dari artikel berita sumber.",
+      ].join("");
+      console.log(
+        `[automation] topic ${body.topicId} dari news-discovery: visual=${banked.visualHint ?? "?"}, ` +
+          `${banked.sourceUrls?.length ?? 0} sumber`
+      );
+    }
+  }
+
   // 4. Resolve default configured AI model
   const modelId = defaultModel();
   if (!modelId) {
@@ -256,7 +281,7 @@ app.post("/generate", async (c) => {
   const settled = await Promise.allSettled([
     createAndPublishCarousel({
       topic,
-      angleInstruction: " (fokus: Panduan Praktis, Tips & Tutorial)",
+      angleInstruction: " (fokus: Panduan Praktis, Tips & Tutorial)" + enrichment,
       dueAt: dueAt1,
       userId,
       modelId,
@@ -265,7 +290,7 @@ app.post("/generate", async (c) => {
     }),
     createAndPublishCarousel({
       topic,
-      angleInstruction: " (fokus: Kesalahan Umum, Mitos, Studi Kasus & Konsep Mendalam)",
+      angleInstruction: " (fokus: Kesalahan Umum, Mitos, Studi Kasus & Konsep Mendalam)" + enrichment,
       dueAt: dueAt2,
       userId,
       modelId,
@@ -371,6 +396,63 @@ app.post("/topics/generate", async (c) => {
 
   const topics = await generateAndSaveTopics(uid, resolveModel(modelId), body);
   return c.json({ success: true, topics, count: topics.length });
+});
+
+/**
+ * News discovery on a schedule.
+ *
+ * Meant for a daily n8n cron. Answers 200 with a report even when nothing was saved: an empty
+ * sweep is a normal outcome (some days no story clears two independent sources AND the
+ * significance filter), and returning an error for it would have n8n retry a sweep that was
+ * already correct — and alert on a quiet news day.
+ */
+app.post("/topics/discover-trending", async (c) => {
+  const body = (await c.req.json().catch(() => ({}))) as {
+    userId?: string;
+    withinHours?: number;
+    minSources?: number;
+    maxTopics?: number;
+    useSearch?: boolean;
+    dryRun?: boolean;
+  };
+
+  const uid = body.userId ?? (await resolveUserId().catch(() => null));
+  if (!uid) {
+    return c.json({ error: "No user found in the database. Seed the database first." }, 500);
+  }
+
+  const modelId = defaultModel();
+  if (!modelId) {
+    return c.json({ error: "No AI model API keys configured in .env" }, 500);
+  }
+
+  try {
+    const result = await discoverTrendingTopics(resolveModel(modelId), {
+      userId: uid,
+      withinHours: body.withinHours,
+      minSources: body.minSources,
+      maxTopics: body.maxTopics,
+      useSearch: body.useSearch,
+      dryRun: body.dryRun === true,
+    });
+
+    return c.json({
+      success: true,
+      message:
+        result.saved.length > 0
+          ? `Saved ${result.saved.length} trending topic(s) from ${result.stats.corroborated} corroborated stor${result.stats.corroborated === 1 ? "y" : "ies"}`
+          : `No topic saved: ${result.stats.corroborated} corroborated stor${result.stats.corroborated === 1 ? "y" : "ies"} out of ${result.stats.clusters} clusters, ${result.stats.picked} passed significance`,
+      topics: result.saved,
+      count: result.saved.length,
+      skipped: result.skipped,
+      stats: result.stats,
+      feeds: result.feeds,
+      search: result.search,
+    });
+  } catch (err: any) {
+    console.error("News discovery failed:", err);
+    return c.json({ error: `News discovery failed: ${err.message}` }, 500);
+  }
 });
 
 /* ── TASK 3+5: Research Agent — extract topics from raw notes ────────── */

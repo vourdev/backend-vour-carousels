@@ -35,6 +35,15 @@ export type TopicStatus = "idea" | "queued" | "generated" | "published" | "archi
 
 export type BlogStatus = "not_used" | "generating" | "published" | "failed";
 
+/**
+ * Which picture a topic from news discovery should be drawn with.
+ *
+ * Never a photograph from the article it came from. "changelog" means a structured
+ * release — a version with a list of what changed — and "illustration" means everything
+ * narrative. See lib/news/discover.ts and the RELEASE row in lib/ai/prompts.ts.
+ */
+export type VisualHint = "changelog" | "illustration";
+
 export interface Topic {
   id: string;
   title: string;
@@ -55,6 +64,12 @@ export interface Topic {
   relatedProductId?: string;
   targetAudienceFit?: string;
   suggestedAngle?: string;
+  /**
+   * Where the claim came from, for grounding the article and deck that get written from it.
+   * Text URLs only — no image is ever taken from these pages.
+   */
+  sourceUrls?: string[];
+  visualHint?: VisualHint;
 }
 
 const TOPICS_SCHEMA = `
@@ -85,6 +100,8 @@ const MIGRATION_COLUMNS = [
   "target_audience_fit TEXT",
   "suggested_angle TEXT",
   "blog_status TEXT NOT NULL DEFAULT 'not_used'",
+  "source_urls TEXT",
+  "visual_hint TEXT",
 ];
 
 async function ensureSchema() {
@@ -135,7 +152,27 @@ function rowToTopic(row: any): Topic {
     relatedProductId: str(row.related_product_id),
     targetAudienceFit: str(row.target_audience_fit),
     suggestedAngle: str(row.suggested_angle),
+    sourceUrls: parseUrlList(row.source_urls),
+    visualHint: str(row.visual_hint) as VisualHint | undefined,
   };
+}
+
+/**
+ * `source_urls` holds a JSON array. A row written before the column existed holds NULL, and a
+ * row written by hand could hold anything; either way a reader asking "where did this come
+ * from" must get an answer it can iterate, not a crash. Absent stays `undefined` rather than
+ * `[]`, so "no sources recorded" and "recorded as none" remain distinguishable.
+ */
+function parseUrlList(raw: unknown): string[] | undefined {
+  if (raw == null) return undefined;
+  try {
+    const parsed = JSON.parse(String(raw));
+    if (!Array.isArray(parsed)) return undefined;
+    const urls = parsed.map((u) => String(u)).filter((u) => /^https?:\/\//i.test(u));
+    return urls.length ? urls : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export async function createTopic(data: {
@@ -158,6 +195,10 @@ export async function createTopic(data: {
   target_audience_fit?: string;
   suggestedAngle?: string;
   suggested_angle?: string;
+  sourceUrls?: string[];
+  source_urls?: string[];
+  visualHint?: VisualHint;
+  visual_hint?: VisualHint;
 }): Promise<Topic> {
   await ensureSchema();
   const now = Date.now();
@@ -166,10 +207,12 @@ export async function createTopic(data: {
   const audFit = data.targetAudienceFit ?? data.target_audience_fit ?? null;
   const sugAngle = data.suggestedAngle ?? data.suggested_angle ?? null;
   const blogSt = data.blogStatus ?? data.blog_status ?? "not_used";
+  const srcUrls = data.sourceUrls ?? data.source_urls;
+  const visual = data.visualHint ?? data.visual_hint ?? null;
   
   await db().execute({
-    sql: `INSERT INTO topics (id, user_id, title, category, description, keywords, angle, status, blog_status, priority, scheduled_date, source, related_product_id, target_audience_fit, suggested_angle, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO topics (id, user_id, title, category, description, keywords, angle, status, blog_status, priority, scheduled_date, source, related_product_id, target_audience_fit, suggested_angle, source_urls, visual_hint, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       id,
       data.userId,
@@ -186,6 +229,8 @@ export async function createTopic(data: {
       relProdId,
       audFit,
       sugAngle,
+      srcUrls && srcUrls.length ? JSON.stringify(srcUrls) : null,
+      visual,
       now,
       now,
     ],
@@ -222,6 +267,10 @@ export async function updateTopic(
     target_audience_fit?: string | null;
     suggestedAngle?: string | null;
     suggested_angle?: string | null;
+    sourceUrls?: string[] | null;
+    source_urls?: string[] | null;
+    visualHint?: VisualHint | null;
+    visual_hint?: VisualHint | null;
   }
 ): Promise<void> {
   await ensureSchema();
@@ -283,6 +332,16 @@ export async function updateTopic(
   if (data.suggestedAngle !== undefined || data.suggested_angle !== undefined) {
     updates.push("suggested_angle = ?");
     args.push(data.suggestedAngle ?? data.suggested_angle ?? null);
+  }
+
+  if (data.sourceUrls !== undefined || data.source_urls !== undefined) {
+    const list = data.sourceUrls ?? data.source_urls;
+    updates.push("source_urls = ?");
+    args.push(list && list.length ? JSON.stringify(list) : null);
+  }
+  if (data.visualHint !== undefined || data.visual_hint !== undefined) {
+    updates.push("visual_hint = ?");
+    args.push(data.visualHint ?? data.visual_hint ?? null);
   }
 
   updates.push("updated_at = ?");

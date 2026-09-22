@@ -21,7 +21,12 @@ const ALLOWED_BLOG_STATUSES = new Set<BlogStatus>([
 /**
  * GET /next-for-blog
  * Returns 1 unstarted topic for blog generation (blog_status = "not_used").
- * Returns ONLY relevant fields: id, title, description, category, tags.
+ *
+ * `sourceUrls` and `visualHint` are additive, and only news-discovery rows carry them. They
+ * have to cross this boundary: a topic discovered from the press is only worth publishing if
+ * the article is written against what those sources actually say, and the blog generator runs
+ * in another service (backend-vour-studio) that cannot read this database. A consumer that
+ * ignores the two new keys behaves exactly as before.
  */
 app.get("/next-for-blog", async (c) => {
   const userId = c.get("userId");
@@ -40,6 +45,9 @@ app.get("/next-for-blog", async (c) => {
     description: topic.description,
     category: topic.category,
     tags: topic.keywords,
+    angle: topic.angle,
+    sourceUrls: topic.sourceUrls,
+    visualHint: topic.visualHint,
   });
 });
 
