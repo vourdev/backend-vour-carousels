@@ -1,5 +1,6 @@
 import { generateText, type LanguageModel } from "ai";
 import { aiCallDefaults, availableModels, resolveModel } from "../ai/registry";
+import { NEWS_HOSTS } from "../news/feeds";
 
 /**
  * Propose where the thing a screenshot brief names actually lives.
@@ -50,6 +51,13 @@ export type ResolveOutcome =
  * page WOULD pass the identity check, because it genuinely is about the entity.
  */
 const NEVER_OFFICIAL = new Set([
+  // Tech press. These arrived with news discovery (lib/news), and they close a hole rather
+  // than tidying a list: a topic whose sources are three articles about a new release invites
+  // exactly the wrong screenshot — the article we read the story in. That picture belongs to
+  // the outlet and the photographer who took it. The product's own site is fair game; the
+  // press covering it never is. Kept beside the feed registry so adding a feed cannot forget
+  // to block its host.
+  ...NEWS_HOSTS,
   "google.com", "www.google.com", "bing.com", "duckduckgo.com",
   "reddit.com", "x.com", "twitter.com", "facebook.com", "instagram.com",
   "linkedin.com", "youtube.com", "youtu.be", "tiktok.com",

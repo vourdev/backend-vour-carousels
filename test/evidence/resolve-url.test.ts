@@ -157,3 +157,33 @@ describe("apex", () => {
     expect(apex("docs.opencode.ai")).toBe("docs.opencode.ai");
   });
 });
+
+describe("news outlets are never an entity's official site", () => {
+  it("rejects a tech-press domain the model offers as the official home", async () => {
+    // News discovery cites articles as text; screenshotting one of those pages would republish
+    // the outlet's photography. NEVER_OFFICIAL is fed from the feed registry so this closes for
+    // every publisher we read, not just the ones someone remembered to list.
+    const outcome = await proposeOfficialUrls(
+      "Google Agent Development Kit",
+      fakeModel(JSON.stringify({ candidates: [{ url: "https://www.theverge.com/adk", confidence: "high" }] })) as any
+    );
+    expect(outcome.ok).toBe(false);
+    if (!outcome.ok) expect(outcome.reason).toBe("aggregator");
+  });
+
+  it("still accepts the product's own domain alongside a rejected outlet", async () => {
+    const outcome = await proposeOfficialUrls(
+      "Google Agent Development Kit",
+      fakeModel(
+        JSON.stringify({
+          candidates: [
+            { url: "https://techcrunch.com/2026/09/21/google-adk/", confidence: "high" },
+            { url: "https://google.github.io/adk-docs/", confidence: "low" },
+          ],
+        })
+      ) as any
+    );
+    expect(outcome.ok).toBe(true);
+    if (outcome.ok) expect(outcome.candidates.map((c) => c.host)).toEqual(["google.github.io"]);
+  });
+});

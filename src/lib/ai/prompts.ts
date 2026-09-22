@@ -336,6 +336,7 @@ plain card, which reads as generic).
 CATEGORY → allowed mockup types (choose by the slide's actual content):
 - STAT_HOOK  (big number / count as a hook)      → bigstat
 - PERF       (latency, throughput, benchmark)    → latencycomp · bigstat
+- RELEASE    (versi baru / update dengan daftar perubahan) → timeline · checklist · datatable
 - COMPARISON (X vs Y where one of them wins)     → comparison · datatable · timeline
 - DECISION   (kapan pakai yang mana, 2-3 pilihan, jawabannya tergantung situasi pembaca dan TIDAK ada yang menang) → decision
 - MYTH       (salah kaprah: "X itu bukan Y", "sering dikira", "ternyata nggak selalu") → mythfact
@@ -454,6 +455,12 @@ ${CUSTOM_MOCKUP_FIT}
 NOT AVAILABLE in auto-generation — do NOT fake these; pick the closest above:
 - real screenshots / photographic evidence → use browser (a rebuilt UI, not a
   pasted image).
+- a picture taken from a NEWS ARTICLE about the topic → never. Not as a screenshot,
+  not as a browser mockup of the article page, not as an image. A topic sourced from
+  the tech press cites those articles as text; their photography belongs to the outlet.
+  Draw the change instead (timeline · checklist · datatable) or stay editorial
+  (illustration). If real product UI is genuinely needed, the screenshot may only ever
+  come from the PRODUCT's own site, never from the press covering it.
 - human elements (hands / person / character) → not supported; stay editorial.
 If a brief explicitly needs a real screenshot or photo, describe it as a MANUAL
 capture step in the brief text — never emit a placeholder mockup for it.
