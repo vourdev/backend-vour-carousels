@@ -164,10 +164,14 @@ placeholder, parked domain, login wall or error page is "no".
 Reply with ONLY this JSON: {"match": true | false}`;
 
 function defaultJudge(): LanguageModel | null {
-  // The cheap combo: this is a yes/no on text already in front of it, not a recall
-  // question like the candidate lookup.
-  if (!availableModels().includes("vour-lite")) return null;
-  return resolveModel("vour-lite");
+  // This asked for the cheap combo, `vour-lite`, on the grounds that a yes/no about text
+  // already in front of the model is not a recall question. Sound reasoning, dead combo:
+  // `vour-lite` pointed at `vour-learning`, which OmniRoute does not have, so every tie-break
+  // threw and the verdict below fell through to "identity judge unavailable" — failing closed,
+  // as designed, but on a configuration error rather than on the evidence. Screenshots that
+  // needed the tie-break were silently dropped.
+  if (!availableModels().includes("vour-high")) return null;
+  return resolveModel("vour-high");
 }
 
 /** Above this the tokens alone decide. */

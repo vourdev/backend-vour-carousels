@@ -3,7 +3,7 @@ import { createDeepSeek } from "@ai-sdk/deepseek";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { omnirouteGate } from "../../services/omniroute-gate";
 
-/** "gemini" is retired and kept only so stored records resolve — see resolveModel. */
+/** "gemini" and "vour-lite" are retired and kept only so stored records resolve — see resolveModel. */
 export type ModelId = "gemini" | "deepseek" | "mimo" | "openrouter" | "omniroute" | "vour-high" | "vour-lite";
 
 function has(env: NodeJS.ProcessEnv, ...keys: string[]): boolean {
@@ -14,10 +14,15 @@ function has(env: NodeJS.ProcessEnv, ...keys: string[]): boolean {
 export function availableModels(env: NodeJS.ProcessEnv = process.env): ModelId[] {
   const out: ModelId[] = [];
 
-  // OmniRoute combos - vour-high (vour-combos) and vour-lite (vour-learning)
+  // One combo, `vour-combos`.
+  //
+  // `vour-lite` used to be offered here too, mapping to a `vour-learning` combo that does not
+  // exist in the OmniRoute catalogue — so every call that selected it died with
+  // `400 Unable to determine provider for model 'vour-learning'`. Advertising it on the
+  // presence of two env vars, rather than on the combo existing, is what hid that: the model
+  // picker listed it, `verify-identity` asked for it, and both only found out at call time.
   if (has(env, "OMNIROUTE_API_KEY", "OMNIROUTE_BASE_URL")) {
     out.push("vour-high");   // Maps to vour-combos
-    out.push("vour-lite");   // Maps to vour-learning
   }
   
   // Legacy omniroute support
@@ -124,8 +129,8 @@ export function resolveModel(id: ModelId): LanguageModel {
       // key with it. The id survives only because saved carousels and drafts store it, and
       // opening one must not throw — so it resolves to the default combo instead, which is
       // what a stored record would be regenerated with today.
-      console.warn('[registry] modelId "gemini" is retired — using vour-lite instead.');
-      return resolveModel("vour-lite");
+      console.warn('[registry] modelId "gemini" is retired — using vour-high instead.');
+      return resolveModel("vour-high");
     }
     case "deepseek": {
       const deepseek = createDeepSeek({
@@ -164,14 +169,12 @@ export function resolveModel(id: ModelId): LanguageModel {
       return vourHigh("vour-combos");
     }
     case "vour-lite": {
-      // vour-lite = vour-learning (lightweight learning model)
-      const vourLite = createOpenAICompatible({
-        name: "vour-lite",
-        apiKey: env.OMNIROUTE_API_KEY,
-        baseURL: cleanBaseUrl(env.OMNIROUTE_BASE_URL),
-        fetch: omnirouteFetch,
-      });
-      return vourLite("vour-learning");
+      // Retired with the `vour-learning` combo it pointed at, which was removed from
+      // OmniRoute on 22 Sep 2026. The id survives because saved carousels and drafts store
+      // it, and opening one must not throw — so it resolves to the combo those records would
+      // be regenerated with today.
+      console.warn('[registry] modelId "vour-lite" is retired — using vour-high instead.');
+      return resolveModel("vour-high");
     }
     case "omniroute": {
       const omniroute = createOpenAICompatible({
