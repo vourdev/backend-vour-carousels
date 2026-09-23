@@ -256,3 +256,65 @@ describe("Service-to-Service Blog Topics API", () => {
     });
   });
 });
+
+describe("GET /:id — the row a workflow only sent an id for", () => {
+  const authHeader = { Authorization: `Bearer ${SERVICE_KEY}` };
+
+  it("returns the sources a news-discovery topic was written from", async () => {
+    // The nightly workflow builds its topic object by hand and cannot forward a field it does
+    // not know about, so the blog generator re-reads the row by id to get the sources. Without
+    // this the article about a real release is written from the model's memory of an older one.
+    const topic = await createTopic({
+      userId: USER,
+      title: "Google Rilis Agent Development Kit 1.0 buat Kotlin",
+      category: "trending",
+      description: "ADK 1.0 kini setara versi Python dan Java.",
+      keywords: ["Kotlin", "ADK"],
+      angle: "fokus: Rilis & Daftar Perubahan",
+      source: "news-discovery",
+      sourceUrls: [
+        "https://www.infoq.com/news/2026/09/google-adk-1-0-released/",
+        "https://developers.googleblog.com/build-zero-trust-ai-agents/",
+      ],
+      visualHint: "changelog",
+    });
+
+    const app = buildApp();
+    const res = await app.request(`/api/topics/${topic.id}`, { headers: authHeader });
+    expect(res.status).toBe(200);
+
+    const body = (await res.json()) as any;
+    expect(body.id).toBe(topic.id);
+    expect(body.sourceUrls).toHaveLength(2);
+    expect(body.visualHint).toBe("changelog");
+    expect(body.angle).toBe("fokus: Rilis & Daftar Perubahan");
+  });
+
+  it("does not shadow /next-for-blog", async () => {
+    // Registration order decides this: a bare `/:id` declared first would swallow the
+    // literal route and answer 404 for it.
+    const app = buildApp();
+    const res = await app.request("/api/topics/next-for-blog", { headers: authHeader });
+    expect([200, 404]).toContain(res.status);
+    if (res.status === 200) {
+      const body = (await res.json()) as any;
+      expect(body.id).toBeDefined();
+      expect(body.error).toBeUndefined();
+    } else {
+      // 404 only ever means "the bank has nothing unused", never "no such route".
+      expect((await res.json()).error).toMatch(/No unused blog topics/i);
+    }
+  });
+
+  it("404s for an id that is not in the bank", async () => {
+    const app = buildApp();
+    const res = await app.request("/api/topics/topic_does_not_exist", { headers: authHeader });
+    expect(res.status).toBe(404);
+  });
+
+  it("still requires the service key", async () => {
+    const app = buildApp();
+    const res = await app.request("/api/topics/whatever");
+    expect(res.status).toBe(401);
+  });
+});

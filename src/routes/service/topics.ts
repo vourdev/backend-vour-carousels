@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { serviceAuthMiddleware, rateLimitMiddleware } from "../../middleware/service-auth";
 import {
   getNextTopicForBlog,
+  getTopic,
   updateBlogStatus,
   type BlogStatus,
 } from "../../lib/topics/bank";
@@ -37,6 +38,39 @@ app.get("/next-for-blog", async (c) => {
   const topic = await getNextTopicForBlog(userId);
   if (!topic) {
     return c.json({ error: "No unused blog topics available in the bank" }, 404);
+  }
+
+  return c.json({
+    id: topic.id,
+    title: topic.title,
+    description: topic.description,
+    category: topic.category,
+    tags: topic.keywords,
+    angle: topic.angle,
+    sourceUrls: topic.sourceUrls,
+    visualHint: topic.visualHint,
+  });
+});
+
+/**
+ * GET /:id
+ * One topic by id, same shape as /next-for-blog.
+ *
+ * This exists because the nightly workflow hands the blog generator a topic object it builds
+ * by hand -- `{ id, title, category, description, angle }` -- so a field added to
+ * /next-for-blog never reaches the other service on that path. Rather than edit the workflow
+ * (its last hand-edit shipped a topic twice), the generator re-reads the row it was given the
+ * id of and picks up whatever this endpoint knows, including the sources to write against.
+ */
+app.get("/:id", async (c) => {
+  const userId = c.get("userId");
+  if (!userId) {
+    return c.json({ error: "Unauthorized: Missing user context" }, 401);
+  }
+
+  const topic = await getTopic(c.req.param("id"), userId);
+  if (!topic) {
+    return c.json({ error: "Topic not found" }, 404);
   }
 
   return c.json({
