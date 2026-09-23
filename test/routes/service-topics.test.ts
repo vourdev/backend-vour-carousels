@@ -318,3 +318,87 @@ describe("GET /:id — the row a workflow only sent an id for", () => {
     expect(res.status).toBe(401);
   });
 });
+
+describe("news jumps the queue while it is still news", () => {
+  const authHeader = { Authorization: `Bearer ${SERVICE_KEY}` };
+
+  async function ageTopic(id: string, ms: number) {
+    // createTopic stamps `now`; there is no API for backdating, and the rule under test is
+    // entirely about age, so the row is aged directly.
+    const { createClient } = await import("@libsql/client");
+    const db = createClient({ url: process.env.DATABASE_URL! });
+    await db.execute({ sql: "UPDATE topics SET created_at = ? WHERE id = ?", args: [Date.now() - ms, id] });
+  }
+
+  it("prefers a story from today over a higher-priority evergreen topic", async () => {
+    // Priority alone would hand out the evergreen one and the story would go stale waiting.
+    await createTopic({
+      userId: USER,
+      title: "Evergreen: RAG vs Fine-Tuning",
+      category: "evergreen",
+      priority: 10,
+      keywords: [],
+    });
+    const news = await createTopic({
+      userId: USER,
+      title: "Celah 0-Day di Meta Muse",
+      category: "trending",
+      priority: 8,
+      keywords: [],
+      source: "news-discovery",
+      sourceUrls: ["https://arstechnica.com/a", "https://www.wired.com/b"],
+      visualHint: "illustration",
+    });
+
+    const app = buildApp();
+    const res = await app.request("/api/topics/next-for-blog", { headers: authHeader });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.id).toBe(news.id);
+    expect(body.sourceUrls).toHaveLength(2);
+  });
+
+  it("stops treating a story as news once it is four days old", async () => {
+    const stale = await createTopic({
+      userId: USER,
+      title: "Berita basi yang sudah lewat",
+      category: "trending",
+      priority: 8,
+      keywords: [],
+      source: "news-discovery",
+      sourceUrls: ["https://arstechnica.com/old"],
+    });
+    await ageTopic(stale.id, 96 * 60 * 60 * 1000);
+
+    const evergreen = await createTopic({
+      userId: USER,
+      title: "Evergreen yang menang lagi",
+      category: "evergreen",
+      priority: 10,
+      keywords: [],
+    });
+
+    const app = buildApp();
+    const body = (await (await app.request("/api/topics/next-for-blog", { headers: authHeader })).json()) as any;
+    // Whatever the ordinary queue picks, it must not be the stale story jumping ahead.
+    expect(body.id).not.toBe(stale.id);
+    expect([evergreen.id, body.id]).toContain(body.id);
+  });
+
+  it("ignores a topic that carries no sources, whatever its category", async () => {
+    // "trending" is also what the batch generator emits from the model's own memory. Only a
+    // corroborated story -- one with sources -- is allowed to jump the queue.
+    const unsourced = await createTopic({
+      userId: USER,
+      title: "Trending tapi tanpa sumber sama sekali",
+      category: "trending",
+      priority: 1,
+      keywords: [],
+      source: "batch",
+    });
+
+    const app = buildApp();
+    const body = (await (await app.request("/api/topics/next-for-blog", { headers: authHeader })).json()) as any;
+    expect(body.id).not.toBe(unsourced.id);
+  });
+});

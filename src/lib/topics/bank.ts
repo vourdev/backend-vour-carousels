@@ -396,8 +396,62 @@ export async function getTopics(
   return res.rows.map(rowToTopic);
 }
 
+/**
+ * How long a news story is still news.
+ *
+ * News is perishable in a way the rest of the bank is not: a 0-day write-up published three
+ * weeks after the patch is worthless, while "RAG vs fine-tuning" is as good next month as it
+ * is today. The normal queue cannot express that — it orders by priority, so an evergreen
+ * topic rated 10 beats a story that broke this morning rated 9, and the story ages out of
+ * relevance while it waits its turn.
+ *
+ * So a corroborated story jumps the queue for three days, and then stops being special and
+ * takes its place by priority like everything else.
+ */
+export const NEWS_FRESH_MS = 72 * 60 * 60 * 1000;
+
+/**
+ * The newest unconsumed news-discovery topic, if one is still fresh.
+ *
+ * `for` decides what "unconsumed" means, because the two consumers track it differently: the
+ * carousel moves `status` along, the blog moves `blog_status`.
+ */
+export async function getFreshNewsTopic(
+  userId: string,
+  target: "blog" | "carousel",
+  maxAgeMs: number = NEWS_FRESH_MS
+): Promise<Topic | null> {
+  await ensureSchema();
+
+  const unconsumed =
+    target === "blog"
+      ? `(blog_status = 'not_used' OR blog_status IS NULL)`
+      : `status IN ('idea', 'approved')`;
+
+  const res = await db().execute({
+    sql: `SELECT * FROM topics
+          WHERE user_id = ?
+            AND source = 'news-discovery'
+            AND source_urls IS NOT NULL
+            AND created_at >= ?
+            AND ${unconsumed}
+          -- Priority leads, recency breaks the tie. Ordering by time first made the choice
+          -- between two stories from the same sweep come down to milliseconds.
+          ORDER BY priority DESC, created_at DESC
+          LIMIT 1`,
+    args: [userId, Date.now() - maxAgeMs],
+  });
+
+  return res.rows[0] ? rowToTopic(res.rows[0]) : null;
+}
+
 export async function getNextTopicForBlog(userId: string): Promise<Topic | null> {
   await ensureSchema();
+
+  // A fresh story first, then the ordinary queue. See NEWS_FRESH_MS.
+  const fresh = await getFreshNewsTopic(userId, "blog");
+  if (fresh) return fresh;
+
   const res = await db().execute({
     sql: `SELECT * FROM topics 
           WHERE user_id = ? 

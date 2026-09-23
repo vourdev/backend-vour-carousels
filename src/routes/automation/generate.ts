@@ -17,7 +17,7 @@ import { scheduleBufferPost } from "../../lib/publish/buffer";
 import { buildPostText } from "../../lib/publish/caption";
 import { nextWibSlot, POST_HOUR_WIB } from "../../lib/publish/schedule";
 import { createCarousel, updateCarousel, getUnderusedMockupTypes, getRecentMockupStatsWithPercentages, getGlobalMockupStats, getRecentLayoutStats } from "../../lib/history/repo";
-import { getTopic, getTopics, updateTopic, createTopic, type TopicStatus } from "../../lib/topics/bank";
+import { getFreshNewsTopic, getTopic, getTopics, updateTopic, createTopic, type TopicStatus } from "../../lib/topics/bank";
 import { generateAndSaveTopics, type GenerateTopicsInput } from "../../lib/topics/service";
 import { extractAndSaveTopicsFromNotes } from "../../lib/research/agent";
 import { discoverTrendingTopics } from "../../lib/news/discover";
@@ -348,14 +348,19 @@ app.get("/topic/next", async (c) => {
     return c.json({ error: "No user found in the database. Seed the database first." }, 500);
   }
 
-  // "approved" first, then "idea".
+  // A fresh news story first, then "approved", then "idea".
   //
-  // Both are pullable, and "approved" outranks "idea" because a human has already looked
-  // at it: research-agent candidates land as "pending_review" and only reach "approved" by
-  // an explicit decision. Before this, /topic/next queried "idea" alone, so approving a
+  // News jumps the queue for three days because it stops being news — see NEWS_FRESH_MS.
+  // Ordering by priority alone lets an evergreen topic rated 10 sit in front of a story that
+  // broke this morning rated 9, and by the time the story's turn arrives it is history.
+  //
+  // Among the rest, "approved" outranks "idea" because a human has already looked at it:
+  // research-agent candidates land as "pending_review" and only reach "approved" by an
+  // explicit decision. Before that, /topic/next queried "idea" alone, so approving a
   // candidate moved it into a status nothing ever read — the approval endpoint worked and
   // the topic then disappeared from the pipeline for good.
-  let [topic] = await getTopics(userId, { status: "approved", limit: 1 });
+  let topic = await getFreshNewsTopic(userId, "carousel").catch(() => null);
+  if (!topic) [topic] = await getTopics(userId, { status: "approved", limit: 1 });
   if (!topic) [topic] = await getTopics(userId, { status: "idea", limit: 1 });
   if (!topic) {
     return c.json({ error: "No approved or idea topics available in the bank" }, 404);
