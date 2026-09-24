@@ -31,6 +31,10 @@ services:
       - BUFFER_IG_CHANNEL_ID=${BUFFER_IG_CHANNEL_ID}
       - BUFFER_TIKTOK_CHANNEL_ID=${BUFFER_TIKTOK_CHANNEL_ID}
       - AUTOMATION_SECRET=${AUTOMATION_SECRET}
+      # Bearer token for the vour.dev blog generator. Without it, the
+      # /api/topics/next-for-blog routes answer 500, not 401 -- prod ran that way
+      # until 27 Aug 2026 because the key was in the repo .env and not on the box.
+      - VOURDEV_SERVICE_KEY=${VOURDEV_SERVICE_KEY}
       - ALLOWED_ORIGIN=${ALLOWED_ORIGIN}
     # nginx serves this same directory from the host, so the bytes never leave the box
     # to be published -- Buffer pulls them back through Cloudflare instead.
