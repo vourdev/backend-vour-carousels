@@ -17,7 +17,15 @@ import { scheduleBufferPost } from "../../lib/publish/buffer";
 import { buildPostText } from "../../lib/publish/caption";
 import { nextWibSlot, POST_HOUR_WIB } from "../../lib/publish/schedule";
 import { createCarousel, updateCarousel, getUnderusedMockupTypes, getRecentMockupStatsWithPercentages, getGlobalMockupStats, getRecentLayoutStats } from "../../lib/history/repo";
-import { getFreshNewsTopic, getTopic, getTopics, updateTopic, createTopic, type TopicStatus } from "../../lib/topics/bank";
+import {
+  getFreshNewsTopic,
+  getTopic,
+  getTopics,
+  updateTopic,
+  createTopic,
+  reclaimStrandedTopics,
+  type TopicStatus,
+} from "../../lib/topics/bank";
 import { generateAndSaveTopics, type GenerateTopicsInput } from "../../lib/topics/service";
 import { extractAndSaveTopicsFromNotes } from "../../lib/research/agent";
 import { discoverTrendingTopics } from "../../lib/news/discover";
@@ -314,16 +322,35 @@ app.post("/generate", async (c) => {
   //  - nothing shipped   -> back to "idea", the only status /topic/next hands out. Left
   //    at "queued" the row is invisible to every query and the bank silently drains by
   //    one topic per failed run — which is what an outage upstream would do every night.
+  //
+  // The write itself is retried, because the one outage that makes generation fail is also
+  // the one that makes this write fail -- on 23 Sep 2026 it timed out against Turso and the
+  // highest-priority story in the bank stayed "queued", invisible to every query. Swallowing
+  // the error is still right (a scheduled post must not be reported as a failure), so the
+  // durable net is reclaimStrandedTopics() at the front of the next run.
   if (body.topicId) {
     const closingStatus = scheduled.length > 0 ? ("published" as const) : ("idea" as const);
-    await updateTopic(body.topicId, userId, {
+    const patch = {
       status: closingStatus,
       ...(scheduled.length > 0 ? { carouselId: scheduled[0].id } : {}),
-    }).catch((err) => {
-      // Never fail the request on this: when posts are already scheduled, reporting a
-      // failure here is what invites the duplicate retry.
-      console.error(`Failed to move topic ${body.topicId} to "${closingStatus}":`, err);
-    });
+    };
+
+    let closed = false;
+    for (const wait of [0, 2_000, 6_000]) {
+      if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
+      try {
+        await updateTopic(body.topicId, userId, patch);
+        closed = true;
+        break;
+      } catch (err) {
+        console.error(`Failed to move topic ${body.topicId} to "${closingStatus}":`, err);
+      }
+    }
+    if (!closed) {
+      console.error(
+        `Topic ${body.topicId} is stranded in "queued"; the next run will reclaim it.`
+      );
+    }
   }
 
   if (scheduled.length === 0) {
@@ -359,6 +386,12 @@ app.get("/topic/next", async (c) => {
   // explicit decision. Before that, /topic/next queried "idea" alone, so approving a
   // candidate moved it into a status nothing ever read — the approval endpoint worked and
   // the topic then disappeared from the pipeline for good.
+  // A run that died mid-flight leaves its topic parked in "queued", which nothing reads.
+  // Free those first, or the bank looks emptier than it is. See QUEUED_STRANDED_MS.
+  await reclaimStrandedTopics(userId).catch((err) => {
+    console.error("[automation] reclaim failed, continuing with the queue as-is:", err);
+  });
+
   let topic = await getFreshNewsTopic(userId, "carousel").catch(() => null);
   if (!topic) [topic] = await getTopics(userId, { status: "approved", limit: 1 });
   if (!topic) [topic] = await getTopics(userId, { status: "idea", limit: 1 });

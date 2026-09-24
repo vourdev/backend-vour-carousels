@@ -445,8 +445,62 @@ export async function getFreshNewsTopic(
   return res.rows[0] ? rowToTopic(res.rows[0]) : null;
 }
 
+/**
+ * How long a topic may sit in "queued" before it is treated as abandoned rather than busy.
+ *
+ * `/topic/next` parks a topic in "queued" so a retrigger cannot hand out the same one, and
+ * the generate route is supposed to move it on — to "published" if a deck shipped, back to
+ * "idea" if none did. On 23 Sep 2026 that closing write was attempted and lost: the same
+ * egress outage that starved the AI call also timed out the Turso connection, and the write
+ * is deliberately swallowed so a partial success is never reported as a failure.
+ *
+ *   Failed to move topic topic_...cqs9mma to "idea": [TypeError: fetch failed]
+ *     [cause]: ConnectTimeoutError ... turso.io:443, timeout: 10000ms
+ *
+ * The row stayed "queued", which no query reads, so the highest-priority news story in the
+ * bank became invisible — permanently, and silently, with the bank one topic lighter every
+ * time it happened. Retrying that write helps but cannot be relied on: it runs during the
+ * outage, which is precisely when it fails.
+ *
+ * Six hours is well past any real run (the nightly finishes inside an hour) and well short
+ * of the 72h freshness window, so a stranded story is recovered while it is still a story.
+ */
+export const QUEUED_STRANDED_MS = 6 * 60 * 60 * 1000;
+
+/**
+ * Return topics stranded in "queued" to "idea" so the pipeline can see them again.
+ *
+ * Deliberately narrow: only rows with no `carousel_id`, because a row that recorded a deck
+ * did reach Buffer and must never be handed out a second time. Returns how many it freed.
+ */
+export async function reclaimStrandedTopics(
+  userId: string,
+  maxAgeMs: number = QUEUED_STRANDED_MS
+): Promise<number> {
+  await ensureSchema();
+
+  const res = await db().execute({
+    sql: `UPDATE topics
+             SET status = 'idea', updated_at = ?
+           WHERE user_id = ?
+             AND status = 'queued'
+             AND (carousel_id IS NULL OR carousel_id = '')
+             AND updated_at < ?`,
+    args: [Date.now(), userId, Date.now() - maxAgeMs],
+  });
+
+  const freed = Number(res.rowsAffected ?? 0);
+  if (freed > 0) console.log(`[topics] reclaimed ${freed} topic(s) stranded in "queued"`);
+  return freed;
+}
+
 export async function getNextTopicForBlog(userId: string): Promise<Topic | null> {
   await ensureSchema();
+
+  // Free anything a previous run abandoned before deciding there is nothing to write about.
+  await reclaimStrandedTopics(userId).catch((err) => {
+    console.error("[topics] reclaim failed, continuing with the queue as-is:", err);
+  });
 
   // A fresh story first, then the ordinary queue. See NEWS_FRESH_MS.
   const fresh = await getFreshNewsTopic(userId, "blog");

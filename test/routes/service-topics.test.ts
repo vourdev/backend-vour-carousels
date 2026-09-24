@@ -402,3 +402,80 @@ describe("news jumps the queue while it is still news", () => {
     expect(body.id).not.toBe(unsourced.id);
   });
 });
+
+/**
+ * The 23 Sep 2026 nightly lost its topic twice over. The outage that starved the AI call
+ * also timed out the closing write that should have returned the row from "queued" to
+ * "idea", and that error is swallowed on purpose so a scheduled post is never reported as a
+ * failure. The row then sat in a status no query reads, so the highest-priority story in the
+ * bank was invisible — permanently, and with no symptom other than "the bank looks empty".
+ */
+describe("a topic stranded in queued comes back", () => {
+  const authHeader = { Authorization: `Bearer ${SERVICE_KEY}` };
+
+  async function strand(id: string, ageMs: number) {
+    const { createClient } = await import("@libsql/client");
+    const db = createClient({ url: process.env.DATABASE_URL! });
+    await db.execute({
+      sql: "UPDATE topics SET status = 'queued', updated_at = ? WHERE id = ?",
+      args: [Date.now() - ageMs, id],
+    });
+  }
+
+  it("reclaims one abandoned hours ago and hands it out again", async () => {
+    const t = await createTopic({
+      userId: USER,
+      title: "Model Baru OpenAI & Anthropic Makin Murah",
+      category: "trending",
+      priority: 9,
+      keywords: [],
+      source: "news-discovery",
+      sourceUrls: ["https://arstechnica.com/x", "https://www.engadget.com/y"],
+    });
+    await strand(t.id, 8 * 60 * 60 * 1000);
+
+    const app = buildApp();
+    const body = (await (
+      await app.request("/api/topics/next-for-blog", { headers: authHeader })
+    ).json()) as any;
+
+    expect(body.id).toBe(t.id);
+    expect((await getTopic(t.id, USER))!.status).toBe("idea");
+  });
+
+  it("leaves a run that is still in flight alone", async () => {
+    const t = await createTopic({
+      userId: USER,
+      title: "Sedang digarap barusan",
+      category: "trending",
+      priority: 9,
+      keywords: [],
+      source: "news-discovery",
+      sourceUrls: ["https://arstechnica.com/p", "https://www.theverge.com/q"],
+    });
+    await strand(t.id, 5 * 60 * 1000);
+
+    expect((await getTopic(t.id, USER))!.status).toBe("queued");
+    const { reclaimStrandedTopics } = await import("@/lib/topics/bank");
+    expect(await reclaimStrandedTopics(USER)).toBe(0);
+    expect((await getTopic(t.id, USER))!.status).toBe("queued");
+  });
+
+  it("never reclaims a topic that already recorded a deck", async () => {
+    // "queued" plus a carousel_id means something reached Buffer. Handing it out again
+    // would post the same topic a second time, which is worse than losing it.
+    const t = await createTopic({
+      userId: USER,
+      title: "Sudah tayang sebagian",
+      category: "trending",
+      priority: 9,
+      keywords: [],
+    });
+    await updateTopic(t.id, USER, { carouselId: "buffer-deck-1" });
+    await strand(t.id, 24 * 60 * 60 * 1000);
+
+    const { reclaimStrandedTopics } = await import("@/lib/topics/bank");
+    expect(await reclaimStrandedTopics(USER)).toBe(0);
+    expect((await getTopic(t.id, USER))!.status).toBe("queued");
+  });
+});
