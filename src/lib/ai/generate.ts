@@ -66,6 +66,23 @@ export function isQueueSaturation(err: any): boolean {
 }
 
 /**
+ * OmniRoute answering "I had nothing to dispatch to".
+ *
+ *   [503] Service temporarily unavailable: all targets were skipped by pre-dispatch filters
+ *   {"code":"ALL_TARGETS_SKIPPED","diagnostics":{"poolSize":4,"attempted":0,...}}
+ *
+ * `attempted: 0` is the tell — no provider was even contacted, so nothing about the request
+ * is at fault and re-asking changes nothing until the pool reopens. On 23 Sep 2026 the VPS
+ * uplink blipped, OmniRoute misread `fetch failed` as a rate limit and cooled down all five
+ * antigravity accounts for 5s, and this retry ladder (2.5s, 5s) spent its last attempt
+ * 2 seconds before the cooldown expired. The nightly produced nothing on either domain.
+ */
+export function isNoTargetAvailable(err: any): boolean {
+  const haystack = `${err?.message ?? ""} ${err?.responseBody ?? ""} ${err?.cause?.message ?? ""}`;
+  return /ALL_TARGETS_SKIPPED|all targets were skipped|no_targets|all_targets_skipped/i.test(haystack);
+}
+
+/**
  * The only place an AI call is retried.
  *
  * The transport used to retry too (`maxRetries` defaults to 2), so a single user action
@@ -89,9 +106,17 @@ export async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<
       if (i < attempts - 1) {
         // 2.5s, 5s for an ordinary failure. Saturation gets 20s, 40s instead — the queue
         // needs time to drain, and coming back in two and a half seconds just rejoins it.
-        const saturated = isQueueSaturation(err);
+        // An empty pool gets longer still: a provider cooldown outlives both ladders, and
+        // the request that finds the door shut has nothing to gain from knocking sooner.
+        const noTarget = isNoTargetAvailable(err);
+        const saturated = !noTarget && isQueueSaturation(err);
+        if (noTarget) console.warn("[omniroute] no dispatchable target, waiting for the pool to reopen");
         if (saturated) console.warn("[omniroute] queue saturated, backing off before retry");
-        await delay((i + 1) * (saturated ? 20_000 : 2500));
+        // 60s then 180s for an empty pool. The 23 Sep egress outage lasted about eleven
+        // minutes; four is not all of it, but the n8n carousel node waits 1800s and a dead
+        // pool fails on the first call, so only one call ever pays this wait.
+        const step = saturated ? 20_000 : 2500;
+        await delay(noTarget ? (i === 0 ? 60_000 : 180_000) : (i + 1) * step);
       }
     }
   }

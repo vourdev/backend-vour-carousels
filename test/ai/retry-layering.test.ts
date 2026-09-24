@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { withRetry, isSdkRetryExhausted } from "@/lib/ai/generate";
+import {
+  withRetry,
+  isSdkRetryExhausted,
+  isQueueSaturation,
+  isNoTargetAvailable,
+} from "@/lib/ai/generate";
 
 /**
  * Two retry layers used to stack. The AI SDK retries a failed HTTP call three
@@ -96,6 +101,91 @@ describe("withRetry layering", () => {
     const fn = vi.fn().mockResolvedValue("ok");
     await expect(withRetry(fn)).resolves.toBe("ok");
     expect(fn).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * The 23 Sep 2026 nightly produced nothing on either domain. The VPS uplink dropped for a
+ * few minutes; OmniRoute read `fetch failed` as a rate limit and cooled down all five
+ * antigravity accounts for 5 seconds; `vour-combos` resolves to one model, so there was no
+ * second provider; and the retry ladder here (2.5s, 5s) spent its final attempt 2 seconds
+ * before the cooldown expired. Every layer was individually defensible and the night was
+ * still lost, so this class of failure now waits long enough to matter.
+ */
+describe("isNoTargetAvailable", () => {
+  const body =
+    '{"error":{"message":"Service temporarily unavailable: all targets were skipped by ' +
+    'pre-dispatch filters","type":"service_unavailable","code":"ALL_TARGETS_SKIPPED"},' +
+    '"diagnostics":{"poolSize":4,"attempted":0}}';
+
+  it("recognizes the gateway's own error code", () => {
+    expect(isNoTargetAvailable({ message: "AI_APICallError", responseBody: body })).toBe(true);
+  });
+
+  it("recognizes the prose form the message arrives in when the body is dropped", () => {
+    const err = new Error(
+      "Service temporarily unavailable: all targets were skipped by pre-dispatch filters"
+    );
+    expect(isNoTargetAvailable(err)).toBe(true);
+  });
+
+  it("reads through a wrapped cause", () => {
+    const err = new Error("request failed");
+    (err as any).cause = new Error("ALL_TARGETS_SKIPPED");
+    expect(isNoTargetAvailable(err)).toBe(true);
+  });
+
+  it("does not claim a saturated queue, which drains on its own schedule", () => {
+    const saturated = new Error(
+      "Request dropped after exceeding the local rate-limit queue budget maxWaitMs (120000ms)"
+    );
+    expect(isNoTargetAvailable(saturated)).toBe(false);
+    expect(isQueueSaturation(saturated)).toBe(true);
+  });
+
+  it("does not claim an ordinary parse failure", () => {
+    expect(isNoTargetAvailable(new SyntaxError("Unexpected token <"))).toBe(false);
+    expect(isNoTargetAvailable(null)).toBe(false);
+  });
+});
+
+describe("withRetry backoff class", () => {
+  it("waits out a cooldown instead of re-asking inside it", async () => {
+    vi.useFakeTimers();
+    try {
+      const err = Object.assign(new Error("AI_APICallError"), {
+        responseBody: '{"code":"ALL_TARGETS_SKIPPED","diagnostics":{"attempted":0}}',
+      });
+      const fn = vi.fn().mockRejectedValueOnce(err).mockResolvedValue("plan");
+
+      const pending = withRetry(fn);
+      await vi.advanceTimersByTimeAsync(2_500);
+      // The old ladder would have already spent its second attempt by now.
+      expect(fn).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(60_000);
+      await expect(pending).resolves.toBe("plan");
+      expect(fn).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("still comes back quickly for a failure that is about the answer", async () => {
+    vi.useFakeTimers();
+    try {
+      const fn = vi
+        .fn()
+        .mockRejectedValueOnce(new SyntaxError("Unexpected token <"))
+        .mockResolvedValue("plan");
+
+      const pending = withRetry(fn);
+      await vi.advanceTimersByTimeAsync(2_500);
+      await expect(pending).resolves.toBe("plan");
+      expect(fn).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
