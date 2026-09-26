@@ -22,6 +22,12 @@
  * Vercel's changelog feed is deliberately absent: it answers 3.5 MB of mostly one-line
  * platform notes, which is a large daily download for very little signal.
  *
+ * Antara, Kompas Tekno and Detik are absent for a duller reason: they answer this VPS with
+ * 403 or refuse the connection outright, while answering a laptop in Indonesia normally. A
+ * feed is only worth listing if it works from where the sweep runs, so every entry here was
+ * checked from the box itself, not from a development machine. The Register and DevClass
+ * fail the same way and are kept only because they predate that rule.
+ *
  * IMAGES: press photography stays off limits. A news outlet's pictures belong to the outlet,
  * the photographer, or a wire service, and "the URL is public" is not a licence. The parser
  * drops `<media:content>` and `<enclosure>` for every feed except the ones flagged
@@ -111,8 +117,9 @@ export const NEWS_FEEDS: NewsFeed[] = [
   // diluting the English pool.
   { publisher: "DailySocial", url: "https://dailysocial.id/feed", host: "dailysocial.id", group: "dailysocial" },
   { publisher: "CNBC Indonesia Tech", url: "https://www.cnbcindonesia.com/tech/rss", host: "cnbcindonesia.com", group: "cnbcindonesia" },
-  { publisher: "Antara Teknologi", url: "https://www.antaranews.com/rss/tekno.xml", host: "antaranews.com", group: "antara" },
   { publisher: "Tempo Tekno", url: "https://rss.tempo.co/tekno", host: "tempo.co", group: "tempo" },
+  { publisher: "Liputan6 Tekno", url: "https://feed.liputan6.com/rss/tekno", host: "liputan6.com", group: "liputan6" },
+  { publisher: "Katadata Digital", url: "https://katadata.co.id/rss/digital", host: "katadata.co.id", group: "katadata" },
 ];
 
 /** Apex form of a host, so `www.infoq.com` and `infoq.com` compare equal. */
