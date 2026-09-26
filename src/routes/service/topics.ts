@@ -49,6 +49,7 @@ app.get("/next-for-blog", async (c) => {
     angle: topic.angle,
     sourceUrls: topic.sourceUrls,
     visualHint: topic.visualHint,
+    sourceImageUrl: topic.sourceImageUrl,
   });
 });
 
@@ -82,6 +83,7 @@ app.get("/:id", async (c) => {
     angle: topic.angle,
     sourceUrls: topic.sourceUrls,
     visualHint: topic.visualHint,
+    sourceImageUrl: topic.sourceImageUrl,
   });
 });
 

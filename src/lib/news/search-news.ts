@@ -225,6 +225,9 @@ export async function searchNewsItems(
         host,
         summary: "",
         publishedAt: Number.isFinite(at) ? at : null,
+        // Grounded search returns a bare URL with no feed behind it, so there is no
+        // publisher flag to say whether its pictures may be reused. Never assume yes.
+        imageUrl: null,
       },
     });
   }

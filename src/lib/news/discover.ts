@@ -320,6 +320,10 @@ export async function discoverTrendingTopics(
         targetAudienceFit: pick.whyRelevant,
         sourceUrls: cluster.sourceUrls,
         visualHint: pick.visual,
+        // Null unless a vendor newsroom in the cluster published its own picture. The blog
+        // generator prefers it over stock precisely because it is the thing being written
+        // about, not a photograph that merely evokes it.
+        sourceImageUrl: cluster.imageUrl,
       })
     );
     seenTitles.push(pick.title);

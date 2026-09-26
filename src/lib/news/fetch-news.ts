@@ -11,6 +11,11 @@ export interface NewsItem {
   group: string;
   /** True when this is the subject's own newsroom — see NewsFeed.primary. */
   primary: boolean;
+  /**
+   * The publisher's own picture for this story, and only from a feed allowed to give one.
+   * Null for every press outlet — see the images note in ./feeds.ts.
+   */
+  imageUrl: string | null;
   summary: string;
   publishedAt: number | null;
 }
@@ -85,7 +90,7 @@ async function fetchOne(feed: NewsFeed, maxItems: number): Promise<{ items: News
   }
 
   const xml = (await res.text()).slice(0, MAX_FEED_BYTES);
-  const raw = parseFeed(xml, { maxItems });
+  const raw = parseFeed(xml, { maxItems, images: feed.imagesAllowed === true });
 
   const items: NewsItem[] = [];
   for (const item of raw) {
@@ -100,6 +105,7 @@ async function fetchOne(feed: NewsFeed, maxItems: number): Promise<{ items: News
       primary: feed.primary === true,
       summary: item.summary,
       publishedAt: item.publishedAt,
+      imageUrl: item.imageUrl,
     });
   }
   return { items, detail: raw.length === 0 ? `parsed 0 items from ${xml.length} bytes` : undefined };

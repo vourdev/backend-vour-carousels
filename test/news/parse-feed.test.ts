@@ -93,3 +93,49 @@ describe("source URL hygiene", () => {
     }
   });
 });
+
+/**
+ * Images are a licensing rule, not a formatting preference, so they are pinned by tests.
+ * The owner's decision on 26 Sep 2026 was "vendor newsrooms only": a company's own product
+ * shot is published to be republished, a press outlet's photograph is licensed and a public
+ * URL grants nothing.
+ */
+describe("gambar hanya dari feed yang diizinkan", () => {
+  const withMedia = `<rss><channel><item>
+      <title>Introducing Gemini 3.8 Live with Live Avatar</title>
+      <link>https://deepmind.google/blog/gemini-38-live</link>
+      <description>Model baru.</description>
+      <media:content url="https://deepmind.google/img/hero.jpg" medium="image"/>
+    </item></channel></rss>`;
+
+  it("mengambil media:content ketika feed diizinkan", () => {
+    const [item] = parseFeed(withMedia, { images: true });
+    expect(item.imageUrl).toBe("https://deepmind.google/img/hero.jpg");
+  });
+
+  it("tidak mengambil apa pun secara default", () => {
+    const [item] = parseFeed(withMedia);
+    expect(item.imageUrl).toBeNull();
+  });
+
+  it("mengabaikan enclosure yang bukan gambar", () => {
+    const podcast = `<rss><channel><item>
+        <title>Changelog edisi minggu ini dibacakan</title>
+        <link>https://github.blog/changelog/episode-9</link>
+        <enclosure url="https://github.blog/audio/ep9.mp3" type="audio/mpeg"/>
+      </item></channel></rss>`;
+    const [item] = parseFeed(podcast, { images: true });
+    expect(item.imageUrl).toBeNull();
+  });
+
+  it("tidak pernah menyentuh <img> di dalam badan tulisan", () => {
+    // A wire-service photo lives exactly here, so no feed flag may reach it.
+    const inline = `<rss><channel><item>
+        <title>Outlet menulis panjang soal rilis kemarin</title>
+        <link>https://www.theverge.com/story</link>
+        <description>&lt;img src="https://cdn.vox-cdn.com/getty-photo.jpg"/&gt; Teks berita.</description>
+      </item></channel></rss>`;
+    const [item] = parseFeed(inline, { images: true });
+    expect(item.imageUrl).toBeNull();
+  });
+});

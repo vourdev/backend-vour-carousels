@@ -5,10 +5,13 @@
  * document — `<item>`/`<entry>` blocks with four fields worth reading. What a real parser
  * would buy here is robustness against XML we never accept anyway.
  *
- * Every field is extracted by name and then flattened to plain text. Nothing reads
- * `<media:content>`, `<enclosure>`, `<image>` or an `<img>` inside a description, so no
- * image URL from a news article can reach the rest of the system even by accident — see the
- * note in ./feeds.ts.
+ * Every field is extracted by name and then flattened to plain text.
+ *
+ * Images are opt-in and off by default. `<media:content>`, `<enclosure>` and `<media:thumbnail>`
+ * are read only when the caller passes `images: true`, which only a vendor newsroom's feed
+ * gets -- see `NewsFeed.imagesAllowed`. `<img>` inside a description is never read at all: a
+ * press outlet's body HTML is exactly where a wire-service photo would be, and no feed flag
+ * should be able to reach it by accident.
  */
 
 export interface RawFeedItem {
@@ -18,6 +21,36 @@ export interface RawFeedItem {
   summary: string;
   /** Epoch ms, or null when the feed gave no readable date. */
   publishedAt: number | null;
+  /**
+   * The publisher's own image for this item, and only when the feed is allowed to give one.
+   * Null everywhere else, including for every press outlet.
+   */
+  imageUrl: string | null;
+}
+
+/**
+ * The image a feed item declares about itself.
+ *
+ * Only the three MRSS/RSS elements whose whole purpose is "here is this item's picture".
+ * Anything embedded in the body prose is ignored: that is where a wire photo lives, and it
+ * is not what a newsroom means by its own asset.
+ */
+function extractImage(block: string): string | null {
+  const patterns = [
+    /<media:content\b[^>]*\burl=["']([^"']+)["'][^>]*>/i,
+    /<media:thumbnail\b[^>]*\burl=["']([^"']+)["'][^>]*>/i,
+    /<enclosure\b[^>]*\burl=["']([^"']+)["'][^>]*>/i,
+  ];
+  for (const pattern of patterns) {
+    const match = block.match(pattern);
+    const url = match?.[1]?.trim();
+    if (!url || !/^https:\/\//i.test(url)) continue;
+    // An <enclosure> carries podcasts and PDFs too; the type attribute decides.
+    if (/<enclosure/i.test(match![0]) && !/type=["']image\//i.test(match![0])) continue;
+    if (!/\.(jpe?g|png|webp|avif|gif)(\?|$)/i.test(url) && !/<media:/i.test(match![0])) continue;
+    return url;
+  }
+  return null;
 }
 
 const ENTITIES: Record<string, string> = {
@@ -106,8 +139,12 @@ function extractDate(block: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-export function parseFeed(xml: string, opts?: { maxItems?: number }): RawFeedItem[] {
+export function parseFeed(
+  xml: string,
+  opts?: { maxItems?: number; images?: boolean },
+): RawFeedItem[] {
   const max = opts?.maxItems ?? 40;
+  const wantImages = opts?.images === true;
   const blocks = xml.match(/<(?:item|entry)\b[\s\S]*?<\/(?:item|entry)>/gi) ?? [];
 
   const items: RawFeedItem[] = [];
@@ -125,7 +162,13 @@ export function parseFeed(xml: string, opts?: { maxItems?: number }): RawFeedIte
     const summaryRaw = firstTag(block, ["description", "summary", "content:encoded", "content"]);
     const summary = summaryRaw ? toPlainText(summaryRaw).slice(0, 600) : "";
 
-    items.push({ title, link, summary, publishedAt: extractDate(block) });
+    items.push({
+      title,
+      link,
+      summary,
+      publishedAt: extractDate(block),
+      imageUrl: wantImages ? extractImage(block) : null,
+    });
   }
   return items;
 }

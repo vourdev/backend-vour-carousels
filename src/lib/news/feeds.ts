@@ -22,9 +22,12 @@
  * Vercel's changelog feed is deliberately absent: it answers 3.5 MB of mostly one-line
  * platform notes, which is a large daily download for very little signal.
  *
- * TEXT ONLY. Feed entries carry `<media:content>` and `<enclosure>` image URLs and the
- * parser deliberately drops them: a news outlet's photography belongs to the outlet or the
- * photographer, and republishing it is a copyright claim waiting to happen.
+ * IMAGES: press photography stays off limits. A news outlet's pictures belong to the outlet,
+ * the photographer, or a wire service, and "the URL is public" is not a licence. The parser
+ * drops `<media:content>` and `<enclosure>` for every feed except the ones flagged
+ * `imagesAllowed`, which are vendor newsrooms publishing their own product shots and press
+ * assets -- material put out to be republished. Owner's decision, 26 Sep 2026, taken over the
+ * alternative of scraping any source whose URL happened to resolve.
  */
 
 export interface NewsFeed {
@@ -53,6 +56,14 @@ export interface NewsFeed {
    * outlet in every accepted cluster.
    */
   primary?: boolean;
+  /**
+   * Whether this feed's own images may be republished.
+   *
+   * True only for a vendor's newsroom, where the picture is the company's own screenshot,
+   * diagram or press asset. Never true for a press outlet: their photography is licensed,
+   * often from a wire service, and a public URL grants nothing. See the file header.
+   */
+  imagesAllowed?: boolean;
 }
 
 export const NEWS_FEEDS: NewsFeed[] = [
@@ -71,18 +82,37 @@ export const NEWS_FEEDS: NewsFeed[] = [
   // Vendor newsrooms. Primary sources: they prove a release happened, and they never
   // corroborate it — see NewsFeed.primary. They are here because the developer stories worth
   // writing about START here, and the press coverage that confirms them is above.
-  { publisher: "GitHub Blog", url: "https://github.blog/feed/", host: "github.blog", group: "github", primary: true },
-  { publisher: "GitHub Changelog", url: "https://github.blog/changelog/feed/", host: "github.blog", group: "github", primary: true },
-  { publisher: "Node.js Blog", url: "https://nodejs.org/en/feed/blog.xml", host: "nodejs.org", group: "nodejs", primary: true },
-  { publisher: "Deno Blog", url: "https://deno.com/feed", host: "deno.com", group: "deno", primary: true },
-  { publisher: "Bun Blog", url: "https://bun.sh/rss.xml", host: "bun.sh", group: "bun", primary: true },
-  { publisher: "Cloudflare Blog", url: "https://blog.cloudflare.com/rss/", host: "blog.cloudflare.com", group: "cloudflare", primary: true },
-  { publisher: "Docker Blog", url: "https://www.docker.com/blog/feed/", host: "docker.com", group: "docker", primary: true },
-  { publisher: "Google Developers", url: "https://developers.googleblog.com/feeds/posts/default", host: "developers.googleblog.com", group: "googledev", primary: true },
-  { publisher: "Microsoft DevBlogs", url: "https://devblogs.microsoft.com/feed/", host: "devblogs.microsoft.com", group: "microsoft", primary: true },
-  { publisher: "Hugging Face Blog", url: "https://huggingface.co/blog/feed.xml", host: "huggingface.co", group: "huggingface", primary: true },
-  { publisher: "Google Blog", url: "https://blog.google/rss/", host: "blog.google", group: "google", primary: true },
-  { publisher: "OpenAI News", url: "https://openai.com/news/rss.xml", host: "openai.com", group: "openai", primary: true },
+  { publisher: "GitHub Blog", url: "https://github.blog/feed/", host: "github.blog", group: "github", primary: true, imagesAllowed: true },
+  { publisher: "GitHub Changelog", url: "https://github.blog/changelog/feed/", host: "github.blog", group: "github", primary: true, imagesAllowed: true },
+  { publisher: "Node.js Blog", url: "https://nodejs.org/en/feed/blog.xml", host: "nodejs.org", group: "nodejs", primary: true, imagesAllowed: true },
+  { publisher: "Deno Blog", url: "https://deno.com/feed", host: "deno.com", group: "deno", primary: true, imagesAllowed: true },
+  { publisher: "Bun Blog", url: "https://bun.sh/rss.xml", host: "bun.sh", group: "bun", primary: true, imagesAllowed: true },
+  { publisher: "Cloudflare Blog", url: "https://blog.cloudflare.com/rss/", host: "blog.cloudflare.com", group: "cloudflare", primary: true, imagesAllowed: true },
+  { publisher: "Docker Blog", url: "https://www.docker.com/blog/feed/", host: "docker.com", group: "docker", primary: true, imagesAllowed: true },
+  { publisher: "Google Developers", url: "https://developers.googleblog.com/feeds/posts/default", host: "developers.googleblog.com", group: "googledev", primary: true, imagesAllowed: true },
+  { publisher: "Microsoft DevBlogs", url: "https://devblogs.microsoft.com/feed/", host: "devblogs.microsoft.com", group: "microsoft", primary: true, imagesAllowed: true },
+  { publisher: "Hugging Face Blog", url: "https://huggingface.co/blog/feed.xml", host: "huggingface.co", group: "huggingface", primary: true, imagesAllowed: true },
+  { publisher: "Google Blog", url: "https://blog.google/rss/", host: "blog.google", group: "google", primary: true, imagesAllowed: true },
+  { publisher: "OpenAI News", url: "https://openai.com/news/rss.xml", host: "openai.com", group: "openai", primary: true, imagesAllowed: true },
+  { publisher: "Google DeepMind", url: "https://deepmind.google/blog/rss.xml", host: "deepmind.google", group: "deepmind", primary: true, imagesAllowed: true },
+  { publisher: "Mistral AI", url: "https://mistral.ai/rss.xml", host: "mistral.ai", group: "mistral", primary: true, imagesAllowed: true },
+
+  // Security desks. Their stories are the ones an institution acts on -- a CVE, a breach, a
+  // vendor advisory -- and they corroborate each other without touching the product press
+  // above, so a security story needs two security outlets to agree before it ships.
+  { publisher: "The Hacker News", url: "https://feeds.feedburner.com/TheHackersNews", host: "thehackernews.com", group: "thehackernews" },
+  { publisher: "BleepingComputer", url: "https://www.bleepingcomputer.com/feed/", host: "bleepingcomputer.com", group: "bleepingcomputer" },
+  { publisher: "Krebs on Security", url: "https://krebsonsecurity.com/feed/", host: "krebsonsecurity.com", group: "krebs" },
+
+  // Indonesian desks. They report the same releases for a local audience and they report
+  // things the English press never covers -- regulation, local launches, public-sector
+  // rollouts -- which is the half BTU's readers actually act on. Indonesian headlines only
+  // cluster with other Indonesian headlines, so these corroborate each other rather than
+  // diluting the English pool.
+  { publisher: "DailySocial", url: "https://dailysocial.id/feed", host: "dailysocial.id", group: "dailysocial" },
+  { publisher: "CNBC Indonesia Tech", url: "https://www.cnbcindonesia.com/tech/rss", host: "cnbcindonesia.com", group: "cnbcindonesia" },
+  { publisher: "Antara Teknologi", url: "https://www.antaranews.com/rss/tekno.xml", host: "antaranews.com", group: "antara" },
+  { publisher: "Tempo Tekno", url: "https://rss.tempo.co/tekno", host: "tempo.co", group: "tempo" },
 ];
 
 /** Apex form of a host, so `www.infoq.com` and `infoq.com` compare equal. */

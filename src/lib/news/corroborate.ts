@@ -26,6 +26,14 @@ export interface StoryCluster {
   sourceUrls: string[];
   /** Newest publication time in the cluster, epoch ms; null when nothing was dated. */
   newestAt: number | null;
+  /**
+   * A picture for this story that we are allowed to republish, or null.
+   *
+   * Only ever taken from a vendor newsroom item -- the company's own screenshot or press
+   * asset. Press outlets carry `imageUrl: null` by construction (see ./feeds.ts), so this
+   * cannot pick up licensed photography even when the press item is the better-written one.
+   */
+  imageUrl: string | null;
 }
 
 /**
@@ -250,6 +258,12 @@ export function clusterStories(
       publishers: [...new Set(members.map((m) => m.publisher))],
       sourceUrls: [...firstPerGroup.values()],
       newestAt: dates.length ? Math.max(...dates) : null,
+      // The newsroom's own item is preferred over any other member that happens to carry
+      // one, because it is the release being written about.
+      imageUrl:
+        members.find((m) => m.primary && m.imageUrl)?.imageUrl ??
+        members.find((m) => m.imageUrl)?.imageUrl ??
+        null,
     };
   });
 }

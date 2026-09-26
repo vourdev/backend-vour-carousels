@@ -11,6 +11,7 @@ function item(publisher: string, group: string, title: string, over?: Partial<Ne
     group,
     primary: false,
     summary: "",
+    imageUrl: null,
     publishedAt: Date.UTC(2026, 8, 21, 12, 0),
     ...over,
   };
@@ -161,5 +162,32 @@ describe("sameStory without a rarity oracle", () => {
 
   it("does not match two unrelated headlines", () => {
     expect(sameStory("Deno 3 drops the npm compatibility flag", "Apple raises Mac mini prices")).toBe(false);
+  });
+});
+
+describe("gambar klaster", () => {
+  it("memilih gambar milik newsroom vendor, bukan milik pers", () => {
+    // Both carry a picture; only the vendor's may be republished, and the press item is
+    // deliberately the one listed first to prove order is not what decides it.
+    const items = [
+      item("The Verge", "verge", "Google ships Gemini 3.8 Live with avatars for developers", {
+        imageUrl: "https://cdn.vox-cdn.com/getty-photo.jpg",
+      }),
+      item("Google DeepMind", "deepmind", "Introducing Gemini 3.8 Live with Live Avatar", {
+        primary: true,
+        imageUrl: "https://deepmind.google/img/hero.jpg",
+      }),
+    ];
+    const [cluster] = clusterStories(items);
+    expect(cluster.imageUrl).toBe("https://deepmind.google/img/hero.jpg");
+  });
+
+  it("null ketika tidak ada anggota yang membawa gambar", () => {
+    const items = [
+      item("Ars Technica", "arstechnica", "Google ships Gemini 3.8 Live with avatars for developers"),
+      item("Engadget", "engadget", "Gemini 3.8 Live arrives with Live Avatar for developers"),
+    ];
+    const [cluster] = clusterStories(items);
+    expect(cluster.imageUrl).toBeNull();
   });
 });

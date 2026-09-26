@@ -70,6 +70,11 @@ export interface Topic {
    */
   sourceUrls?: string[];
   visualHint?: VisualHint;
+  /**
+   * A picture the story's own vendor newsroom published, licensed to be republished.
+   * Absent for anything sourced from the press — see lib/news/feeds.ts.
+   */
+  sourceImageUrl?: string;
 }
 
 const TOPICS_SCHEMA = `
@@ -102,6 +107,7 @@ const MIGRATION_COLUMNS = [
   "blog_status TEXT NOT NULL DEFAULT 'not_used'",
   "source_urls TEXT",
   "visual_hint TEXT",
+  "source_image_url TEXT",
 ];
 
 async function ensureSchema() {
@@ -154,6 +160,7 @@ function rowToTopic(row: any): Topic {
     suggestedAngle: str(row.suggested_angle),
     sourceUrls: parseUrlList(row.source_urls),
     visualHint: str(row.visual_hint) as VisualHint | undefined,
+    sourceImageUrl: str(row.source_image_url),
   };
 }
 
@@ -199,6 +206,8 @@ export async function createTopic(data: {
   source_urls?: string[];
   visualHint?: VisualHint;
   visual_hint?: VisualHint;
+  sourceImageUrl?: string | null;
+  source_image_url?: string | null;
 }): Promise<Topic> {
   await ensureSchema();
   const now = Date.now();
@@ -209,10 +218,11 @@ export async function createTopic(data: {
   const blogSt = data.blogStatus ?? data.blog_status ?? "not_used";
   const srcUrls = data.sourceUrls ?? data.source_urls;
   const visual = data.visualHint ?? data.visual_hint ?? null;
+  const srcImage = data.sourceImageUrl ?? data.source_image_url ?? null;
   
   await db().execute({
-    sql: `INSERT INTO topics (id, user_id, title, category, description, keywords, angle, status, blog_status, priority, scheduled_date, source, related_product_id, target_audience_fit, suggested_angle, source_urls, visual_hint, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO topics (id, user_id, title, category, description, keywords, angle, status, blog_status, priority, scheduled_date, source, related_product_id, target_audience_fit, suggested_angle, source_urls, visual_hint, source_image_url, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       id,
       data.userId,
@@ -231,6 +241,7 @@ export async function createTopic(data: {
       sugAngle,
       srcUrls && srcUrls.length ? JSON.stringify(srcUrls) : null,
       visual,
+      srcImage,
       now,
       now,
     ],
