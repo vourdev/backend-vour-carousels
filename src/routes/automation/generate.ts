@@ -53,6 +53,55 @@ async function resolveUserId(): Promise<string | null> {
   return (user?.id as string | undefined) ?? null;
 }
 
+/** Which failure this was, so the caller can say something true about it. */
+type UserLookup =
+  | { ok: true; userId: string }
+  | { ok: false; status: 500 | 503; error: string };
+
+/**
+ * The owner's id, or an honest reason there isn't one.
+ *
+ * Every caller used to do `resolveUserId().catch(() => null)` and then answer
+ * "No user found in the database. Seed the database first." That sentence is a diagnosis,
+ * and it was wrong every time the real fault was the database being unreachable — which,
+ * on this box's uplink, is most of the time it happens. On 27 Sep 2026 the whole news sweep
+ * died that way and the WhatsApp report told the owner to go seed a database that was fine.
+ *
+ * An empty table and an unreachable database are different failures and now say so: 500 for
+ * the first, 503 for the second, with the driver's own message attached.
+ *
+ * The lookup is also retried, because it is one small query against a database reached over
+ * a link that drops packets in bursts, and a sweep is worth more than 1.2 seconds.
+ */
+async function requireUserId(): Promise<UserLookup> {
+  const waits = [0, 400, 800];
+  let lastError = "";
+
+  for (const wait of waits) {
+    if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
+    try {
+      const userId = await resolveUserId();
+      if (userId) return { ok: true, userId };
+      // A successful query that returned nothing really is an unseeded database; retrying
+      // cannot change that.
+      return {
+        ok: false,
+        status: 500,
+        error: "No user found in the database. Seed the database first.",
+      };
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : String(err);
+      console.warn(`[automation] lookup user gagal: ${lastError}`);
+    }
+  }
+
+  return {
+    ok: false,
+    status: 503,
+    error: `Database tidak terjangkau setelah ${waits.length} percobaan: ${lastError}`,
+  };
+}
+
 
 async function createAndPublishCarousel({
   topic,
@@ -370,10 +419,9 @@ app.post("/generate", async (c) => {
 // then flips it to "queued" so a retriggered cron doesn't hand out the same
 // topic twice before /generate has actually produced anything from it.
 app.get("/topic/next", async (c) => {
-  const userId = await resolveUserId().catch(() => null);
-  if (!userId) {
-    return c.json({ error: "No user found in the database. Seed the database first." }, 500);
-  }
+  const lookup = await requireUserId();
+  if (!lookup.ok) return c.json({ error: lookup.error }, lookup.status);
+  const userId = lookup.userId;
 
   // A fresh news story first, then "approved", then "idea".
   //
@@ -422,9 +470,11 @@ app.post("/topics/generate", async (c) => {
     return c.json({ error: `Invalid mode "${body?.mode}" — use ideas | weekly | monthly` }, 400);
   }
 
-  const uid = body.userId ?? (await resolveUserId().catch(() => null));
+  let uid = body.userId;
   if (!uid) {
-    return c.json({ error: "No user found in the database. Seed the database first." }, 500);
+    const lookup = await requireUserId();
+    if (!lookup.ok) return c.json({ error: lookup.error }, lookup.status);
+    uid = lookup.userId;
   }
 
   const modelId = defaultModel();
@@ -454,9 +504,11 @@ app.post("/topics/discover-trending", async (c) => {
     dryRun?: boolean;
   };
 
-  const uid = body.userId ?? (await resolveUserId().catch(() => null));
+  let uid = body.userId;
   if (!uid) {
-    return c.json({ error: "No user found in the database. Seed the database first." }, 500);
+    const lookup = await requireUserId();
+    if (!lookup.ok) return c.json({ error: lookup.error }, lookup.status);
+    uid = lookup.userId;
   }
 
   const modelId = defaultModel();
@@ -508,10 +560,9 @@ app.post("/research-topics", async (c) => {
     return c.json({ error: "Missing or empty rawNotes in request body" }, 400);
   }
 
-  const userId = await resolveUserId().catch(() => null);
-  if (!userId) {
-    return c.json({ error: "No user found in the database. Seed the database first." }, 500);
-  }
+  const lookup = await requireUserId();
+  if (!lookup.ok) return c.json({ error: lookup.error }, lookup.status);
+  const userId = lookup.userId;
 
   const modelId = defaultModel();
   if (!modelId) {
@@ -573,10 +624,9 @@ app.patch("/research-topics/:id/status", async (c) => {
     return c.json({ error: "Missing status in request body" }, 400);
   }
 
-  const userId = await resolveUserId().catch(() => null);
-  if (!userId) {
-    return c.json({ error: "No user found in the database" }, 500);
-  }
+  const lookup = await requireUserId();
+  if (!lookup.ok) return c.json({ error: lookup.error }, lookup.status);
+  const userId = lookup.userId;
 
   const topicId = c.req.param("id");
 
@@ -612,10 +662,9 @@ app.patch("/research-topics/:id/status", async (c) => {
 /* ── TASK 4: Mockup/Layout diversity stats endpoint ─────────────────── */
 
 app.get("/mockup-stats", async (c) => {
-  const userId = await resolveUserId().catch(() => null);
-  if (!userId) {
-    return c.json({ error: "No user found in the database" }, 500);
-  }
+  const lookup = await requireUserId();
+  if (!lookup.ok) return c.json({ error: lookup.error }, lookup.status);
+  const userId = lookup.userId;
 
   const [globalStats, recentStats, layoutStats] = await Promise.all([
     getGlobalMockupStats(),
