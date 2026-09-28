@@ -44,6 +44,13 @@ export type BlogStatus = "not_used" | "generating" | "published" | "failed";
  */
 export type VisualHint = "changelog" | "illustration";
 
+export interface SourceRef {
+  publisher: string;
+  title: string;
+  url: string;
+  publishedAt: number | null;
+}
+
 export interface Topic {
   id: string;
   title: string;
@@ -75,6 +82,14 @@ export interface Topic {
    * Absent for anything sourced from the press — see lib/news/feeds.ts.
    */
   sourceImageUrl?: string;
+  /**
+   * Citable metadata per source: publisher, headline, url, date.
+   *
+   * `sourceUrls` says where a claim came from; this says how to cite it. BTU's articles
+   * close with a reference list, and composing one from a bare URL would mean inventing the
+   * author, the year and the title.
+   */
+  sourceRefs?: SourceRef[];
 }
 
 const TOPICS_SCHEMA = `
@@ -108,6 +123,7 @@ const MIGRATION_COLUMNS = [
   "source_urls TEXT",
   "visual_hint TEXT",
   "source_image_url TEXT",
+  "source_refs TEXT",
 ];
 
 async function ensureSchema() {
@@ -161,6 +177,7 @@ function rowToTopic(row: any): Topic {
     sourceUrls: parseUrlList(row.source_urls),
     visualHint: str(row.visual_hint) as VisualHint | undefined,
     sourceImageUrl: str(row.source_image_url),
+    sourceRefs: parseRefList(row.source_refs),
   };
 }
 
@@ -177,6 +194,30 @@ function parseUrlList(raw: unknown): string[] | undefined {
     if (!Array.isArray(parsed)) return undefined;
     const urls = parsed.map((u) => String(u)).filter((u) => /^https?:\/\//i.test(u));
     return urls.length ? urls : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Rows written before `source_refs` existed have none, and a malformed entry is dropped
+ * rather than half-rendered: a reference missing its publisher or URL cannot be cited.
+ */
+function parseRefList(raw: unknown): SourceRef[] | undefined {
+  if (raw == null) return undefined;
+  try {
+    const parsed = JSON.parse(String(raw));
+    if (!Array.isArray(parsed)) return undefined;
+    const refs = parsed
+      .filter((r) => r && typeof r === "object")
+      .map((r: any) => ({
+        publisher: String(r.publisher ?? ""),
+        title: String(r.title ?? ""),
+        url: String(r.url ?? ""),
+        publishedAt: Number.isFinite(Number(r.publishedAt)) ? Number(r.publishedAt) : null,
+      }))
+      .filter((r) => r.publisher && /^https?:\/\//i.test(r.url));
+    return refs.length ? refs : undefined;
   } catch {
     return undefined;
   }
@@ -208,6 +249,8 @@ export async function createTopic(data: {
   visual_hint?: VisualHint;
   sourceImageUrl?: string | null;
   source_image_url?: string | null;
+  sourceRefs?: SourceRef[] | null;
+  source_refs?: SourceRef[] | null;
 }): Promise<Topic> {
   await ensureSchema();
   const now = Date.now();
@@ -219,10 +262,11 @@ export async function createTopic(data: {
   const srcUrls = data.sourceUrls ?? data.source_urls;
   const visual = data.visualHint ?? data.visual_hint ?? null;
   const srcImage = data.sourceImageUrl ?? data.source_image_url ?? null;
+  const srcRefs = data.sourceRefs ?? data.source_refs ?? null;
   
   await db().execute({
-    sql: `INSERT INTO topics (id, user_id, title, category, description, keywords, angle, status, blog_status, priority, scheduled_date, source, related_product_id, target_audience_fit, suggested_angle, source_urls, visual_hint, source_image_url, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO topics (id, user_id, title, category, description, keywords, angle, status, blog_status, priority, scheduled_date, source, related_product_id, target_audience_fit, suggested_angle, source_urls, visual_hint, source_image_url, source_refs, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       id,
       data.userId,
@@ -242,6 +286,7 @@ export async function createTopic(data: {
       srcUrls && srcUrls.length ? JSON.stringify(srcUrls) : null,
       visual,
       srcImage,
+      srcRefs && srcRefs.length ? JSON.stringify(srcRefs) : null,
       now,
       now,
     ],

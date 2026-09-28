@@ -324,6 +324,9 @@ export async function discoverTrendingTopics(
         // generator prefers it over stock precisely because it is the thing being written
         // about, not a photograph that merely evokes it.
         sourceImageUrl: cluster.imageUrl,
+        // Who said it, what they called it, when. Needed to cite properly further down the
+        // pipeline without inventing an author or a year.
+        sourceRefs: cluster.refs,
       })
     );
     seenTitles.push(pick.title);

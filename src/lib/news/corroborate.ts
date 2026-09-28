@@ -34,6 +34,23 @@ export interface StoryCluster {
    * cannot pick up licensed photography even when the press item is the better-written one.
    */
   imageUrl: string | null;
+  /**
+   * One citable reference per publisher: who said it, what they called it, when.
+   *
+   * `sourceUrls` alone is not enough to cite properly. BTU's articles carry an academic-style
+   * reference list, and building one from a bare URL would mean inventing the author, the
+   * year and the headline -- the exact fabrication the grounding rules forbid everywhere
+   * else. The feed already knows all three, so they are kept rather than thrown away.
+   */
+  refs: StoryRef[];
+}
+
+export interface StoryRef {
+  publisher: string;
+  title: string;
+  url: string;
+  /** Epoch ms, or null when the feed gave no readable date. */
+  publishedAt: number | null;
 }
 
 /**
@@ -248,15 +265,21 @@ export function clusterStories(
     const dates = members.map((m) => m.publishedAt).filter((d): d is number => d !== null);
 
     // One citation per publisher, in feed order.
-    const firstPerGroup = new Map<string, string>();
-    for (const m of members) if (!firstPerGroup.has(m.group)) firstPerGroup.set(m.group, m.url);
+    const firstPerGroup = new Map<string, NewsItem>();
+    for (const m of members) if (!firstPerGroup.has(m.group)) firstPerGroup.set(m.group, m);
 
     return {
       headline: members.reduce((longest, m) => (m.title.length > longest.length ? m.title : longest), ""),
       items: members,
       groups,
       publishers: [...new Set(members.map((m) => m.publisher))],
-      sourceUrls: [...firstPerGroup.values()],
+      sourceUrls: [...firstPerGroup.values()].map((m) => m.url),
+      refs: [...firstPerGroup.values()].map((m) => ({
+        publisher: m.publisher,
+        title: m.title,
+        url: m.url,
+        publishedAt: m.publishedAt,
+      })),
       newestAt: dates.length ? Math.max(...dates) : null,
       // The newsroom's own item is preferred over any other member that happens to carry
       // one, because it is the release being written about.
